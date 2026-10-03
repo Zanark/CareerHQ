@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 export type Theme = 'dark' | 'light';
 export const THEME_STORAGE_KEY = 'careerhq.theme.v1';
 export const THEME_COLORS: Record<Theme, string> = { dark: '#000F13', light: '#F3F2E9' };
+export const THEME_MOTION_MS = 1200;
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
@@ -53,7 +54,7 @@ export function useTheme() {
       timer.current = window.setTimeout(() => {
         setMotion(null);
         delete document.documentElement.dataset.themeTransition;
-      }, 1000);
+      }, THEME_MOTION_MS + 100);
     }
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);

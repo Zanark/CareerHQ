@@ -1,4 +1,5 @@
 import { test as base, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { THEME_MOTION_MS } from '../src/useTheme';
 
 type Theme = 'dark' | 'light';
 const themeKey = 'careerhq.theme.v1';
@@ -200,27 +201,31 @@ test('workspace resets and backup imports do not reset the separate theme prefer
 
 async function animationFrame(toggle: Locator, milliseconds: number) {
   return toggle.evaluate((button, time) => {
+    const orbit = button.querySelector('.theme-orbit')!;
     const sun = button.querySelector('.theme-sun')!;
     const animations = button.getAnimations({ subtree: true });
     for (const animation of animations) {
       animation.pause();
       animation.currentTime = time;
     }
-    const style = getComputedStyle(sun);
-    const matrix = new DOMMatrix(style.transform);
+    const orbitTransition = animations.find(animation =>
+      animation.effect instanceof KeyframeEffect && animation.effect.target === orbit);
+    const scene = button.querySelector('.theme-scene')!.getBoundingClientRect();
+    const bounds = sun.getBoundingClientRect();
     return {
       milliseconds: time,
       animationCount: animations.length,
-      animationName: style.animationName,
-      transform: style.transform,
-      x: matrix.m41,
-      y: matrix.m42,
-      opacity: Number(style.opacity),
+      transitionProperty: orbitTransition instanceof CSSTransition ? orbitTransition.transitionProperty : null,
+      transform: getComputedStyle(orbit).transform,
+      x: bounds.x + bounds.width / 2 - scene.x,
+      y: bounds.y + bounds.height / 2 - scene.y,
+      top: bounds.top - scene.top,
+      sceneHeight: scene.height,
     };
   }, milliseconds);
 }
 
-test('sunrise and sunset move the actual sun through 0, 350, and 900 ms animation frames', async ({ page }, testInfo) => {
+test('sunrise and sunset use one continuous orbit with natural horizon occlusion', async ({ page }, testInfo) => {
   await page.goto('./');
   await assertTheme(page, 'dark');
   const before = await workspace(page);
@@ -232,10 +237,10 @@ test('sunrise and sunset move the actual sun through 0, 350, and 900 ms animatio
     await expect(toggle).toHaveAttribute('data-motion', motion);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const frames = [];
-    for (const milliseconds of [0, 350, 900]) {
+    for (const milliseconds of [0, THEME_MOTION_MS / 3, THEME_MOTION_MS]) {
       const frame = await animationFrame(toggle, milliseconds);
       expect(frame.animationCount).toBeGreaterThan(0);
-      expect(frame.animationName).toBe(`careerhq-${motion}`);
+      expect(frame.transitionProperty).toBe('transform');
       frames.push(frame);
       const path = testInfo.outputPath(`${motion}-${milliseconds}ms.png`);
       await toggle.screenshot({ path, animations: 'allow' });
@@ -246,17 +251,77 @@ test('sunrise and sunset move the actual sun through 0, 350, and 900 ms animatio
     if (motion === 'sunrise') {
       expect(frames[0].y).toBeGreaterThan(frames[1].y);
       expect(frames[1].y).toBeGreaterThan(frames[2].y);
-      expect(frames[2].opacity).toBe(1);
+      expect(frames[2].y).toBeLessThan(21);
     } else {
       expect(frames[0].y).toBeLessThan(frames[1].y);
       expect(frames[1].y).toBeLessThan(frames[2].y);
-      expect(frames[2].opacity).toBe(0);
+      expect(frames[2].top).toBeGreaterThan(frames[2].sceneHeight);
     }
     await testInfo.attach(`${motion}-computed-frames`, { body: JSON.stringify(frames), contentType: 'application/json' });
-    await page.clock.runFor(1000);
+    await page.clock.runFor(THEME_MOTION_MS + 150);
     await expect.poll(() => toggle.getAttribute('data-motion')).toBeNull();
   }
   expect(await workspace(page)).toBe(before);
+});
+
+test('reversing mid-flight preserves the current sun position instead of restarting', async ({ page }) => {
+  await page.goto('./');
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const toggle = themeSwitch(page);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('data-motion', 'sunrise');
+  const before = await animationFrame(toggle, THEME_MOTION_MS / 2);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('data-motion', 'sunset');
+  const reversed = await animationFrame(toggle, 0);
+  expect(Math.hypot(reversed.x - before.x, reversed.y - before.y)).toBeLessThan(.25);
+  const ended = await animationFrame(toggle, THEME_MOTION_MS);
+  expect(ended.top).toBeGreaterThan(ended.sceneHeight);
+  await page.clock.runFor(THEME_MOTION_MS + 150);
+  await assertTheme(page, 'dark');
+});
+
+test('theme motion stays within the tiny control instead of animating the page', async ({ page }) => {
+  await page.goto('./');
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await themeSwitch(page).click();
+  const effects = await page.evaluate(() => document.getAnimations().map(animation => {
+    const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+    animation.pause();
+    return {
+      local: target instanceof Element && !!target.closest('.theme-toggle'),
+      property: animation instanceof CSSTransition ? animation.transitionProperty : null,
+    };
+  }));
+  expect(effects.length).toBeGreaterThan(0);
+  expect(effects.length).toBeLessThanOrEqual(4);
+  expect(effects.every(effect => effect.local && ['transform', 'opacity'].includes(effect.property ?? ''))).toBe(true);
+});
+
+test('sunny mode has a bright blue sky instead of the night palette', async ({ page }, testInfo) => {
+  await page.goto('./');
+  const sky = page.locator('.theme-sky');
+  await expect(sky).toHaveCSS('background-color', palette.dark.card);
+  expect(await sky.evaluate(element => getComputedStyle(element, '::before').opacity)).toBe('0');
+  await selectTheme(page, 'light');
+  const daytime = await sky.evaluate(element => {
+    const style = getComputedStyle(element, '::before');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = style.backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+    return { opacity: style.opacity, rgb: [...context.getImageData(0, 0, 1, 1).data].slice(0, 3) };
+  });
+  expect(daytime.opacity).toBe('1');
+  expect(daytime.rgb.every(channel => channel > 180)).toBe(true);
+  expect(daytime.rgb[2]).toBeGreaterThan(daytime.rgb[0]);
+  await expect(page.locator('.theme-sun path')).toHaveCSS('stroke', 'rgb(203, 75, 22)');
+  const path = testInfo.outputPath('sunny-sky-control.png');
+  await themeSwitch(page).screenshot({ path });
+  await testInfo.attach('sunny-sky-control', { path, contentType: 'image/png' });
 });
 
 test('reduced motion changes theme immediately without animated transition state', async ({ page }) => {
@@ -313,7 +378,7 @@ test('rapid theme changes settle on the last choice without workspace changes', 
   for (let index = 0; index < 5; index++) await themeSwitch(page).click();
   await expect(themeSwitch(page)).toHaveAttribute('aria-checked', 'false');
   await expect(themeSwitch(page)).toHaveAttribute('data-motion', 'sunrise');
-  await page.clock.fastForward(1100);
+  await page.clock.fastForward(THEME_MOTION_MS + 150);
   await assertTheme(page, 'light');
   await expect.poll(() => themeSwitch(page).getAttribute('data-motion')).toBeNull();
   expect(await page.locator('html').evaluate(root => root.hasAttribute('data-theme-transition'))).toBe(false);

@@ -11,51 +11,34 @@
   color: var(--dsf-text);
   flex-shrink: 0;
   isolation: isolate;
+  transition: none;
 }
 .theme-toggle:hover { border-color: var(--dsf-accent); }
 .theme-toggle:focus-visible { outline: 2px solid var(--dsf-accent); outline-offset: 3px; }
 .theme-toggle-label { font-size: 10px; width: 24px; font-weight: 600; }
 .recovery-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; color: var(--dsf-accent); }
 .recovery-toolbar > svg { width: 50px; height: 50px; }
-.theme-scene { position: relative; display: block; width: 56px; height: 32px; border-radius: 18px; overflow: hidden; contain: paint; }
-.theme-sky { position: absolute; inset: 0; background: var(--dsf-surface); }
-.theme-sky:after { content: ""; position: absolute; inset: 0; background: var(--dsf-sunset); opacity: 0; }
-.theme-sun { position: absolute; left: 17px; top: 7px; color: var(--dsf-sun); transform: translate(0, -4px); }
-.theme-moon { position: absolute; left: 22px; top: 5px; color: var(--dsf-pearl); opacity: 0; transform: translateY(25px); }
-.theme-stars { position: absolute; inset: 0; color: var(--dsf-pearl); opacity: 0; }
-.theme-water { position: absolute; bottom: -1px; left: 0; color: var(--dsf-accent); }
-[data-theme="dark"] .theme-sun { transform: translate(18px, 26px); opacity: 0; }
-[data-theme="dark"] .theme-moon { transform: translateY(0); opacity: 1; }
-[data-theme="dark"] .theme-stars { opacity: .85; }
-[data-theme="light"] .theme-sky { background: var(--dsf-heading); }
-.theme-toggle[data-motion="sunrise"] .theme-sun { animation: careerhq-sunrise 900ms cubic-bezier(.25,.65,.3,1) both; }
-.theme-toggle[data-motion="sunset"] .theme-sun { animation: careerhq-sunset 850ms cubic-bezier(.45,.05,.7,.55) both; }
-.theme-toggle[data-motion="sunrise"] .theme-moon { animation: careerhq-moonset 650ms ease-in both; }
-.theme-toggle[data-motion="sunset"] .theme-moon { animation: careerhq-moonrise 950ms ease-out both; }
-.theme-toggle[data-motion] .theme-sky:after { animation: careerhq-dusk 1000ms ease-in-out both; }
-.theme-toggle[data-motion="sunrise"] .theme-stars { animation: careerhq-stars-out 650ms ease-out both; }
-.theme-toggle[data-motion="sunset"] .theme-stars { animation: careerhq-stars-in 1000ms ease-in both; }
-@keyframes careerhq-sunrise {
-  0% { transform: translate(-18px, 25px) rotate(-50deg); opacity: .5; }
-  45% { transform: translate(-9px, 5px) rotate(-20deg); opacity: 1; }
-  100% { transform: translate(0, -4px) rotate(0); opacity: 1; }
-}
-@keyframes careerhq-sunset {
-  0% { transform: translate(0, -4px) rotate(0); opacity: 1; }
-  50% { transform: translate(10px, 5px) rotate(25deg); opacity: 1; }
-  100% { transform: translate(18px, 26px) rotate(55deg); opacity: 0; }
-}
-@keyframes careerhq-moonrise {
-  0%, 35% { transform: translate(-12px, 25px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-@keyframes careerhq-moonset {
-  0% { transform: translateY(0); opacity: 1; }
-  100% { transform: translate(14px, 25px); opacity: 0; }
-}
-@keyframes careerhq-dusk { 0%,100% { opacity: 0; } 45% { opacity: .45; } }
-@keyframes careerhq-stars-in { 0%,50% { opacity: 0; } 100% { opacity: .85; } }
-@keyframes careerhq-stars-out { from { opacity: .85; } to { opacity: 0; } }
+.theme-scene { position: relative; display: block; width: 56px; height: 32px; border-radius: 18px; overflow: hidden; contain: layout paint; transform: translateZ(0); }
+.theme-sky { position: absolute; inset: 0; background: var(--dsf-hero-bg); }
+.theme-sky::before, .theme-sky::after { content: ""; position: absolute; inset: 0; will-change: opacity; }
+.theme-sky::before { background: color-mix(in srgb, var(--dsf-blue) 24%, #FCFAF2); opacity: 1; }
+.theme-sky::after { background: radial-gradient(ellipse at 50% 100%, var(--dsf-sunset), transparent 75%); opacity: .28; }
+/* A single rotating layer keeps the celestial path continuous, including reversals. */
+.theme-orbit { position: absolute; left: 7px; top: 11px; width: 42px; height: 42px; transform: rotate(0deg); transform-origin: 50% 50%; will-change: transform; }
+.theme-sun { position: absolute; left: 11px; top: -10px; color: var(--dsf-sun); }
+.theme-sun circle { stroke: var(--dsf-sunset); stroke-width: 1.2px; }
+.theme-sun path { stroke: var(--dsf-sunset); }
+.theme-moon { position: absolute; left: 13px; top: 34px; color: var(--dsf-pearl); transform: rotate(180deg); }
+.theme-stars { position: absolute; inset: 0; color: var(--dsf-pearl); opacity: 0; will-change: opacity; }
+.theme-water { position: absolute; bottom: -1px; left: 0; color: var(--dsf-hero-accent); }
+.theme-toggle[aria-checked="true"] .theme-orbit { transform: rotate(180deg); }
+.theme-toggle[aria-checked="true"] .theme-stars { opacity: .85; }
+.theme-toggle[aria-checked="true"] .theme-sky::before,
+.theme-toggle[aria-checked="true"] .theme-sky::after { opacity: 0; }
+.theme-toggle[data-motion] .theme-orbit { transition: transform var(--theme-motion-duration) cubic-bezier(.4, 0, .2, 1); }
+.theme-toggle[data-motion] .theme-stars,
+.theme-toggle[data-motion] .theme-sky::before,
+.theme-toggle[data-motion] .theme-sky::after { transition: opacity var(--theme-motion-duration) cubic-bezier(.4, 0, .2, 1); }
 @media (max-width: 760px) {
   .theme-toggle-label { display: none; }
   .theme-toggle { width: 66px; height: 40px; padding: 3px; }
@@ -65,6 +48,6 @@
   .breadcrumbs > .mobile-menu { flex-shrink: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .theme-toggle *, .theme-toggle *:after { animation: none !important; transition: none !important; }
+  .theme-toggle *, .theme-toggle *::before, .theme-toggle *::after { animation: none !important; transition: none !important; }
 }
 @media print { .theme-toggle { display: none; } }

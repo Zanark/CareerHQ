@@ -4,6 +4,13 @@
 Daylight**, its warm-paper and sea-glass light companion, with a brief sunrise or
 sunset. Reduced-motion preferences suppress that animation.
 
+The sun and moon share one compositor-friendly orbit with a 1.2-second continuous
+easing curve. Reversing the switch continues from its current position rather
+than restarting keyframes. Sky and stars cross-fade locally; the rest of the page
+changes palette without creating hundreds of simultaneous color transitions.
+The decorative daytime sky blends the heritage blue with daylight paper; the
+yellow sun has a warm sunset-colored outline. Night retains the deep-water sky.
+
 The local preference uses `careerhq.theme.v1`, separately from career workspace
 data. Workspace export, import and reset do not include or change appearance.
 If preference storage is unavailable, switching still works for the current tab
