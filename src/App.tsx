@@ -134,7 +134,12 @@ function Workspace({ state, workspace, appearance }: { state: AppState; workspac
   return <div className="app">
     <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); headingRef.current?.focus(); }}>Skip to content</a>
     {menuOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
-    <aside className={`sidebar ${menuOpen ? 'open' : ''}`} aria-label="Main navigation">
+    <aside className={`sidebar ${menuOpen ? 'open' : ''}`} aria-label="Main navigation" onClick={event => {
+      if (event.target instanceof Element && event.target.closest('a[href^="#/"]')) {
+        setMenuOpen(false);
+        setQuery('');
+      }
+    }}>
       <a href="#/hq" className="brand"><span className="brand-mark"><Star /></span><span>Career<span className="brand-hq">HQ</span><small>YOUR NEXT CHAPTER</small></span></a>
       <div className="workspace-label"><span className="workspace-monogram">C</span><div>My workspace<small>Personal operating system</small></div><ChevronDown size={14} aria-hidden="true" /></div>
       <span className="nav-label">COMMAND CENTER</span>
