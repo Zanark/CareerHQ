@@ -15,6 +15,8 @@ import { EvidenceDialog, OpportunityDialog } from './dialogs';
 import { DataPage, GuidePage, HistoryPage, PipelinePage, ReadinessPage } from './pages';
 import { downloadFile, useWorkspace } from './useWorkspace';
 import { serializeWorkspace } from './workspaceFile';
+import { useTheme } from './useTheme';
+import { ThemeToggle } from './ThemeToggle';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -40,16 +42,17 @@ function navigate(route: string) { window.location.hash = `/${route}`; }
 function formatDate(date: string) { return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
 
 export default function App() {
+  const appearance = useTheme();
   const workspace = useWorkspace();
   if (!workspace.state) {
-    return <div className="recovery-screen"><Star /><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1><p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
+    return <div className="recovery-screen"><div className="recovery-toolbar"><Star /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
       if (window.confirm('Start over on this browser? Download your original data first. This replaces the unreadable workspace.')) workspace.replace(createInitialState(false));
     }}>Start a clean workspace</button></div></div>;
   }
-  return <Workspace state={workspace.state} workspace={workspace} />;
+  return <Workspace state={workspace.state} workspace={workspace} appearance={appearance} />;
 }
 
-function Workspace({ state, workspace }: { state: AppState; workspace: ReturnType<typeof useWorkspace> }) {
+function Workspace({ state, workspace, appearance }: { state: AppState; workspace: ReturnType<typeof useWorkspace>; appearance: ReturnType<typeof useTheme> }) {
   const { commit, date } = workspace;
   const [route, setRoute] = useState(routeNow);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -149,9 +152,10 @@ function Workspace({ state, workspace }: { state: AppState; workspace: ReturnTyp
         <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>Workspace</span><ChevronRight size={13} /><strong>{title}</strong></div>
         <div className="top-actions"><div className="search-wrap"><Search size={16} /><input ref={searchRef} placeholder="Find a mission or evidence..." aria-label="Search missions and evidence" value={query} onChange={event => setQuery(event.target.value)} /><kbd>Ctrl K</kbd>
           {query && <div className="search-results"><span className="eyebrow">IN YOUR WORKSPACE</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission name or an artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
-        </div><button className="icon-button export-top" aria-label="Download workspace backup" onClick={exportBackup}><ArrowDownToLine size={18} /></button><span className="avatar" title="Local workspace">HQ</span></div>
+        </div><ThemeToggle appearance={appearance} /><button className="icon-button export-top" aria-label="Download workspace backup" onClick={exportBackup}><ArrowDownToLine size={18} /></button><span className="avatar" title="Local workspace">HQ</span></div>
       </header>
       <main id="main-content" ref={headingRef} tabIndex={-1}>
+        {appearance.notice && <div className="alert" role="status"><span>{appearance.notice}</span><button className="icon-button" aria-label="Dismiss theme notice" onClick={appearance.dismissNotice}><X size={17} /></button></div>}
         {workspace.conflict && <div className="alert error" role="alert"><span>This workspace changed in another tab. Reload to avoid overwriting newer work.</span><button onClick={() => location.reload()} className="button secondary">Reload</button></div>}
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
         {state.sampleData && <div className="sample-banner"><span><span className="sample-dot" />You’re exploring a sample workspace. Progress and artifacts are illustrative, not your personal history.</span><a href="#/settings">Make it yours <ArrowRight size={14} /></a></div>}

@@ -1,0 +1,500 @@
+/* Canonical DeepSeaFoam / Harbor Daylight roles. See docs/THEMES.md. */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --dsf-background: #000F13;
+  --dsf-surface: #001E26;
+  --dsf-paper: #001E26;
+  --dsf-text: #93A1A1;
+  --dsf-muted: #839496;
+  --dsf-heading: #EEE8D5;
+  --dsf-border: #586E75;
+  --dsf-accent: #00A591;
+  --dsf-accent-hover: #93A1A1;
+  --dsf-button-text: #000F13;
+  --dsf-document: #45D072;
+  --dsf-warning: #EBE565;
+  --dsf-error: #E84A5F;
+  --dsf-separator: #586E7566;
+  --dsf-hover: #586E7533;
+  --dsf-selection: #00A59126;
+  --dsf-shadow: #00000066;
+  --dsf-backdrop: #000000B8;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --dsf-background: #F3F2E9;
+  --dsf-surface: #E3ECE7;
+  --dsf-paper: #FCFAF2;
+  --dsf-text: #355451;
+  --dsf-muted: #536B66;
+  --dsf-heading: #173D3A;
+  --dsf-border: #6B857E;
+  --dsf-accent: #006F63;
+  --dsf-accent-hover: #00594F;
+  --dsf-button-text: #FCFAF2;
+  --dsf-document: #247449;
+  --dsf-warning: #77600E;
+  --dsf-error: #AD3E55;
+  --dsf-separator: #6B857E66;
+  --dsf-hover: #6B857E1A;
+  --dsf-selection: #006F631F;
+  --dsf-shadow: #00000014;
+  --dsf-backdrop: #000000B8;
+}
+
+:root {
+  --dsf-hero-bg: #001E26;
+  --dsf-hero-text: #EEE8D5;
+  --dsf-hero-muted: #93A1A1;
+  --dsf-hero-accent: #00A591;
+  --dsf-sun: #EBE565;
+  --dsf-sunset: #CB4B16;
+  --dsf-pearl: #FDF6E3;
+  --dsf-blue: #268BD2;
+  --dsf-violet: #6C71C4;
+  --dsf-document-wash: color-mix(in srgb, var(--dsf-document) 8%, var(--dsf-paper));
+  --dsf-warning-wash: color-mix(in srgb, var(--dsf-warning) 8%, var(--dsf-paper));
+  --dsf-error-wash: color-mix(in srgb, var(--dsf-error) 10%, var(--dsf-paper));
+  --ink: var(--dsf-text);
+  --muted: var(--dsf-muted);
+  --line: var(--dsf-separator);
+  --paper: var(--dsf-paper);
+  --forest: var(--dsf-hero-bg);
+  --lime: var(--dsf-accent);
+  --sage: var(--dsf-surface);
+  --shadow: 0 5px 20px var(--dsf-shadow);
+  color: var(--dsf-text);
+  background: var(--dsf-background);
+}
+
+:root[data-theme] :is(body, .app, .main-shell) {
+  color: var(--dsf-text);
+  background: var(--dsf-background);
+}
+
+:root[data-theme] :is(h1, h2, h3, h4, .brand, .timer-time, .big-stat, .signal strong, td strong) {
+  color: var(--dsf-heading);
+}
+
+/* Opaque layers preserve the canonical secondary-ink contrast. */
+:root[data-theme] :is(
+  .sidebar, .capacity-card, .pipeline-column, .evidence-summary, .readiness-intro,
+  .segmented, .criteria-list, .form-context, .completion-choice, th
+) {
+  color: var(--dsf-text);
+  background: var(--dsf-surface);
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] :is(
+  .topbar, .workspace-label, .guide-card, .panel, .plan-list, .mission-card,
+  .save-state-card, .checkpoint-roadmap, .roadmap-lane, .evidence-card,
+  .history-list, .opportunity-card, .table-scroll, .readiness-matrix, .modal,
+  .paper-note, .blockers-card, .search-results
+) {
+  color: var(--dsf-text);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] :is(
+  .local-status, .export-top, .capacity-note, .signal, .health-signal,
+  .signal-strip, .plan-item + .plan-item, .mini-evidence + .mini-evidence,
+  .mission-card-bottom, .readiness-preview, .page-footer, .quiet-note,
+  .checkpoint-row + .checkpoint-row, .evidence-card-footer,
+  .history-entry + .history-entry, .pipeline-summary, td,
+  .readiness-row + .readiness-row, .backup-row + .backup-row,
+  .criteria > p, .modal-footer, .guide-steps > section, .search-results a
+) {
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] :is(
+  .muted, .eyebrow, .nav-label, .brand small, .workspace-label small,
+  .workspace-label > svg, .local-status, .local-status small,
+  .page-heading p, .capacity-card > p, .capacity-card .eyebrow,
+  .capacity-description, .capacity-note, .plan-content > p, .checkpoint-title,
+  .plan-meta > span:last-child, .plan-number, .timer-tab-note,
+  .focus-top .eyebrow, .focus-timer > p, .mini-evidence div > span,
+  .readiness-preview p, .signal small, .signal div > span,
+  .health-signal strong, .health-signal span, .mission-progress-label,
+  .mission-card-bottom > span, .page-footer, .footer-divider, .quiet-note,
+  .next-action > p, .checkpoint-row p, .roadmap-legend, .roadmap-connections,
+  .planned-roadmap, .evidence-summary p, .local-label, .evidence-card > p,
+  .artifact-checkpoint, .evidence-card-footer, .history-entry p,
+  .history-entry time, .pipeline-summary > div > span,
+  .opportunity-card > strong, .opportunity-card p, .opportunity-date,
+  .empty-column, .readiness-index, .readiness-row p, .readiness-intro p,
+  .data-boundary > p, .data-boundary ul, .backup-row p, .system-status,
+  .guide-steps p, .guide-boundaries p, .guide-card p, .modal-header p,
+  .stack-form .optional, .checkbox-label small, .criteria legend,
+  .criteria > p, .privacy-note, .mission-event small, .plan-bottom > span
+) {
+  color: var(--dsf-muted);
+}
+
+:root[data-theme] :is(
+  .nav-item, .breadcrumbs, .breadcrumbs strong, .search-wrap,
+  .export-top, .segmented button, .tabs button, .criteria-list > div,
+  .stack-form label, .checkbox-label, .stack-form .checkbox-label,
+  .checkpoint-row.locked, .checkpoint-row.locked h3, .empty,
+  .save-state-header .eyebrow, .save-state-main > div > span,
+  .save-count, .save-state-bottom, .mission-subtitle, .pipeline-column h2,
+  .roadmap-mission small, .roadmap-stop > span, .roadmap-stop small,
+  .history-groups h2, td, .system-status strong
+) {
+  color: var(--dsf-text);
+}
+
+:root[data-theme] :is(
+  .nav-item > svg, .dependencies > a > svg, .input-with-icon > svg,
+  .page-footer svg, .roadmap-mission > svg, .guide-steps > section > span
+) {
+  color: var(--dsf-muted);
+}
+
+:root[data-theme] :is(.brand-mark) {
+  background: var(--dsf-hero-bg);
+  color: var(--dsf-hero-accent);
+}
+
+:root[data-theme] :is(.workspace-monogram, .avatar, .nav-count, .column-count, .tabs button span, .search-wrap kbd) {
+  background: var(--dsf-surface);
+  border-color: var(--dsf-border);
+  color: var(--dsf-text);
+}
+
+:root[data-theme] .pipeline-column .column-count { color: var(--dsf-text); }
+:root[data-theme] .guide-spark { color: var(--dsf-separator); }
+:root[data-theme] .search-results { box-shadow: 0 14px 40px var(--dsf-shadow); }
+:root[data-theme] :is(.search-results a, .search-results small) { color: var(--dsf-text); }
+
+/* The seafoam action recipe also marks selected controls; labels retain meaning. */
+:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active) {
+  color: var(--dsf-button-text);
+  background: var(--dsf-accent);
+  border-color: var(--dsf-accent);
+  box-shadow: none;
+}
+
+:root[data-theme] :is(.nav-item.selected > svg, .nav-item.selected .nav-count, .tabs button.active span) {
+  color: var(--dsf-button-text);
+  background: transparent;
+}
+
+:root[data-theme] .selected-dot { background: currentColor; }
+
+:root[data-theme] :is(.button.primary, .button.lime):hover:not(:disabled),
+:root[data-theme] :is(.nav-item.selected, .segmented button.active, .tabs button.active):hover {
+  color: var(--dsf-button-text);
+  background: var(--dsf-accent-hover);
+  border-color: var(--dsf-accent-hover);
+}
+
+:root[data-theme] :is(.segmented button.active.building, .segmented button.active.ready) {
+  color: var(--dsf-button-text);
+  background: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.segmented button.active.building, .segmented button.active.ready):hover {
+  background: var(--dsf-accent-hover);
+}
+
+:root[data-theme] :is(.button.secondary, .complete-button, .timer-buttons > .icon-button) {
+  color: var(--dsf-text);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-border);
+}
+
+:root[data-theme] :is(.button.secondary, .complete-button, .icon-button):hover:not(:disabled),
+:root[data-theme] :is(.segmented button:not(.active), .tabs button:not(.active)):hover {
+  color: var(--dsf-heading);
+  background: linear-gradient(var(--dsf-hover), var(--dsf-hover)), var(--dsf-paper);
+  border-color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.text-link, .text-button, .back-link, .roadmap-connections a, .sample-banner a, .guide-card > span:last-child) {
+  color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(a.text-link, .back-link, .roadmap-connections a, .sample-banner a) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+:root[data-theme] :is(.text-link, .text-button, .back-link, .roadmap-connections a, .sample-banner a):hover {
+  color: var(--dsf-heading);
+}
+
+/* Inverse editorial panels stay beneath the same deep water in both modes. */
+:root[data-theme] :is(.hero, .guide-hero, .roadmap-north-star) {
+  --dsf-heading: var(--dsf-hero-text);
+  --dsf-muted: var(--dsf-hero-muted);
+  --dsf-accent: var(--dsf-hero-accent);
+  --dsf-accent-hover: #93A1A1;
+  --dsf-button-text: #000F13;
+  background: var(--dsf-hero-bg);
+  color: var(--dsf-hero-text);
+  border-color: var(--dsf-border);
+}
+
+:root[data-theme] :is(.hero h2, .hero h2 em, .guide-hero h2, .guide-hero h2 em, .roadmap-north-star h2) {
+  color: var(--dsf-hero-text);
+}
+
+:root[data-theme] :is(.hero .eyebrow, .hero p, .hero-foot, .guide-hero p, .roadmap-north-star .eyebrow) {
+  color: var(--dsf-hero-muted);
+}
+
+:root[data-theme] :is(.hero-line, .hero .status-dot) { background: var(--dsf-hero-accent); }
+:root[data-theme] :is(.guide-hero > svg, .roadmap-north-star > svg:first-child) { color: var(--dsf-hero-accent); }
+:root[data-theme] .roadmap-north-star > svg:last-child { color: var(--dsf-hero-muted); }
+:root[data-theme] .hero::after {
+  background-image: radial-gradient(color-mix(in srgb, var(--dsf-hero-muted) 9%, transparent) .5px, transparent .5px);
+}
+
+/* Mission hues identify lanes, not reading ink or a new status taxonomy. */
+:root[data-theme] .sage { --accent: var(--dsf-document); }
+:root[data-theme] .blue { --accent: var(--dsf-blue); }
+:root[data-theme] .amber { --accent: var(--dsf-sunset); }
+:root[data-theme] .rose { --accent: var(--dsf-error); }
+:root[data-theme] .violet { --accent: var(--dsf-violet); }
+:root[data-theme] .sand { --accent: var(--dsf-warning); }
+:root[data-theme] .teal { --accent: var(--dsf-accent); }
+:root[data-theme] .gray { --accent: var(--dsf-border); }
+:root[data-theme] :is(.sage, .blue, .amber, .rose, .violet, .sand, .teal, .gray) {
+  --tone: var(--dsf-text);
+  --wash: color-mix(in srgb, var(--accent) 8%, var(--dsf-paper));
+}
+
+:root[data-theme] :is(.mission-tag, .company-letter, .artifact-illustration) {
+  color: var(--dsf-text);
+  background: var(--wash, var(--dsf-surface));
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] :is(.mission-icon, .save-state-main > .mission-icon) {
+  color: var(--accent, var(--dsf-accent));
+  background: var(--wash, var(--dsf-surface));
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] .artifact-illustration {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--dsf-border) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--dsf-border) 10%, transparent) 1px, transparent 1px);
+  background-size: 15px 15px;
+}
+
+:root[data-theme] .artifact-illustration > svg { color: var(--accent, var(--dsf-document)); }
+:root[data-theme] .mission-card-bottom .icon-button { color: var(--dsf-accent); }
+:root[data-theme] .mission-card:hover { border-color: var(--dsf-accent); }
+:root[data-theme] .save-state-card { box-shadow: inset 3px 0 var(--accent, var(--dsf-accent)); }
+:root[data-theme] :is(.progress-track, .save-state-card .progress-track) { background: var(--dsf-separator); }
+:root[data-theme] .progress-track > div { background: var(--accent, var(--dsf-accent)); }
+
+:root[data-theme] .badge {
+  color: var(--dsf-text);
+  background: var(--dsf-surface);
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] .badge.green {
+  color: var(--dsf-text);
+  background: var(--dsf-document-wash);
+  border-color: color-mix(in srgb, var(--dsf-document) 45%, var(--dsf-paper));
+}
+
+:root[data-theme] :is(.status-dot, .readiness-dots > .ready, .legend-dot.completed) { background: var(--dsf-document); }
+:root[data-theme] :is(.sample-dot, .readiness-dots > .building) { background: var(--dsf-warning); }
+:root[data-theme] .readiness-dots > span { background: var(--dsf-border); }
+:root[data-theme] .legend-dot { background: var(--accent, var(--dsf-accent)); }
+:root[data-theme] :is(.small-orbit, .signal-icon, .health-signal, .local-status > svg, .data-boundary > svg, .recovery-screen > svg) { color: var(--dsf-accent); }
+:root[data-theme] :is(.done-label, .proof-complete) { color: var(--dsf-text); }
+:root[data-theme] :is(.done-label > svg, .proof-complete > svg, .plan-item.done .plan-number) { color: var(--dsf-document); }
+:root[data-theme] .plan-item.done { background: var(--dsf-paper); }
+:root[data-theme] :is(.artifact-icon, .backup-icon, .empty-icon) {
+  color: var(--dsf-document);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-separator);
+}
+
+:root[data-theme] :is(.history-icon, .evidence-summary > svg) { color: var(--dsf-document); }
+
+:root[data-theme] :is(.sample-banner, .paper-note, .blockers-card) {
+  background: var(--dsf-paper);
+  color: var(--dsf-text);
+  border-color: var(--dsf-separator);
+  box-shadow: inset 2px 0 var(--dsf-warning);
+}
+
+:root[data-theme] :is(.blockers-card .eyebrow, .blockers-card p, .paper-note .eyebrow, .paper-note p) { color: var(--dsf-muted); }
+:root[data-theme] :is(.blockers-card h3, .paper-note h3, .blockers-card a > span, .attention-text) { color: var(--dsf-heading); }
+:root[data-theme] .blockers-card .eyebrow > svg { color: var(--dsf-warning); }
+
+:root[data-theme] :is(.roadmap-stop, .checkpoint-node) {
+  color: var(--dsf-text);
+  background: var(--dsf-surface);
+  border-color: var(--dsf-border);
+}
+
+:root[data-theme] :is(.checkpoint-row.current, .roadmap-stop.current) {
+  color: var(--dsf-heading);
+  background: linear-gradient(var(--dsf-selection), var(--dsf-selection)), var(--dsf-paper);
+  border-color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.checkpoint-row.current .eyebrow, .checkpoint-row.current p, .roadmap-stop.current > span, .roadmap-stop.current small) {
+  color: var(--dsf-heading);
+}
+
+:root[data-theme] .roadmap-stop.complete {
+  background: var(--dsf-document-wash);
+  border-color: var(--dsf-document);
+}
+
+:root[data-theme] .roadmap-stop.complete > span { color: var(--dsf-text); }
+:root[data-theme] .roadmap-stop.complete > span > svg { color: var(--dsf-document); }
+:root[data-theme] :is(.current .checkpoint-node, .legend-dot.current) { color: var(--dsf-accent); background: var(--dsf-paper); border-color: var(--dsf-accent); }
+:root[data-theme] .current .checkpoint-node > span { background: var(--dsf-accent); }
+:root[data-theme] .complete .checkpoint-node { color: var(--dsf-document); background: var(--dsf-paper); border-color: var(--dsf-document); }
+:root[data-theme] :is(.tiny-circle, .criteria) { border-color: var(--dsf-border); }
+:root[data-theme] .roadmap-stop:not(:last-child)::after { color: var(--dsf-muted); }
+:root[data-theme] .evidence-card.highlighted { outline-color: var(--dsf-accent); }
+
+/* Hovered content uses stronger ink instead of reusing secondary ink on a wash. */
+:root[data-theme] :is(.nav-item:not(.selected), .plan-item, .search-results a, .mini-evidence, .guide-card, .roadmap-stop, .dependencies > a):hover {
+  background: linear-gradient(var(--dsf-hover), var(--dsf-hover)), var(--dsf-paper);
+  color: var(--dsf-heading);
+  border-color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.plan-item, .search-results a, .mini-evidence, .guide-card, .roadmap-stop, .dependencies > a):hover :is(
+  p, small, strong, .eyebrow, .muted, .plan-number, .plan-meta > span:last-child,
+  .mission-tag, .done-label, .mini-evidence div > span, .roadmap-stop > span,
+  .guide-card > span:last-child
+) {
+  color: var(--dsf-heading);
+}
+
+:root[data-theme] .nav-item:not(.selected):hover > svg { color: var(--dsf-heading); }
+
+/* Native fields, status messages and recovery never fall back to white surfaces. */
+:root[data-theme] :is(input, select, textarea, option) {
+  color: var(--dsf-text);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-border);
+  caret-color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.search-wrap input, .opportunity-card select) {
+  color: var(--dsf-text);
+  background: var(--dsf-paper);
+}
+
+:root[data-theme] :is(input, textarea)::placeholder { color: var(--dsf-muted); opacity: 1; }
+:root[data-theme] input[type="checkbox"] { accent-color: var(--dsf-accent); }
+:root[data-theme] :is(.stack-form input, .stack-form textarea)::placeholder { color: var(--dsf-muted); }
+
+:root[data-theme] :is(button, a, input, select, textarea):not(.theme-toggle):focus-visible,
+:root[data-theme] :is(input, select, textarea):focus {
+  outline: 2px solid var(--dsf-accent);
+  outline-offset: 3px;
+}
+
+:root[data-theme] .skip-link {
+  color: var(--dsf-heading);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-accent);
+}
+
+:root[data-theme] :is(.button.primary, .button.lime, .button.secondary, .complete-button, input, select, textarea):disabled {
+  color: var(--dsf-muted);
+  background: var(--dsf-surface);
+  border-color: var(--dsf-border);
+  opacity: 1;
+}
+
+:root[data-theme] .modal { border-color: var(--dsf-border); box-shadow: 0 25px 100px var(--dsf-shadow); }
+:root[data-theme] .modal::backdrop,
+:root[data-theme] .sidebar-scrim { background: var(--dsf-backdrop); }
+:root[data-theme] .alert { color: var(--dsf-heading); background: var(--dsf-surface); box-shadow: inset 3px 0 var(--dsf-accent); }
+:root[data-theme] :is(.form-error, .alert.error, .import-error, .recovery-screen pre) {
+  color: var(--dsf-heading);
+  background: var(--dsf-error-wash);
+  border-color: var(--dsf-error);
+  box-shadow: inset 3px 0 var(--dsf-error);
+}
+
+:root[data-theme] .toast {
+  color: var(--dsf-heading);
+  background: var(--dsf-paper);
+  border-color: var(--dsf-accent);
+  box-shadow: 0 8px 35px var(--dsf-shadow);
+}
+
+:root[data-theme] .toast .icon-button { color: var(--dsf-text); }
+:root[data-theme] .toast .icon-button:hover { color: var(--dsf-heading); }
+:root[data-theme] .toast > svg { color: var(--dsf-document); }
+
+:root::selection,
+:root ::selection {
+  color: var(--dsf-heading);
+  background: var(--dsf-selection);
+}
+
+:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active)::selection,
+:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active) ::selection {
+  color: var(--dsf-button-text);
+  background: var(--dsf-accent-hover);
+}
+
+/* No ambient theme animation; the toggle owns its sky, sun, moon and stars. */
+:root[data-theme] :where(button, a, input, select, textarea):not(.theme-toggle) {
+  transition-property: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme-transition],
+  :root[data-theme-transition] :where(*):not(.theme-toggle, .theme-toggle *) {
+    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease,
+      box-shadow 180ms ease, fill 180ms ease, stroke 180ms ease;
+  }
+}
+
+@media print {
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+    --dsf-background: #FCFAF2;
+    --dsf-surface: #FCFAF2;
+    --dsf-paper: #FCFAF2;
+    --dsf-text: #355451;
+    --dsf-muted: #536B66;
+    --dsf-heading: #173D3A;
+    --dsf-border: #6B857E;
+    --dsf-accent: #006F63;
+    --dsf-accent-hover: #00594F;
+    --dsf-button-text: #FCFAF2;
+    --dsf-document: #247449;
+    --dsf-warning: #77600E;
+    --dsf-error: #AD3E55;
+    --dsf-separator: #6B857E66;
+    --dsf-hover: #6B857E1A;
+    --dsf-selection: #006F631F;
+    --dsf-shadow: transparent;
+    --dsf-hero-bg: #FCFAF2;
+    --dsf-hero-text: #173D3A;
+    --dsf-hero-muted: #536B66;
+    --dsf-hero-accent: #006F63;
+    background: var(--dsf-paper);
+    color: var(--dsf-text);
+  }
+
+  :root[data-theme] :is(.hero, .guide-hero, .roadmap-north-star) { border-color: var(--dsf-border); }
+  :root[data-theme] .hero::after { background: none; }
+  :root[data-theme-transition],
+  :root[data-theme-transition] :where(*):not(.theme-toggle, .theme-toggle *) { transition: none; }
+}

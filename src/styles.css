@@ -267,7 +267,7 @@ main { max-width: 1580px; padding: 22px 36px 0; margin: 0 auto; outline: none; }
 .paper-note .eyebrow { font-size: 8px; color: #aba279; }
 .paper-note h3 { font-family: Georgia, serif; font-size: 23px; color: #777552; font-weight: 400; margin: 13px 0 10px; }
 .paper-note p { font-size: 11px; color: #959175; max-width: 470px; }
-.attention-text { font-size: 11px !important; color: #967a44 !important; }
+.attention-text { font-size: 11px !important; }
 
 .save-state-card { border: 1px solid color-mix(in srgb, var(--accent) 40%, white); background: var(--wash); padding: 25px 28px; border-radius: 10px; margin-bottom: 27px; }
 .save-state-header { display: flex; align-items: center; justify-content: space-between; }

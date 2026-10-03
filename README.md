@@ -6,7 +6,7 @@ A local-first career workspace: connected missions, manageable daily actions, an
 evidence you can return to. Built with React, TypeScript, and Vite.
 
 [Website](https://zanark.github.io/CareerHQ/) ·
-[Architecture](docs/ARCHITECTURE.md) · [Privacy](docs/PRIVACY.md) ·
+[Architecture](docs/ARCHITECTURE.md) · [Themes](docs/THEMES.md) · [Privacy](docs/PRIVACY.md) ·
 [Agent contract](docs/AGENT_CONTRACT.md)
 
 ## What this prototype does
@@ -19,6 +19,8 @@ evidence you can return to. Built with React, TypeScript, and Vite.
 - Provides evidence search/filtering, event history, a tab-local focus timer,
   an opportunity pipeline, and self-assessed interview readiness.
 - Saves browser-local state and supports private JSON backup/export and replacement import.
+- Uses **DeepSeaFoam** dark and **Harbor Daylight** light palettes. The header switch
+  animates sunrise/sunset, remembers your choice, and respects reduced motion.
 
 Seven missions have compact **prototype starter roadmaps**, not complete curricula:
 

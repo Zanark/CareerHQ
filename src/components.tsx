@@ -17,19 +17,19 @@ export function Star({ className = '' }: { className?: string }) {
 
 export function OrbitArt() {
   return <svg className="orbit-art" viewBox="0 0 380 270" fill="none" aria-hidden="true">
-    <g stroke="#c8e3be" strokeOpacity=".22">
+    <g stroke="var(--dsf-hero-muted)" strokeOpacity=".35">
       <ellipse cx="214" cy="145" rx="131" ry="73" transform="rotate(-35 214 145)" />
       <ellipse cx="214" cy="145" rx="103" ry="56" transform="rotate(-35 214 145)" />
       <circle cx="214" cy="145" r="103" strokeDasharray="2 7" />
       <path d="M62 219 354 45M89 66l250 158M214 19v239" strokeDasharray="3 6" />
     </g>
-    <path d="m214 108 10.5 26.5L251 145l-26.5 10.5L214 182l-10.5-26.5L177 145l26.5-10.5L214 108Z" fill="#d4e99a" />
-    <circle cx="214" cy="145" r="7" fill="#172e2b" />
-    <circle cx="113" cy="198" r="7" fill="#d4e99a" /><circle cx="319" cy="90" r="5" fill="#a7cabc" />
-    <circle cx="157" cy="59" r="3" fill="#c8e3be" /><circle cx="295" cy="212" r="3" fill="#c8e3be" />
-    <path d="M104 224h42M311 64h30" stroke="#c8e3be" strokeOpacity=".4" />
-    <text x="103" y="239" fill="#acc5ba" fontSize="9" fontFamily="monospace" letterSpacing="2">YOU ARE HERE</text>
-    <text x="276" y="52" fill="#acc5ba" fontSize="9" fontFamily="monospace" letterSpacing="2">WHAT'S NEXT</text>
+    <path d="m214 108 10.5 26.5L251 145l-26.5 10.5L214 182l-10.5-26.5L177 145l26.5-10.5L214 108Z" fill="var(--dsf-hero-accent)" />
+    <circle cx="214" cy="145" r="7" fill="var(--dsf-hero-bg)" />
+    <circle cx="113" cy="198" r="7" fill="var(--dsf-hero-accent)" /><circle cx="319" cy="90" r="5" fill="var(--dsf-hero-muted)" />
+    <circle cx="157" cy="59" r="3" fill="var(--dsf-hero-muted)" /><circle cx="295" cy="212" r="3" fill="var(--dsf-hero-muted)" />
+    <path d="M104 224h42M311 64h30" stroke="var(--dsf-hero-muted)" strokeOpacity=".6" />
+    <text x="103" y="239" fill="var(--dsf-hero-muted)" fontSize="9" fontFamily="monospace" letterSpacing="2">YOU ARE HERE</text>
+    <text x="276" y="52" fill="var(--dsf-hero-muted)" fontSize="9" fontFamily="monospace" letterSpacing="2">WHAT'S NEXT</text>
   </svg>;
 }
 

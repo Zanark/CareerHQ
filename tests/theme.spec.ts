@@ -1,0 +1,413 @@
+import { test as base, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
+
+type Theme = 'dark' | 'light';
+const themeKey = 'careerhq.theme.v1';
+const workspaceKey = 'careerhq.workspace.v1';
+const palette = {
+  dark: { page: 'rgb(0, 15, 19)', card: 'rgb(0, 30, 38)', text: 'rgb(147, 161, 161)', meta: '#000F13' },
+  light: { page: 'rgb(243, 242, 233)', card: 'rgb(252, 250, 242)', text: 'rgb(53, 84, 81)', meta: '#F3F2E9' },
+};
+
+const test = base.extend<{ browserHealth: void }>({
+  browserHealth: [async ({ context, baseURL }, use) => {
+    const errors: string[] = [];
+    const external: string[] = [];
+    const origin = new URL(baseURL!).origin;
+    const watch = (page: Page) => {
+      page.on('pageerror', error => errors.push(error.message));
+      page.on('console', message => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+    };
+    context.pages().forEach(watch);
+    context.on('page', watch);
+    context.on('request', request => {
+      const url = new URL(request.url());
+      if (['http:', 'https:'].includes(url.protocol) && url.origin !== origin) external.push(request.url());
+    });
+    context.on('response', response => {
+      if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`);
+    });
+    await use();
+    expect(errors, 'Themes must not cause console errors, exceptions, or failed assets').toEqual([]);
+    expect(external, 'Themes must use only application-owned assets').toEqual([]);
+  }, { auto: true }],
+});
+
+function themeSwitch(page: Page) {
+  return page.getByRole('switch', { name: 'Dark theme', exact: true });
+}
+
+async function workspace(page: Page) {
+  return page.evaluate(key => localStorage.getItem(key), workspaceKey);
+}
+
+async function preference(page: Page) {
+  return page.evaluate(key => localStorage.getItem(key), themeKey);
+}
+
+async function assertTheme(page: Page, theme: Theme) {
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  await expect(themeSwitch(page)).toHaveAttribute('aria-checked', String(theme === 'dark'));
+  await expect(page.locator('body')).toHaveCSS('background-color', palette[theme].page);
+  await expect(page.locator('body')).toHaveCSS('color', palette[theme].text);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', palette[theme].meta);
+}
+
+async function selectTheme(page: Page, theme: Theme) {
+  if (await themeSwitch(page).getAttribute('aria-checked') !== String(theme === 'dark')) {
+    await themeSwitch(page).click();
+  }
+  await assertTheme(page, theme);
+  await expect.poll(() => themeSwitch(page).getAttribute('data-motion')).toBeNull();
+}
+
+async function navigate(page: Page, name: string | RegExp) {
+  const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
+  if (await menu.isVisible() && await menu.getAttribute('aria-expanded') !== 'true') await menu.click();
+  await page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name }).click();
+}
+
+async function confirmNext(page: Page, action: () => Promise<unknown>) {
+  const confirmation = page.waitForEvent('dialog');
+  const pendingAction = action();
+  const dialog = await confirmation;
+  expect(dialog.type()).toBe('confirm');
+  await dialog.accept();
+  await pendingAction;
+}
+
+async function capture(page: Page, testInfo: TestInfo, name: string, fullPage = true) {
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage, animations: 'disabled' });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+
+async function noOverflow(page: Page) {
+  await expect.poll(() => page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  ), { message: 'The themed document must not overflow horizontally' }).toBeLessThanOrEqual(0);
+}
+
+test('default dark and switched light use canonical colors without altering workspace data', async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('./');
+  await expect(page.getByRole('heading', { name: 'A little progress. A clearer direction.', exact: true })).toBeVisible();
+  const before = await workspace(page);
+  await assertTheme(page, 'dark');
+  const mission = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Pattern Forge', exact: true }) });
+  await expect(mission).toHaveCSS('background-color', palette.dark.card);
+  await capture(page, testInfo, 'canonical-hq-dark');
+  await selectTheme(page, 'light');
+  await expect(mission).toHaveCSS('background-color', palette.light.card);
+  expect(await preference(page)).toBe('light');
+  expect(await workspace(page)).toBe(before);
+  await capture(page, testInfo, 'canonical-hq-light');
+  await selectTheme(page, 'dark');
+  expect(await preference(page)).toBe('dark');
+  expect(await workspace(page)).toBe(before);
+});
+
+test('external prepaint script restores saved light before the main module hydrates', async ({ page }, testInfo) => {
+  await page.addInitScript(key => localStorage.setItem(key, 'light'), themeKey);
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/assets/*.js', async route => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await page.goto('./', { waitUntil: 'commit' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#F3F2E9');
+    await expect(page.locator('script[src$="/theme-init.js"]')).toHaveCount(1);
+    await expect(page.locator('#root')).toBeEmpty();
+    await expect(themeSwitch(page)).toHaveCount(0);
+    await expect(page.locator('body')).toHaveCSS('background-color', palette.light.page);
+    expect(await workspace(page)).toBeNull();
+    await capture(page, testInfo, 'light-before-hydration', false);
+  } finally {
+    release();
+  }
+  await expect(themeSwitch(page)).toBeVisible();
+  await assertTheme(page, 'light');
+  const beforeReload = await workspace(page);
+  await page.reload();
+  await assertTheme(page, 'light');
+  expect(await workspace(page)).toBe(beforeReload);
+});
+
+for (const theme of ['dark', 'light'] as const) {
+  test(`${theme} colors and preference survive mission, evidence, settings, and dialog routes`, async ({ page }, testInfo) => {
+    await page.goto('./');
+    await selectTheme(page, theme);
+    const before = await workspace(page);
+    const documentStarted = await page.evaluate(() => performance.timeOrigin);
+
+    await navigate(page, 'Master roadmap');
+    await page.getByRole('link', { name: /DSA\s+Pattern Forge/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Pattern Forge', exact: true })).toBeVisible();
+    await assertTheme(page, theme);
+    const blockerCard = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Clear the path.', exact: true }) });
+    await expect(blockerCard).toHaveCSS('background-color', palette[theme].card);
+    await capture(page, testInfo, `mission-${theme}`);
+
+    await navigate(page, 'Evidence vault');
+    await assertTheme(page, theme);
+    const cards = page.getByRole('article');
+    expect(await cards.count()).toBeGreaterThan(0);
+    for (const card of await cards.all()) await expect(card).toHaveCSS('background-color', palette[theme].card);
+    await capture(page, testInfo, `evidence-${theme}`);
+    await page.getByRole('button', { name: 'Add evidence', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Keep the proof.' });
+    await expect(dialog).toHaveCSS('background-color', palette[theme].card);
+    await capture(page, testInfo, `evidence-dialog-${theme}`, false);
+    await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
+
+    await navigate(page, 'Settings & data');
+    await assertTheme(page, theme);
+    await expect(page.locator('.backup-panel')).toHaveCSS('background-color', palette[theme].card);
+    await capture(page, testInfo, `settings-${theme}`);
+    expect(await workspace(page), 'Reading themed routes must not alter workspace JSON or audit history').toBe(before);
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStarted);
+  });
+}
+
+test('workspace resets and backup imports do not reset the separate theme preference', async ({ page }) => {
+  await page.goto('./');
+  await selectTheme(page, 'light');
+  const backup = await workspace(page);
+  await navigate(page, 'Settings & data');
+  await confirmNext(page, () => page.getByRole('button', { name: 'Start a fresh workspace', exact: true }).click());
+  expect(JSON.parse((await workspace(page))!).sampleData).toBe(false);
+  expect(await preference(page)).toBe('light');
+  await assertTheme(page, 'light');
+  await confirmNext(page, () => page.getByRole('button', { name: 'Reload sample', exact: true }).click());
+  expect(await preference(page)).toBe('light');
+  await assertTheme(page, 'light');
+  await confirmNext(page, () => page.getByLabel('Choose backup file', { exact: true }).setInputFiles({
+    name: 'synthetic-theme-isolation-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(backup!),
+  }));
+  expect(await preference(page)).toBe('light');
+  expect(await workspace(page)).toBe(backup);
+  await assertTheme(page, 'light');
+});
+
+async function animationFrame(toggle: Locator, milliseconds: number) {
+  return toggle.evaluate((button, time) => {
+    const sun = button.querySelector('.theme-sun')!;
+    const animations = button.getAnimations({ subtree: true });
+    for (const animation of animations) {
+      animation.pause();
+      animation.currentTime = time;
+    }
+    const style = getComputedStyle(sun);
+    const matrix = new DOMMatrix(style.transform);
+    return {
+      milliseconds: time,
+      animationCount: animations.length,
+      animationName: style.animationName,
+      transform: style.transform,
+      x: matrix.m41,
+      y: matrix.m42,
+      opacity: Number(style.opacity),
+    };
+  }, milliseconds);
+}
+
+test('sunrise and sunset move the actual sun through 0, 350, and 900 ms animation frames', async ({ page }, testInfo) => {
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  const before = await workspace(page);
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const toggle = themeSwitch(page);
+  for (const [motion, theme] of [['sunrise', 'light'], ['sunset', 'dark']] as const) {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('data-motion', motion);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const frames = [];
+    for (const milliseconds of [0, 350, 900]) {
+      const frame = await animationFrame(toggle, milliseconds);
+      expect(frame.animationCount).toBeGreaterThan(0);
+      expect(frame.animationName).toBe(`careerhq-${motion}`);
+      frames.push(frame);
+      const path = testInfo.outputPath(`${motion}-${milliseconds}ms.png`);
+      await toggle.screenshot({ path, animations: 'allow' });
+      await testInfo.attach(`${motion}-${milliseconds}ms`, { path, contentType: 'image/png' });
+    }
+    expect(frames[0].transform).not.toBe(frames[1].transform);
+    expect(frames[1].transform).not.toBe(frames[2].transform);
+    if (motion === 'sunrise') {
+      expect(frames[0].y).toBeGreaterThan(frames[1].y);
+      expect(frames[1].y).toBeGreaterThan(frames[2].y);
+      expect(frames[2].opacity).toBe(1);
+    } else {
+      expect(frames[0].y).toBeLessThan(frames[1].y);
+      expect(frames[1].y).toBeLessThan(frames[2].y);
+      expect(frames[2].opacity).toBe(0);
+    }
+    await testInfo.attach(`${motion}-computed-frames`, { body: JSON.stringify(frames), contentType: 'application/json' });
+    await page.clock.runFor(1000);
+    await expect.poll(() => toggle.getAttribute('data-motion')).toBeNull();
+  }
+  expect(await workspace(page)).toBe(before);
+});
+
+test('reduced motion changes theme immediately without animated transition state', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  await themeSwitch(page).click();
+  const immediate = await themeSwitch(page).evaluate(button => ({
+    theme: document.documentElement.dataset.theme,
+    transition: document.documentElement.hasAttribute('data-theme-transition'),
+    motion: button.getAttribute('data-motion'),
+    animations: button.getAnimations({ subtree: true }).length,
+    sunAnimation: getComputedStyle(button.querySelector('.theme-sun')!).animationName,
+    background: getComputedStyle(document.body).backgroundColor,
+  }));
+  expect(immediate).toEqual({
+    theme: 'light', transition: false, motion: null, animations: 0,
+    sunAnimation: 'none', background: palette.light.page,
+  });
+  await assertTheme(page, 'light');
+});
+
+test('keyboard Tab exposes a visible focus indicator and Space toggles the switch', async ({ page }) => {
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('textbox', { name: 'Search missions and evidence', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  const toggle = themeSwitch(page);
+  await expect(toggle).toBeFocused();
+  const focus = await toggle.evaluate(button => ({
+    visible: button.matches(':focus-visible'),
+    outlineStyle: getComputedStyle(button).outlineStyle,
+    outlineWidth: parseFloat(getComputedStyle(button).outlineWidth),
+    outlineColor: getComputedStyle(button).outlineColor,
+  }));
+  expect(focus.visible).toBe(true);
+  expect(focus.outlineStyle).not.toBe('none');
+  expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+  expect(focus.outlineColor).not.toBe('rgba(0, 0, 0, 0)');
+  const before = await workspace(page);
+  await page.keyboard.press('Space');
+  await assertTheme(page, 'light');
+  expect(await preference(page)).toBe('light');
+  expect(await workspace(page)).toBe(before);
+});
+
+test('rapid theme changes settle on the last choice without workspace changes', async ({ page }) => {
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  const before = await workspace(page);
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  for (let index = 0; index < 5; index++) await themeSwitch(page).click();
+  await expect(themeSwitch(page)).toHaveAttribute('aria-checked', 'false');
+  await expect(themeSwitch(page)).toHaveAttribute('data-motion', 'sunrise');
+  await page.clock.fastForward(1100);
+  await assertTheme(page, 'light');
+  await expect.poll(() => themeSwitch(page).getAttribute('data-motion')).toBeNull();
+  expect(await page.locator('html').evaluate(root => root.hasAttribute('data-theme-transition'))).toBe(false);
+  expect(await preference(page)).toBe('light');
+  expect(await workspace(page)).toBe(before);
+});
+
+for (const width of [320, 390]) {
+  test(`both themes fit ${width}px across routes with global search expanded`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('./');
+    for (const theme of ['dark', 'light'] as const) {
+      await selectTheme(page, theme);
+      for (const route of ['HQ overview', /^My missions/, 'Master roadmap', 'Daily plan', 'Evidence vault',
+        'History', 'Opportunity pipeline', 'Interview readiness', 'Settings & data']) {
+        await navigate(page, route);
+        const search = page.getByRole('textbox', { name: 'Search missions and evidence', exact: true });
+        await search.fill('Pattern');
+        await expect(page.locator('.search-results')).toBeVisible();
+        await assertTheme(page, theme);
+        await noOverflow(page);
+        for (const control of [search, themeSwitch(page)]) {
+          const bounds = await control.boundingBox();
+          expect(bounds).not.toBeNull();
+          expect(bounds!.x).toBeGreaterThanOrEqual(0);
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+        }
+        if (route === 'HQ overview' || route === 'Settings & data') {
+          await capture(page, testInfo, `${theme}-${width}-${route === 'HQ overview' ? 'hq' : 'settings'}-search`, false);
+        }
+        await search.press('Escape');
+        await search.blur();
+      }
+    }
+  });
+}
+
+test('blocked theme-only writes show a notice while workspace storage still works', async ({ page }) => {
+  await page.addInitScript(key => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (name, value) {
+      if (this === localStorage && name === key) throw new DOMException('Synthetic theme write failure', 'QuotaExceededError');
+      return setItem.call(this, name, value);
+    };
+  }, themeKey);
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  const before = await workspace(page);
+  await selectTheme(page, 'light');
+  await expect(page.getByRole('status').filter({ hasText: 'Theme changed for this tab, but the preference could not be saved.' })).toBeVisible();
+  expect(await preference(page)).toBeNull();
+  expect(await workspace(page)).toBe(before);
+  await navigate(page, 'Settings & data');
+  const direction = 'Synthetic workspace write remains available despite a theme-only failure.';
+  await page.getByLabel('What are you working toward?').fill(direction);
+  await page.getByRole('button', { name: 'Save direction', exact: true }).click();
+  expect(JSON.parse((await workspace(page))!).objective).toBe(direction);
+  await assertTheme(page, 'light');
+  await page.reload();
+  await assertTheme(page, 'dark');
+  expect(JSON.parse((await workspace(page))!).objective).toBe(direction);
+});
+
+test('theme preference syncs between tabs without creating workspace conflicts', async ({ page, context }) => {
+  await page.goto('./');
+  await assertTheme(page, 'dark');
+  const other = await context.newPage();
+  await other.goto('./');
+  await assertTheme(other, 'dark');
+  const before = await workspace(page);
+  await selectTheme(page, 'light');
+  await assertTheme(other, 'light');
+  await expect(other.getByRole('alert')).toHaveCount(0);
+  expect(await workspace(other)).toBe(before);
+  await selectTheme(other, 'dark');
+  await assertTheme(page, 'dark');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(await workspace(page)).toBe(before);
+});
+
+test('recovery screen theme toggle preserves unreadable workspace data and its own preference', async ({ page }, testInfo) => {
+  const original = '{"schemaVersion":999,"syntheticRecoveryRecord":"leave untouched"}';
+  await page.addInitScript(({ stateKey, preferenceKey, raw }) => {
+    if (localStorage.getItem(stateKey) === null) localStorage.setItem(stateKey, raw);
+    if (localStorage.getItem(preferenceKey) === null) localStorage.setItem(preferenceKey, 'light');
+  }, { stateKey: workspaceKey, preferenceKey: themeKey, raw: original });
+  await page.goto('./');
+  await expect(page.getByRole('heading', { name: 'Your existing data comes first.', exact: true })).toBeVisible();
+  await assertTheme(page, 'light');
+  expect(await workspace(page)).toBe(original);
+  await capture(page, testInfo, 'recovery-light', false);
+  await selectTheme(page, 'dark');
+  expect(await preference(page)).toBe('dark');
+  expect(await workspace(page)).toBe(original);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your existing data comes first.', exact: true })).toBeVisible();
+  await assertTheme(page, 'dark');
+  expect(await workspace(page)).toBe(original);
+  await capture(page, testInfo, 'recovery-dark', false);
+});

@@ -55,7 +55,7 @@ export function ReadinessPage({ state, commit }: { state: AppState; commit: Comm
 }
 
 function TargetArt() {
-  return <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="#9daf98" strokeDasharray="2 4" /><circle cx="50" cy="50" r="27" fill="none" stroke="#708a76" /><circle cx="50" cy="50" r="12" fill="#d4e99a" stroke="#57705c" /><path d="M50 4v18m0 56v18M4 50h18m56 0h18" stroke="#57705c" /></svg>;
+  return <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--dsf-border)" strokeDasharray="2 4" /><circle cx="50" cy="50" r="27" fill="none" stroke="var(--dsf-muted)" /><circle cx="50" cy="50" r="12" fill="var(--dsf-accent)" stroke="var(--dsf-heading)" /><path d="M50 4v18m0 56v18M4 50h18m56 0h18" stroke="var(--dsf-heading)" /></svg>;
 }
 
 export function DataPage({ state, commit, onExport, onReplace, notify }: { state: AppState; commit: Commit; onExport: () => void; onReplace: (state: AppState) => boolean; notify: (message: string) => void }) {
