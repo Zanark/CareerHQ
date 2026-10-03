@@ -1,0 +1,19 @@
+# Local agent context and memory stores
+/.agent-context/
+/.zmem/
+
+# Dependencies, build output, and browser-test artifacts
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.local
+.env
+.env.*
+!.env.example
+
+# Private source material and personal exports never belong in the public site
+*.pdf
+careerhq-backup-*.json
+private/
