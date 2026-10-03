@@ -95,6 +95,10 @@ async function noOverflow(page: Page) {
 test('sample workspace, accessible navigation, and hash deep-link reload', async ({ page }, testInfo) => {
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1, name: 'A little progress. A clearer direction.' })).toBeVisible();
+  await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', /^\/CareerHQ\/assets\/.+\.js$/);
+  await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+    'content', /(?:^|;)\s*script-src 'self'\s*(?:;|$)/,
+  );
   await expect(page.getByText(sampleMessage)).toBeVisible();
   await noOverflow(page);
   await screenshot(page, testInfo, 'hq-desktop');
@@ -357,6 +361,67 @@ test('private export restores an exact snapshot only after replacement confirmat
   await expect(direction).toHaveValue(snapshot.objective);
 });
 
+test.describe('storage recovery regressions', () => {
+  test('import without today’s plan creates it immediately without a reload', async ({ page }) => {
+    await freshWorkspace(page);
+    const today = await page.evaluate(() => {
+      const date = new Date();
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    });
+    const backup = await stored(page);
+    delete backup.plans[today];
+    backup.objective = 'A synthetic restored workspace with no current daily plan.';
+    backup.capacity = 'gentle';
+    const documentStarted = await page.evaluate(() => performance.timeOrigin);
+    await confirmNext(page, () => page.getByLabel('Choose backup file', { exact: true }).setInputFiles({
+      name: 'synthetic-backup-without-today.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(backup)),
+    }));
+    await expect(page.getByLabel('What are you working toward?')).toHaveValue(backup.objective);
+    await expect.poll(async () => (await stored(page)).plans[today]?.length).toBe(1);
+    const restored = await stored(page);
+    expect(restored.plans[today][0].date).toBe(today);
+    expect(restored.plans[today][0].completed).toBe(false);
+    expect(restored.missions).toEqual(backup.missions);
+    expect(restored.evidence).toEqual(backup.evidence);
+    expect(restored.events).toEqual(backup.events);
+    await navigate(page, 'Daily plan');
+    await expect(page.getByRole('button', { name: 'Log progress', exact: true })).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: restored.plans[today][0].title, exact: true })).toBeVisible();
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStarted);
+  });
+
+  for (const kind of ['corrupted', 'unsupported'] as const) {
+    test(`${kind} saved workspace retains original bytes and permits recovery download`, async ({ page }) => {
+      await freshWorkspace(page);
+      const original = kind === 'corrupted'
+        ? '  {"schemaVersion":1,"syntheticNote":"preserve these exact bytes",\n'
+        : JSON.stringify({ ...await stored(page), schemaVersion: 999 }, null, 2);
+      await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: original });
+      await page.reload();
+      await expect(page.getByRole('heading', { name: 'Your existing data comes first.', exact: true })).toBeVisible();
+      await expect(page.getByRole('complementary', { name: 'Main navigation' })).toHaveCount(0);
+      expect(await rawStored(page)).toBe(original);
+
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Download original data', exact: true }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toMatch(/^careerhq-backup-recovery-\d{4}-\d{2}-\d{2}\.json$/);
+      const stream = await download.createReadStream();
+      expect(stream).not.toBeNull();
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+      expect(Buffer.concat(chunks).toString()).toBe(original);
+      expect(await rawStored(page)).toBe(original);
+
+      await page.getByRole('button', { name: 'Try again', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Your existing data comes first.', exact: true })).toBeVisible();
+      expect(await rawStored(page)).toBe(original);
+    });
+  }
+});
+
 test('readiness is explicit self-assessment and persists without checkpoint credit', async ({ page }) => {
   await freshWorkspace(page);
   const before = await stored(page);
@@ -408,4 +473,150 @@ test('focus timer can pause, resume, and reset without recording mastery', async
   await page.getByRole('button', { name: 'Reset focus timer', exact: true }).click();
   await expect(page.getByRole('timer')).toHaveText('10:00');
   expect(await rawStored(page)).toBe(before);
+});
+
+test('running focus timer survives mission and daily-plan navigation', async ({ page }) => {
+  await freshWorkspace(page);
+  await navigate(page, 'HQ overview');
+  await page.getByRole('button', { name: 'Steady', exact: true }).click();
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const documentStarted = await page.evaluate(() => performance.timeOrigin);
+  await expect(page.getByRole('timer')).toHaveText('25:00');
+  await page.getByRole('button', { name: 'Start focus session', exact: true }).click();
+  await page.clock.fastForward(65_000);
+  await expect(page.getByRole('timer')).toHaveText('23:55');
+  await openPatternForge(page);
+  await expect(page.getByRole('timer')).toHaveCount(0);
+  await navigate(page, 'Daily plan');
+  await expect(page.getByRole('timer')).toHaveText('23:55');
+  await expect(page.getByRole('button', { name: 'Pause session', exact: true })).toBeVisible();
+  await page.clock.fastForward(1000);
+  await expect(page.getByRole('timer')).toHaveText('23:54');
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStarted);
+});
+
+test('a midnight rollover preserves an open evidence draft without completing yesterday’s action', async ({ page }) => {
+  const nearMidnight = await page.evaluate(() => {
+    const date = new Date();
+    date.setHours(23, 59, 30, 0);
+    return date.getTime();
+  });
+  await page.clock.install({ time: new Date(nearMidnight - 1000) });
+  await page.clock.pauseAt(nearMidnight);
+  await freshWorkspace(page);
+  await navigate(page, 'Daily plan');
+  const before = await stored(page);
+  const previousDate = await page.evaluate(() => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  });
+  const documentStarted = await page.evaluate(() => performance.timeOrigin);
+  const action = page.getByRole('article').filter({ has: page.getByText('Pattern Forge', { exact: true }) });
+  await action.getByRole('button', { name: 'Log progress', exact: true }).click();
+  const title = 'Synthetic practice draft spanning midnight';
+  const summary = 'I traced the boundary cases before midnight and kept this explanation open to finish it safely.';
+  const dialog = await fillEvidence(page, title, summary);
+  await page.clock.fastForward(65_000);
+  const currentDate = await page.evaluate(() => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  });
+  expect(currentDate).not.toBe(previousDate);
+  await expect.poll(async () => (await stored(page)).plans[currentDate]).toBeDefined();
+  const newPlan = (await stored(page)).plans[currentDate];
+  await expect(dialog.getByText(/A new day has started\. Your draft is safe/)).toBeVisible();
+  await expect(dialog.getByLabel('Artifact title')).toHaveValue(title);
+  await expect(dialog.getByLabel('A little context')).toHaveValue(summary);
+  await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const after = await stored(page);
+  expect(after.plans[previousDate]).toEqual(before.plans[previousDate]);
+  expect(after.plans[currentDate]).toEqual(newPlan);
+  expect(after.evidence).toHaveLength(1);
+  expect(after.evidence[0]).toMatchObject({
+    title, summary, missionId: 'pattern',
+    checkpointId: before.missions.pattern.checkpointId,
+    completedCheckpoint: false,
+  });
+  expect(Date.parse(after.evidence[0].createdAt)).toBeGreaterThanOrEqual(nearMidnight + 30_000);
+  expect(after.missions.pattern.status).toBe('in-progress');
+  expect(after.missions.pattern.completedCheckpointIds).toEqual([]);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStarted);
+});
+
+test('large valid workspace exports compact bytes and imports its actual backup', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  await freshWorkspace(page);
+  const large = await stored(page);
+  large.objective = 'Synthetic large workspace used only to verify portable backup limits.';
+  large.missions.pattern.status = 'in-progress';
+  const count = 5000;
+  const timestamp = Date.parse(large.updatedAt);
+  const summary = 'Synthetic practice note: I traced a public example, checked an edge case, and recorded a limitation at the caf\u00e9. ';
+  large.evidence = Array.from({ length: count }, (_, index): AppState['evidence'][number] => ({
+    id: `synthetic-large-proof-${index}`,
+    missionId: 'pattern',
+    checkpointId: large.missions.pattern.checkpointId,
+    title: `Synthetic practice artifact ${index}`,
+    summary,
+    kind: 'note',
+    url: '',
+    visibility: 'local',
+    createdAt: new Date(timestamp - (count - index) * 1000).toISOString(),
+    completedCheckpoint: false,
+  }));
+  large.events = large.evidence.map((item, index) => ({
+    id: `synthetic-large-event-${index}`,
+    type: 'evidence-recorded',
+    title: `Evidence: ${item.title}`,
+    missionId: item.missionId,
+    createdAt: item.createdAt,
+  }));
+  const limit = 5 * 1024 * 1024;
+  const initialBytes = Buffer.byteLength(JSON.stringify(large), 'utf8');
+  const extraPerArtifact = Math.floor((4.7 * 1024 * 1024 - initialBytes) / count);
+  expect(extraPerArtifact).toBeGreaterThan(0);
+  for (const item of large.evidence) {
+    item.summary += ' I revisited boundary conditions and documented an explicit limitation.'.repeat(30).slice(0, extraPerArtifact);
+  }
+  const compact = JSON.stringify(large);
+  const compactBytes = Buffer.byteLength(compact, 'utf8');
+  const prettyBytes = Buffer.byteLength(JSON.stringify(large, null, 2), 'utf8');
+  expect(compactBytes).toBeLessThanOrEqual(limit);
+  expect(prettyBytes, 'Pretty-printing this valid workspace would exceed the import limit').toBeGreaterThan(limit);
+  await testInfo.attach('backup-byte-sizes', {
+    body: JSON.stringify({ artifacts: count, events: count, compactBytes, prettyBytes, limit }),
+    contentType: 'application/json',
+  });
+
+  await navigate(page, 'HQ overview');
+  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: compact });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'A little progress. A clearer direction.', exact: true })).toBeVisible();
+  expect((await stored(page)).evidence).toHaveLength(count);
+  const persisted = await rawStored(page);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download workspace backup', exact: true }).click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  expect(stream).not.toBeNull();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const exported = Buffer.concat(chunks);
+  expect(exported.byteLength).toBeLessThanOrEqual(limit);
+  expect(exported.equals(Buffer.from(persisted!)), 'Export must contain the same compact JSON as persisted storage').toBe(true);
+
+  await navigate(page, 'Settings & data');
+  await confirmNext(page, () => page.getByRole('button', { name: 'Start a fresh workspace', exact: true }).click());
+  expect((await stored(page)).evidence).toHaveLength(0);
+  await confirmNext(page, () => page.getByLabel('Choose backup file', { exact: true }).setInputFiles({
+    name: download.suggestedFilename(), mimeType: 'application/json', buffer: exported,
+  }));
+  await expect(page.getByLabel('What are you working toward?')).toHaveValue(large.objective);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const restored = await stored(page);
+  expect(restored.evidence).toHaveLength(count);
+  expect(restored.events).toHaveLength(count);
+  expect(Buffer.from((await rawStored(page))!).equals(exported), 'Import must preserve the entire exported workspace').toBe(true);
 });
