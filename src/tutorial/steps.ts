@@ -120,7 +120,7 @@ export const steps: TutorialStep[] = [
     id: 'mission-roadmap-intro', chapter: 'mission', kind: 'explain',
     targets: ['mission-roadmap'],
     title: 'A mission roadmap',
-    body: 'Checkpoints inside one mission are locked in sequence. Dependencies shown between missions are soft, related links only; they do not block progress in this mission.',
+    body: 'Follow the connected nodes downward. The diamond explains the actual rule: evidence and confirmed criteria advance you; otherwise you practice again. The diagram itself does not change progress.',
   },
   {
     id: 'mission-list', chapter: 'mission', kind: 'explain', route: 'missions',
@@ -172,7 +172,7 @@ export const steps: TutorialStep[] = [
     id: 'review-master-roadmap', chapter: 'review', kind: 'explain', route: 'roadmap',
     targets: ['master-roadmap'],
     title: 'The master roadmap',
-    body: 'This view shows every mission at once. Checkpoints within a mission stay locked in sequence; lines between missions are soft, related links, not hard prerequisites.',
+    body: 'The tree groups missions by In focus, Background, and Planned. Choose a mission node to see its checkpoint flowchart below. These group branches are not prerequisites; only the checkpoint order controls unlocks.',
   },
   // Mission control
   {

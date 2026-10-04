@@ -153,7 +153,8 @@ for (const theme of ['dark', 'light'] as const) {
     const documentStarted = await page.evaluate(() => performance.timeOrigin);
 
     await navigate(page, 'Roadmap');
-    await page.getByRole('link', { name: /Pattern Forge\s+DSA/ }).click();
+    await page.getByRole('button', { name: 'View DSA flowchart', exact: true }).click();
+    await page.getByRole('link', { name: 'Open DSA mission', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'DSA', exact: true })).toBeVisible();
     await assertTheme(page, theme);
     const blockerCard = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Blocker', exact: true }) });

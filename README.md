@@ -10,7 +10,8 @@ Built with React, TypeScript, and Vite; data stays in your browser.
 ## What this prototype does
 
 - Keeps one current checkpoint per mission, with sequential unlocks.
-- Displays roadmap checkpoints vertically, top to bottom, including desktop and print.
+- Uses a branching mission tree and top-down checkpoint flowcharts, with connected nodes,
+  an evidence/criteria decision, and a practice loop. Includes responsive and printable views.
 - Separates **practice recorded** from **checkpoint completed**. Completion requires
   an artifact and explicit confirmation of every criterion; it is not AI-graded.
 - Builds up to three daily actions. Gentle capacity offers at most one small action,

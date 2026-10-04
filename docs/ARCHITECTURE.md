@@ -15,6 +15,7 @@ plan as proof of capability.
 | `src/useWorkspace.ts` — `useWorkspace` | Browser load/save, storage errors, date rollover, stale-tab detection, explicit replacement. |
 | `src/usePracticeWorkspace.ts` | Separate in-memory tutorial data using the same schema and domain operations, without storage writes. |
 | `src/tutorial/*` | Guided steps, state-derived completion gates, real-control highlighting and dialog-aware coaching. |
+| `src/roadmaps/*` | Read-only mission tree and top-down checkpoint flowcharts, using accessible HTML nodes and locally drawn SVG connections. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
@@ -23,6 +24,12 @@ There is no backend, authentication layer, remote database, agent execution serv
 or model call. Seven missions contain compact starter roadmaps; the eighth remains
 planned. A dependency link expresses a related capability, not a cross-mission lock.
 Checkpoint order within a mission is the actual prerequisite.
+
+The roadmap tree branches by the existing focus/background/planned settings, not invented
+curriculum dependencies. Selecting a node only changes which flowchart is displayed.
+The checkpoint decision/return loop illustrates the evidence-confirmation rule; it never
+performs an unlock or assessment itself. [Mermaid reference](checkpoint-flow.mmd) documents
+that small workflow; the website has no Mermaid runtime or external rendering dependency.
 
 ## Runtime flow
 

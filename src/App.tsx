@@ -19,6 +19,8 @@ import { Overview } from './Overview';
 import { usePracticeWorkspace } from './usePracticeWorkspace';
 import type { WorkspaceModel } from './useWorkspace';
 import { Tutorial } from './tutorial/Tutorial';
+import { RoadmapPage } from './roadmaps/RoadmapPage';
+import { MissionFlowchart } from './roadmaps/MissionFlowchart';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -302,11 +304,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: {
     {mission.planned ? <section className="panel"><Empty title="An ambition with room to grow.">Competitive programming has its own mission. A canonical roadmap hasn’t been defined, so there are no invented checkpoints or progress here.</Empty></section> : <>
       <section className={`save-state-card ${mission.color}`} data-tour="save-state"><div className="save-state-header"><span className="eyebrow"><Flag size={14} />CURRENT CHECKPOINT</span><Badge tone="green">{statusLabels[save.status]}</Badge></div><div className="save-state-main"><MissionIcon mission={mission} size={27} /><div><span>{save.stage}</span><h2>{save.checkpoint?.title}</h2></div><span className="save-count">{save.completed}<small> / {save.total} complete</small></span></div><Progress value={save.completed / save.total * 100} label="Mission checkpoint progress" /><div className="save-state-bottom"><span><LockKeyhole size={14} /><strong>Next unlock:</strong> {save.next}</span><button className="text-link" data-tour="mission-primary" onClick={() => update('Primary mission updated', current => ({ ...current, focusMissionId: mission.id }))}>{state.focusMissionId === mission.id ? 'Your primary mission' : 'Make primary mission'}<Target size={14} /></button></div></section>
       <div className="dashboard-grid mission-detail"><div><section className="panel next-action"><span className="eyebrow">NEXT ACTION</span><h2>{save.status === 'completed' ? 'Mission completed' : save.checkpoint?.action}</h2><p>{save.status === 'completed' ? 'Your saved work and history are retained.' : mission.purpose}</p>{save.status !== 'completed' && <><div className="criteria-list"><h4>Completion criteria</h4>{save.checkpoint?.criteria.map(criterion => <div key={criterion}><span className="tiny-circle" />{criterion}</div>)}</div><div className="button-row"><button className="button primary" data-tour="record-evidence" onClick={onEvidence} disabled={progress.mode !== 'active' || !!progress.blocker}><Plus size={16} />Record evidence</button>{progress.status === 'not-started' && <button className="button secondary" onClick={() => onResume(mission.id)} disabled={progress.mode !== 'active' || !!progress.blocker}>Begin checkpoint<Play size={14} /></button>}<span className="muted small"><Clock3 size={13} />About {save.checkpoint?.minutes} min</span></div>{progress.mode !== 'active' && <p className="attention-text">Bring this mission into focus to start or record new evidence.</p>}</>}</section>
-        <SectionTitle title="Checkpoint roadmap" /><div className="checkpoint-roadmap" data-tour="mission-roadmap">{mission.checkpoints.map((checkpoint, index) => {
-          const done = progress.completedCheckpointIds.includes(checkpoint.id);
-          const current = checkpoint.id === progress.checkpointId && !done;
-          return <div key={checkpoint.id} className={`checkpoint-row ${done ? 'complete' : current ? 'current' : 'locked'}`}><span className="checkpoint-node">{done ? <Check size={15} /> : current ? <span /> : <LockKeyhole size={12} />}</span><div><span className="eyebrow">{checkpoint.stage}</span><h3>{checkpoint.title}</h3>{current && <p>{checkpoint.action}</p>}</div><Badge tone={current ? 'green' : ''}>{done ? 'Completed' : current ? 'You are here' : 'Locked'}</Badge><span className="checkpoint-order">0{index + 1}</span></div>;
-        })}</div>
+        <SectionTitle title="Checkpoint flowchart" /><MissionFlowchart mission={mission} state={state} />
       </div><div className="right-rail">
         <section className="panel"><SectionTitle title="Blocker" />
           <form className="stack-form" data-tour="blocker-form" onSubmit={event => {
@@ -324,15 +322,6 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: {
         <section className="panel"><span className="eyebrow">RECENT HISTORY</span>{[...state.events].reverse().filter(event => event.missionId === mission.id).slice(0, 3).map(event => <p className="mission-event" key={event.id}><strong>{event.title}</strong><small>{formatDate(event.createdAt)}</small></p>)}{!state.events.some(event => event.missionId === mission.id) && <p className="muted small">No events yet.</p>}</section>
       </div></div>
     </>}</>;
-}
-
-function RoadmapPage({ state }: { state: AppState }) {
-  const [onlyActive, setOnlyActive] = useState(false);
-  return <><PageHeading eyebrow="ALL MISSIONS" title="Roadmap" description="Completed, current, and locked checkpoints across your learning areas."><button className="button secondary" onClick={() => window.print()}>Print roadmap<ArrowDownToLine size={16} /></button></PageHeading><section className="roadmap-north-star"><Star /><div><span className="eyebrow">YOUR GOAL</span><h2>{state.objective}</h2></div><Compass size={36} strokeWidth={1} /></section><div className="roadmap-legend"><span><i className="legend-dot completed" />Completed</span><span><i className="legend-dot current" />Current checkpoint</span><span><LockKeyhole size={12} />Locked</span><label className="checkbox-label"><input type="checkbox" checked={onlyActive} onChange={event => setOnlyActive(event.target.checked)} />In-focus missions only</label></div><div className="roadmap-lanes" data-tour="master-roadmap">{missions.filter(mission => !onlyActive || state.missions[mission.id].mode === 'active').map(mission => <section key={mission.id} className={`roadmap-lane ${mission.color}`}><a href={`#/mission/${mission.id}`} className="roadmap-mission"><MissionIcon mission={mission} /><div><small>{mission.operation}</small><h3>{mission.name}</h3></div><ArrowUpRight size={14} /></a><div className="roadmap-stops">{mission.checkpoints.map(checkpoint => {
-    const done = state.missions[mission.id].completedCheckpointIds.includes(checkpoint.id);
-    const current = state.missions[mission.id].checkpointId === checkpoint.id && !done;
-    return <a href={`#/mission/${mission.id}`} key={checkpoint.id} className={`roadmap-stop ${done ? 'complete' : current ? 'current' : ''}`}><span>{done ? <CircleCheck size={16} /> : current ? <Target size={16} /> : <LockKeyhole size={14} />}{done ? 'Completed' : current ? 'Current' : 'Locked'}</span><strong>{checkpoint.title}</strong><small>{checkpoint.stage}</small></a>;
-  })}{mission.planned && <p className="planned-roadmap">A future chapter. Roadmap pending, no progress assumed.</p>}</div>{mission.dependencies.length > 0 && <div className="roadmap-connections"><GitBranch size={13} />Capability connections:{mission.dependencies.map(id => <a key={id} href={`#/mission/${id}`}>{getMission(id).operation}<ArrowUpRight size={11} /></a>)}</div>}</section>)}</div><div className="quiet-note"><Info size={18} /><p>These are compact prototype roadmaps, not complete course plans. Lines between missions show related capabilities; only checkpoint sequence within a mission controls unlocks.</p></div></>;
 }
 
 function EvidencePage({ state, selectedId, onAdd }: { state: AppState; selectedId?: string; onAdd: () => void }) {

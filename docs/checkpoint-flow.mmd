@@ -1,0 +1,18 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#001E26"
+    primaryTextColor: "#EEE8D5"
+    primaryBorderColor: "#00A591"
+    lineColor: "#586E75"
+---
+flowchart TD
+  accTitle: CareerHQ checkpoint progression
+  accDescr: Evidence and explicit self-confirmation advance the current checkpoint. Otherwise practice continues. This diagram does not grade or complete work.
+  start([Active, unblocked mission]) --> current["Current checkpoint"]
+  current --> gate{"Evidence and criteria confirmed?"}
+  gate -->|Not yet| practice["Practice and record evidence"]
+  practice --> current
+  gate -->|Yes| next["Next checkpoint"]
+  next --> finish([Continue to mission completion])
