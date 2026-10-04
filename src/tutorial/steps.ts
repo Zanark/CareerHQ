@@ -140,7 +140,7 @@ export const steps: TutorialStep[] = [
     id: 'mission-full-roadmap', chapter: 'mission', kind: 'explain',
     targets: ['full-roadmap-open'],
     title: 'See every stage together',
-    body: 'Full roadmap opens every stage in one fitted view. Your current checkpoint glows. Use Current checkpoint for a readable close-up, or zoom and scroll. Select any node to inspect it without changing progress. Close the roadmap before continuing this tutorial.',
+    body: 'Full roadmap opens all stages. DSA shows the complete expanded curriculum even if your saved tracker is older; choose My saved tracker to see its real glowing checkpoint. Find a topic jumps to DFS or another topic at readable size. Previewing changes no progress. Close the map before continuing.',
   },
   {
     id: 'mission-list', chapter: 'mission', kind: 'explain', route: 'missions',

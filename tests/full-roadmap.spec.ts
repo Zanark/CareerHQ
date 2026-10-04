@@ -292,6 +292,8 @@ test('saved v1 stages stay v1 and a completed legacy mission has no fake current
   await expect(dialog).toHaveCount(0);
   await page.goto('./#/mission/pattern');
   dialog = await openRoadmap(page, getMissionVersion('pattern', '1.0.0'));
+  await expect(dialog.locator(nodeSelector)).toHaveCount(48);
+  await dialog.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expectMap(dialog, getMissionVersion('pattern', '1.0.0'), 3, 5);
   await expectCurrent(dialog);
   await expect(dialog.locator(`${nodeSelector}.complete`)).toHaveCount(5);

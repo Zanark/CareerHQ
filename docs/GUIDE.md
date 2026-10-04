@@ -56,7 +56,7 @@ The built-in data describes what to work on; it does not claim you have already 
 
 ### The appended DSA roadmap
 
-The expanded 105-page DSA/LeetCode PDF is now part of **Pattern Forge v3**.
+The expanded 105-page DSA/LeetCode PDF, now named **LeetCode_RoadMap.pdf**, is part of **Pattern Forge v3**.
 The original five HashMap checkpoints and their branches are unchanged.
 The extension adds 43 topic reviews in the dependency-aware order from Appendix A,
 not the chapter-number order.
@@ -103,8 +103,17 @@ throughout, not a mandatory late checklist.
 5. Select **Open current tracker** to work on that mission.
 
 On a mission page, **Full roadmap** beside its name opens every stage together.
-It starts at **Fit all**: an overview of the entire active-version map, not a stage filter.
-The actual current checkpoint has a bright, gently pulsing **You are here** highlight.
+For **DSA**, it opens the complete curriculum from the **EXPANDED** PDF even when
+your saved tracker is still v1 or v2. **Roadmap view → My saved tracker** shows your
+older position; **Complete curriculum** is a read-only preview until you explicitly
+adopt it. Previewing never resets, remaps or awards progress. Other missions open
+their saved version as before.
+
+It starts at **Fit all**, not a stage filter. Use **Find a topic** to jump directly
+to DFS, BFS, DP or another DSA topic at readable size, with its requirements and
+practice-set link below. On a tracked version, the actual current checkpoint has
+a bright, gently pulsing **You are here** highlight; an unadopted preview does not
+invent a current step or mark its topics complete.
 Use **Current checkpoint** for a readable close-up, **+ / -** or **100%** to change zoom,
 and drag, scroll or swipe to explore. Select a node for its action and completion criteria;
 this only inspects it and never changes the current checkpoint. **Escape** or **Close dialog**
@@ -114,8 +123,9 @@ If you open the map from another tutorial chapter, a **Back to tutorial** bar pa
 that lesson without changing its step. Both layouts leave room for the map.
 
 Optional and forecast stages remain visible without invented progress. A completed track
-has no current-step glow. Existing v1 workspaces still show their actual v1 roadmap here;
-adopting the documented version remains the separate confirmed action described above.
+has no current-step glow. Existing DSA v1/v2 workspaces retain their actual tracker under
+**My saved tracker**; adopting the complete version remains the separate confirmed action
+described above.
 
 You do **not** need to upload the PDFs or import a JSON file to obtain these roadmaps.
 They are already part of the website. **Reload sample is not a PDF import**: it replaces

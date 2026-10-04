@@ -162,6 +162,8 @@ test('unchanged v2 definitions remain independently browsable before adoption', 
   await seed(page, state);
   await page.goto('./#/mission/pattern');
   await page.getByRole('button', { name: 'Full roadmap', exact: true }).click();
+  await expect(page.locator('.full-roadmap-node')).toHaveCount(48);
+  await page.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expect(page.locator('.full-roadmap-node')).toHaveCount(getMissionVersion('pattern', '2.0.0').checkpoints.length);
   await expect(page.locator('.full-roadmap-stage')).toHaveCount(2);
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();

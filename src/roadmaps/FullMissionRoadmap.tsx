@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { Check, Flag, Focus, LockKeyhole, Maximize2, Minus, Plus } from 'lucide-react';
+import { BookOpen, Check, Flag, Focus, LockKeyhole, Maximize2, Minus, Plus } from 'lucide-react';
 import { getLatestMission, getProgressForVersion, prerequisitesFor } from '../domain/catalog';
 import type { AppState, Checkpoint, Mission } from '../domain/types';
 import { Modal } from '../components';
@@ -10,13 +10,42 @@ import { checkpointLevels, roadmapGroups } from './roadmapGraph';
 import './full-roadmap.css';
 import { dsaStudySectionFor } from '../domain/operations/dsaStudy';
 
-type Anchor = 'fit' | 'current' | { x: number; y: number };
+type Anchor = 'fit' | 'current' | { x: number; y: number } | { checkpointId: string };
 const stageNodeId = (id: string) => `full-stage-${id}`;
 
 export function FullMissionRoadmap({ mission, state, onClose }: {
   mission: Mission; state: AppState; onClose: () => void;
 }) {
-  const progress = getProgressForVersion(state, mission.id, mission.roadmapVersion);
+  const latest = getLatestMission(mission.id);
+  const hasExpandedDsa = mission.id === 'pattern' && mission.roadmapVersion !== latest.roadmapVersion;
+  const [showSaved, setShowSaved] = useState(false);
+  const preview = hasExpandedDsa && !showSaved;
+  const displayed = preview ? latest : mission;
+  const groupCount = roadmapGroups(displayed).length;
+  const subtitle = `${groupCount} stages · ${displayed.checkpoints.length} ${preview ? 'checkpoints' : 'tracked checkpoints'} · ${preview ? 'Preview' : 'Tracker'} v${displayed.roadmapVersion}`;
+
+  return <Modal title={`${mission.name} full roadmap`} subtitle={subtitle}
+    eyebrow={mission.operation} className={`full-roadmap-modal ${preview ? 'full-roadmap-preview' : ''}`} onClose={onClose} restoreFocus>
+    {hasExpandedDsa && <div className="full-roadmap-version-bar" data-tour="full-map-version">
+      <label>View<select aria-label="Roadmap view" value={showSaved ? 'saved' : 'complete'}
+        onChange={event => setShowSaved(event.target.value === 'saved')}>
+        <option value="complete">Complete curriculum · v{latest.roadmapVersion}</option>
+        <option value="saved">My saved tracker · v{mission.roadmapVersion}</option>
+      </select></label>
+      <span>{preview ? `Saved: v${mission.roadmapVersion}` : 'Your saved progress'}</span>
+      <a className="text-link" href={`#/sources/${mission.id}`}>Review tracker update</a>
+    </div>}
+    <RoadmapCanvas key={`${displayed.id}-${displayed.roadmapVersion}`} mission={displayed}
+      savedMission={mission} preview={preview} state={state} onClose={onClose} />
+  </Modal>;
+}
+
+function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
+  mission: Mission; savedMission: Mission; preview: boolean; state: AppState; onClose: () => void;
+}) {
+  const progress = preview ? undefined : getProgressForVersion(state, mission.id, mission.roadmapVersion);
+  const savedProgress = state.missions[savedMission.id];
+  const savedCheckpoint = savedMission.checkpoints.find(checkpoint => checkpoint.id === savedProgress.checkpointId);
   const completed = useMemo(() => new Set(progress?.completedCheckpointIds ?? []), [progress]);
   const current = progress?.status !== 'completed'
     ? mission.checkpoints.find(checkpoint => checkpoint.id === progress?.checkpointId)
@@ -42,6 +71,7 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
   const viewport = useRef<HTMLDivElement>(null);
   const graph = useRef<HTMLDivElement>(null);
   const currentNode = useRef<HTMLButtonElement>(null);
+  const checkpointNodes = useRef(new Map<string, HTMLButtonElement>());
   const pendingAnchor = useRef<Anchor | null>(null);
   const drag = useRef<{ id: number; x: number; y: number; left: number; top: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -101,17 +131,21 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
     }
     const surfaceBox = surface.getBoundingClientRect();
     const contentBox = content.getBoundingClientRect();
-    const checkpointBox = anchor === 'current' ? currentNode.current?.getBoundingClientRect() : undefined;
-    const x = anchor === 'current' ? (checkpointBox ? checkpointBox.left + checkpointBox.width / 2 : contentBox.left) : contentBox.left + anchor.x * zoom;
-    const y = anchor === 'current' ? (checkpointBox ? checkpointBox.top + checkpointBox.height / 2 : contentBox.top) : contentBox.top + anchor.y * zoom;
+    const node = anchor === 'current' ? currentNode.current :
+      'checkpointId' in anchor ? checkpointNodes.current.get(anchor.checkpointId) : undefined;
+    const checkpointBox = node?.getBoundingClientRect();
+    const x = checkpointBox ? checkpointBox.left + checkpointBox.width / 2 :
+      typeof anchor === 'object' && 'x' in anchor ? contentBox.left + anchor.x * zoom : contentBox.left;
+    const y = checkpointBox ? checkpointBox.top + checkpointBox.height / 2 :
+      typeof anchor === 'object' && 'y' in anchor ? contentBox.top + anchor.y * zoom : contentBox.top;
     surface.scrollTo({
       left: surface.scrollLeft + x - surfaceBox.left - surface.clientWidth / 2,
       top: surface.scrollTop + y - surfaceBox.top - surface.clientHeight / 2,
     });
-    if (anchor === 'current') currentNode.current?.focus({ preventScroll: true });
+    node?.focus({ preventScroll: true });
   }, [view, size, zoom]);
 
-  function changeZoom(value: number | null, anchor?: 'fit' | 'current') {
+  function changeZoom(value: number | null, anchor?: 'fit' | 'current' | { checkpointId: string }) {
     const surface = viewport.current;
     const content = graph.current;
     if (!surface || !content) return;
@@ -143,20 +177,30 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
   }
 
   function statusOf(checkpoint: Checkpoint) {
+    if (preview) return 'reference';
     return completed.has(checkpoint.id) ? 'complete' : checkpoint.id === current?.id ? 'current'
       : progress && prerequisitesFor(mission, checkpoint).every(id => completed.has(id)) ? 'available' : 'locked';
   }
 
-  const subtitle = `${groups.length} stages · ${mission.checkpoints.length} tracked checkpoints · Tracker v${mission.roadmapVersion}`;
-  return <Modal title={`${mission.name} full roadmap`} subtitle={subtitle}
-    eyebrow={mission.operation} className="full-roadmap-modal" onClose={onClose} restoreFocus>
+  return <>
     <div className="full-roadmap-toolbar">
       <button className="button secondary" data-tour="full-map-fit" onClick={() => changeZoom(null, 'fit')} aria-pressed={view.zoom === null}><Maximize2 size={17} />Fit all</button>
-      <button className="button primary" data-tour="full-map-current" disabled={!current} onClick={() => {
+      {!preview && <button className="button primary" data-tour="full-map-current" disabled={!current} onClick={() => {
         setSelectedId(current?.id);
         setDetailsOpen(false);
         changeZoom(1, 'current');
-      }}><Focus size={17} />Current checkpoint</button>
+      }}><Focus size={17} />Current checkpoint</button>}
+      {mission.id === 'pattern' && <select className="full-roadmap-topic-finder" aria-label="Find a roadmap topic" value=""
+        onChange={event => {
+          const checkpoint = mission.checkpoints.find(candidate => candidate.id === event.target.value);
+          if (!checkpoint) return;
+          setSelectedId(checkpoint.id);
+          setDetailsOpen(true);
+          changeZoom(1, { checkpointId: checkpoint.id });
+        }}>
+        <option value="" disabled>Find a topic...</option>
+        {mission.checkpoints.map(checkpoint => <option key={checkpoint.id} value={checkpoint.id}>{checkpoint.title}</option>)}
+      </select>}
       <div className="full-roadmap-zoom" role="group" aria-label="Roadmap zoom">
         <button className="icon-button" data-tour="full-map-zoom-out" aria-label="Zoom out" disabled={zoom <= Math.min(fit, 0.25)} onClick={() => changeZoom(zoom / 1.5)}><Minus size={18} /></button>
         <output aria-label="Roadmap zoom level">{Math.round(zoom * 100)}%</output>
@@ -189,14 +233,18 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
                   {group.levels.map((level, index) => <div className="full-roadmap-level" key={index}>
                     {level.map(checkpoint => {
                       const status = statusOf(checkpoint);
-                      return <button key={checkpoint.id} ref={status === 'current' ? currentNode : undefined}
+                      return <button key={checkpoint.id} ref={node => {
+                        if (node) checkpointNodes.current.set(checkpoint.id, node);
+                        else checkpointNodes.current.delete(checkpoint.id);
+                        if (status === 'current') currentNode.current = node;
+                      }}
                         className={`full-roadmap-node ${status}`} data-diagram-node={checkpoint.id}
                         data-full-checkpoint={checkpoint.id} data-full-current={status === 'current' ? 'true' : undefined}
                         data-tour={checkpoint.id === mission.checkpoints.at(-1)?.id ? 'full-map-last-node' : undefined}
                         aria-current={status === 'current' ? 'step' : undefined} aria-pressed={selected?.id === checkpoint.id}
                         onClick={() => { setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
-                        <span className="full-roadmap-state">{status === 'complete' ? <Check size={16} /> : status === 'current' ? <Flag size={16} /> : <LockKeyhole size={16} />}
-                          {status === 'complete' ? 'Completed' : status === 'current' ? 'Current checkpoint' : status === 'available' ? 'Available' : 'Locked'}</span>
+                        <span className="full-roadmap-state">{status === 'complete' ? <Check size={16} /> : status === 'current' ? <Flag size={16} /> : status === 'reference' ? <BookOpen size={16} /> : <LockKeyhole size={16} />}
+                          {status === 'complete' ? 'Completed' : status === 'current' ? 'Current checkpoint' : status === 'available' ? 'Available' : status === 'reference' ? 'Not tracked' : 'Locked'}</span>
                         <strong>{checkpoint.sourceId && !checkpoint.title.startsWith(checkpoint.sourceId) ? `${checkpoint.sourceId} · ` : ''}{checkpoint.title}</strong>
                         {status === 'current' && <span className="full-roadmap-here">You are here</span>}
                       </button>;
@@ -216,16 +264,20 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
       </div>
     </div>
     <div className="full-roadmap-inspector">
-      {!current && <p className="full-roadmap-summary">{progress?.status === 'completed' ? 'All tracked checkpoints complete. Your saved work is preserved.' : 'Planning / reference material only. There is no current checkpoint.'}</p>}
+      {preview ? <p className="full-roadmap-summary">
+        {savedProgress.status === 'completed' ? `Your saved v${savedMission.roadmapVersion} tracker is complete.` : <>Saved v{savedMission.roadmapVersion} checkpoint: <strong>{savedCheckpoint?.title}</strong>.</>}
+        {' '}Progress unchanged.
+      </p> : !current && <p className="full-roadmap-summary">{progress?.status === 'completed' ? 'All tracked checkpoints complete. Your saved work is preserved.' : 'Planning / reference material only. There is no current checkpoint.'}</p>}
       {selected && <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
         <summary><span>{selected.id === current?.id ? 'Your current checkpoint' : 'Inspect checkpoint'}</span><strong>{selected.title}</strong><span>Details</span></summary>
         <div className="full-roadmap-details"><p>{selected.action}</p><h4>Completion criteria</h4><ul>{selected.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul>
           {prerequisitesFor(mission, selected).length > 0 && <p><strong>Requires: </strong>{prerequisitesFor(mission, selected).map(id => mission.checkpoints.find(checkpoint => checkpoint.id === id)?.title).join(', ')}</p>}
+          {!!selected.topics?.length && <><h4>Topics</h4><ul>{selected.topics.map(topic => <li key={topic}>{topic}</li>)}</ul></>}
           {studySection && <p><a className="text-link" href={`#/dsa/${studySection.number}`}>Open this topic's practice set</a></p>}
           <p>View only. Record evidence from the mission page to update progress.</p>
         </div>
       </details>}
       {mission.roadmapVersion !== getLatestMission(mission.id).roadmapVersion && <p className="full-roadmap-summary">This is your saved v{mission.roadmapVersion} roadmap. <a href={`#/sources/${mission.id}`}>Review the newer operation documents</a> before adopting a different version.</p>}
     </div>
-  </Modal>;
+  </>;
 }

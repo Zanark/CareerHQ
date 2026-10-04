@@ -3,7 +3,7 @@ import type { DsaStudySection } from './dsaStudyTypes';
 import { dsaSectionNotes } from './dsaSectionNotes';
 import { dsaProblemSets } from './dsaProblemSets';
 
-export const DSA_EXPANDED_SOURCE = 'Complete_DSA_LeetCode_Mastery_Roadmap_EXPANDED.pdf';
+export const DSA_EXPANDED_SOURCE = 'LeetCode_RoadMap.pdf';
 
 export const dsaSections: readonly DsaStudySection[] = dsaSectionNotes.map(section => ({
   ...section,

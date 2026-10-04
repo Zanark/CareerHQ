@@ -1,8 +1,15 @@
 # Operation-document integration
 
 The original October operation pack contains ten PDFs under local `docs/OperationDocs`.
-The separately supplied `Complete_DSA_LeetCode_Mastery_Roadmap_EXPANDED.pdf` adds an
-eleventh source and an append-only DSA edition.
+The separately supplied **105-page expanded edition**, now named `LeetCode_RoadMap.pdf`,
+adds an eleventh source and an append-only DSA edition.
+This renamed **EXPANDED** edition is the primary DSA source, not the shorter document.
+DFS is section 23 (physical pp47-48), in Appendix A's Phase 7.
+
+Old saved tracker versions do not hide that curriculum: **DSA → Full roadmap** opens
+the complete edition by default, with **My saved tracker** as a separate view.
+The complete preview carries no invented progress; **Find a topic → DFS** opens its
+readable node, topic details and practice-set link.
 They remain excluded from Git and the deployed site. Public definitions contain only reusable
 roadmap structure, source references, and explanatory limitations; personal save states,
 biography, employer details, financial information and private notes are not seed data.

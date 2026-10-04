@@ -2,7 +2,7 @@ import { ArrowRight, ArrowUpRight, BookOpen, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeading } from '../components';
 import { getMission } from '../domain/catalog';
-import { dsaSections, dsaMasteryGate, dsaPracticeProtocol, dsaStudySectionFor } from '../domain/operations/dsaStudy';
+import { DSA_EXPANDED_SOURCE, dsaSections, dsaMasteryGate, dsaPracticeProtocol, dsaStudySectionFor } from '../domain/operations/dsaStudy';
 import type { AppState, Checkpoint } from '../domain/types';
 import type { DsaDifficulty, DsaProblemSet } from '../domain/operations/dsaStudyTypes';
 import './dsa-library.css';
@@ -97,7 +97,7 @@ export function DsaLibrary({ state, sectionNumber }: { state: AppState; sectionN
         </section>;
       })}
       {!filtered.length && <p className="dsa-library-empty">No problems match these filters. Try another difficulty, title, or problem number.</p>}
-      <p className="dsa-library-source">Source: Complete_DSA_LeetCode_Mastery_Roadmap_EXPANDED.pdf, supplied locally. Links open LeetCode in a new tab; some problems may require an account or subscription. The PDF itself is not published.</p>
+      <p className="dsa-library-source">Source: {DSA_EXPANDED_SOURCE}, supplied locally. Links open LeetCode in a new tab; some problems may require an account or subscription. The PDF itself is not published.</p>
     </>}
   </div>;
 }
