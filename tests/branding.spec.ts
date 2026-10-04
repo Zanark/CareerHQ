@@ -12,8 +12,9 @@ for (const theme of ['dark', 'light']) {
       const before = await page.evaluate(key => localStorage.getItem(key), storageKey);
       if (width < 761) await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
 
-      const brand = page.getByRole('link', { name: 'CareerHQ - Career and life operating system, Overview', exact: true });
+      const brand = page.getByRole('link', { name: 'CareerHQ - Career and life operating system', exact: true });
       await expect(brand).toBeVisible();
+      await expect(page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Overview' })).toHaveCount(1);
       await expect(brand.locator('.brand-tagline')).toHaveText('Career & life OS');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       const mark = brand.locator('img');

@@ -191,7 +191,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         setQuery('');
       }
     }}>
-      <a href="#/hq" className="brand" aria-label="CareerHQ - Career and life operating system, Overview"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career &amp; life OS</small></span></a>
+      <a href="#/hq" className="brand" aria-label="CareerHQ - Career and life operating system"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career &amp; life OS</small></span></a>
       <span className="nav-label">TRACKING</span>
       <nav>{mainNav.map(navButton)}</nav>
       <span className="nav-label second">CAREER</span>
