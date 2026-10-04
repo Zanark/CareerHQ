@@ -42,7 +42,7 @@ function LegacyMissionFlowchart({ mission, state, tutorialTarget = true }: FlowP
 
   if (mission.planned) return <p className="diagram-pending">Roadmap pending. No checkpoints or prerequisite branches have been invented.</p>;
 
-  return <figure className="mission-flowchart" aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
+  return <figure className={`mission-flowchart ${mission.color}`} aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
     <figcaption><h3 id={titleId}>{mission.name} checkpoint flowchart</h3><p id={descriptionId}>Follow the arrows downward. Evidence and confirmed criteria unlock the next milestone; otherwise, practice and return.</p></figcaption>
     <Diagram edges={edges} className="flow-canvas">
       <div className="flow-terminal" data-diagram-node="start">Start mission</div>

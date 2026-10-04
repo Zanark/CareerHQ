@@ -23,7 +23,7 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
     setNotice(ok ? 'Documented roadmap adopted. Previous progress is preserved below; refresh an untouched daily plan when ready.' : 'Roadmap was not changed. Check the workspace warning.');
   }
 
-  return <section className="source-panel" data-tour="operation-source">
+  return <section className={`source-panel ${latest.color}`} data-tour="operation-source">
     <div className="source-heading"><FileText size={18} /><div><h3>Operation documents</h3><p>Documented roadmap v{latest.roadmapVersion} · Active tracker v{active.roadmapVersion}</p></div><Badge>{latest.coverage ?? 'documented'}</Badge></div>
     {pending && <div className="source-upgrade">
       <p>Your saved position still uses the previous roadmap. Review the documented content before switching; no existing work will be silently reclassified.</p>

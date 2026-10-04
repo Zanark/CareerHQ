@@ -46,7 +46,7 @@ export function RoadmapPage({ state }: { state: AppState }) {
               {group.missions.map(mission => {
                 const save = getSaveState(mission, state);
                 return <li key={mission.id}>
-                  <button className={`tree-mission ${selected?.id === mission.id ? 'selected' : ''}`} data-diagram-node={`mission-${mission.id}`} data-mission={mission.id} aria-label={`View ${mission.name} flowchart`} aria-pressed={selected?.id === mission.id} onClick={() => selectMission(mission.id)}>
+                  <button className={`tree-mission ${mission.color} ${selected?.id === mission.id ? 'selected' : ''}`} data-diagram-node={`mission-${mission.id}`} data-mission={mission.id} aria-label={`View ${mission.name} flowchart`} aria-pressed={selected?.id === mission.id} onClick={() => selectMission(mission.id)}>
                     <MissionIcon mission={mission} size={18} /><span className="tree-mission-copy"><strong>{mission.name}</strong><small>{save.checkpoint?.title ?? 'Roadmap pending'}</small></span><ArrowDown size={15} />
                   </button>
                 </li>;

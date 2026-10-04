@@ -26,9 +26,9 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
       <button className="button primary" onClick={() => onEvidence()}><Plus size={16} />Log progress</button>
     </div>
     <div className="overview-summary" data-tour="overview-summary">
-      <a href="#/plan"><strong>{actions.filter(action => action.completed).length}<span>/{actions.length}</span></strong><span>Actions done today</span></a>
-      <a href="#/missions" title="Includes preserved prior-roadmap completions"><strong>{completed}</strong><span>Checkpoints completed</span></a>
-      <a href="#/evidence"><strong>{state.evidence.length}</strong><span>Saved work</span></a>
+      <a href="#/plan" className="blue"><strong>{actions.filter(action => action.completed).length}<span>/{actions.length}</span></strong><span>Actions done today</span></a>
+      <a href="#/missions" className="sand" title="Includes preserved prior-roadmap completions"><strong>{completed}</strong><span>Checkpoints completed</span></a>
+      <a href="#/evidence" className="violet"><strong>{state.evidence.length}</strong><span>Saved work</span></a>
     </div>
     <section data-tour="overview-today">
       <SectionTitle title="Today's plan"><a className="text-link" href="#/plan">Daily plan<ArrowRight size={14} /></a></SectionTitle>
@@ -37,7 +37,7 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
           const mission = getMissionVersion(action.missionId, recordRoadmapVersion(action));
           const progress = state.missions[action.missionId];
           const unavailable = !!progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
-          return <article className={`overview-action ${action.completed ? 'is-complete' : ''}`} key={action.id}>
+          return <article className={`overview-action ${mission.color} ${action.completed ? 'is-complete' : ''}`} key={action.id}>
             <MissionIcon mission={mission} size={18} />
             <div className="overview-row-content"><span>{mission.name}</span><h3>{action.title}</h3></div>
             <span className="overview-time"><Clock3 size={13} />{action.minutes}m</span>
@@ -54,7 +54,7 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
         {visibleMissions.map(mission => {
           const save = getSaveState(mission, state);
           const progress = state.missions[mission.id];
-          return <article key={mission.id} className="overview-checkpoint">
+          return <article key={mission.id} className={`overview-checkpoint ${mission.color}`}>
             <MissionIcon mission={mission} size={18} />
             <div className="overview-row-content"><h3>{mission.name}</h3><p>{save.checkpoint?.title}</p></div>
             <div className={`overview-track-progress ${mission.color}`}><span>{save.completed}/{save.total} completed</span><Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} /></div>

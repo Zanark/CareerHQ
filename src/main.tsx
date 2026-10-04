@@ -9,5 +9,6 @@ import './roadmaps/roadmaps.css';
 import './source-panels.css';
 import './palette-transition.css';
 import './typography.css';
+import './accents.css';
 
 createRoot(document.getElementById('root')!).render(<App />);

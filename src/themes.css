@@ -20,6 +20,7 @@
   --dsf-selection: #00A59126;
   --dsf-shadow: #00000066;
   --dsf-backdrop: #000000B8;
+  --accent-ink-share: 72%;
 }
 
 :root[data-theme="light"] {
@@ -42,6 +43,7 @@
   --dsf-selection: #006F631F;
   --dsf-shadow: #00000014;
   --dsf-backdrop: #000000B8;
+  --accent-ink-share: 28%;
 }
 
 :root {
@@ -54,6 +56,7 @@
   --dsf-pearl: #FDF6E3;
   --dsf-blue: #268BD2;
   --dsf-violet: #6C71C4;
+  --dsf-magenta: #D33682;
   --dsf-document-wash: color-mix(in srgb, var(--dsf-document) 8%, var(--dsf-paper));
   --dsf-warning-wash: color-mix(in srgb, var(--dsf-warning) 8%, var(--dsf-paper));
   --dsf-error-wash: color-mix(in srgb, var(--dsf-error) 10%, var(--dsf-paper));
@@ -166,15 +169,15 @@
 :root[data-theme] .search-results { box-shadow: 0 14px 40px var(--dsf-shadow); }
 :root[data-theme] :is(.search-results a, .search-results small) { color: var(--dsf-text); }
 
-/* The seafoam action recipe also marks selected controls; labels retain meaning. */
-:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active) {
+/* Filled actions stay seafoam; navigation identity is styled separately in accents.css. */
+:root[data-theme] :is(.button.primary, .button.lime, .segmented button.active, .tabs button.active) {
   color: var(--dsf-button-text);
   background: var(--dsf-accent);
   border-color: var(--dsf-accent);
   box-shadow: none;
 }
 
-:root[data-theme] :is(.nav-item.selected > svg, .nav-item.selected .nav-count, .tabs button.active span) {
+:root[data-theme] .tabs button.active span {
   color: var(--dsf-button-text);
   background: transparent;
 }
@@ -182,7 +185,7 @@
 :root[data-theme] .selected-dot { background: currentColor; }
 
 :root[data-theme] :is(.button.primary, .button.lime):hover:not(:disabled),
-:root[data-theme] :is(.nav-item.selected, .segmented button.active, .tabs button.active):hover {
+:root[data-theme] :is(.segmented button.active, .tabs button.active):hover {
   color: var(--dsf-button-text);
   background: var(--dsf-accent-hover);
   border-color: var(--dsf-accent-hover);
@@ -250,18 +253,19 @@
   background-image: radial-gradient(color-mix(in srgb, var(--dsf-hero-muted) 9%, transparent) .5px, transparent .5px);
 }
 
-/* Mission hues identify lanes, not reading ink or a new status taxonomy. */
+/* Lane color identifies content; colored ink is adapted separately for readable contrast. */
 :root[data-theme] .sage { --accent: var(--dsf-document); }
 :root[data-theme] .blue { --accent: var(--dsf-blue); }
 :root[data-theme] .amber { --accent: var(--dsf-sunset); }
 :root[data-theme] .rose { --accent: var(--dsf-error); }
 :root[data-theme] .violet { --accent: var(--dsf-violet); }
-:root[data-theme] .sand { --accent: var(--dsf-warning); }
+:root[data-theme] .sand { --accent: var(--dsf-sun); }
+:root[data-theme] .magenta { --accent: var(--dsf-magenta); }
 :root[data-theme] .teal { --accent: var(--dsf-accent); }
 :root[data-theme] .gray { --accent: var(--dsf-border); }
-:root[data-theme] :is(.sage, .blue, .amber, .rose, .violet, .sand, .teal, .gray) {
-  --tone: var(--dsf-text);
-  --wash: color-mix(in srgb, var(--accent) 8%, var(--dsf-paper));
+:root[data-theme] :is(.sage, .blue, .amber, .rose, .violet, .sand, .magenta, .teal, .gray) {
+  --tone: color-mix(in srgb, var(--accent) var(--accent-ink-share), var(--dsf-heading));
+  --wash: color-mix(in srgb, var(--accent) 9%, var(--dsf-paper));
 }
 
 :root[data-theme] :is(.mission-tag, .company-letter, .artifact-illustration) {
@@ -271,9 +275,9 @@
 }
 
 :root[data-theme] :is(.mission-icon, .save-state-main > .mission-icon) {
-  color: var(--accent, var(--dsf-accent));
+  color: var(--tone, var(--dsf-accent));
   background: var(--wash, var(--dsf-surface));
-  border-color: var(--dsf-separator);
+  border-color: color-mix(in srgb, var(--accent, var(--dsf-accent)) 55%, var(--dsf-border));
 }
 
 :root[data-theme] .artifact-illustration {
@@ -440,8 +444,8 @@
   background: var(--dsf-selection);
 }
 
-:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active)::selection,
-:root[data-theme] :is(.button.primary, .button.lime, .nav-item.selected, .segmented button.active, .tabs button.active) ::selection {
+:root[data-theme] :is(.button.primary, .button.lime, .segmented button.active, .tabs button.active)::selection,
+:root[data-theme] :is(.button.primary, .button.lime, .segmented button.active, .tabs button.active) ::selection {
   color: var(--dsf-button-text);
   background: var(--dsf-accent-hover);
 }
@@ -468,6 +472,7 @@
     --dsf-document: #247449;
     --dsf-warning: #77600E;
     --dsf-error: #AD3E55;
+    --accent-ink-share: 28%;
     --dsf-separator: #6B857E66;
     --dsf-hover: #6B857E1A;
     --dsf-selection: #006F631F;

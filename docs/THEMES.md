@@ -54,12 +54,37 @@ Canonical solids are copied without recoloring. Dark cards use the panel role;
 daylight cards use paper, distinct from structural sea-glass surfaces. Hero,
 north-star and guide panels deliberately remain inverse in both modes.
 
-Mission icons retain small canonical signal or Solarized-heritage accents.
-Their chip labels use reading ink rather than assuming every hue is legible as
-text. Quiet washes, grid lines and shadows are alpha/color-mix derivations, not
-new canonical solids. Hover and text selection use stronger ink; filled actions
-have a separate selection recipe. Errors keep readable heading ink with a rose
-boundary, not opaque red fills. Keyboard focus uses the solid interaction color.
+### The full accent palette
+
+The neutral workspace stays deep-water / warm-paper, but teal is not the only
+content color. `src/accents.css` carries the palette into visible headings,
+card borders, navigation identities, daily rows and roadmap stages, including
+when a workspace has zero completed checkpoints.
+
+| Content | Accent |
+| --- | --- |
+| System Design, overview navigation | Blue `#268BD2` |
+| Architecture, recall, focus timer | Violet `#6C71C4` |
+| Certifications, daily planning, encouragement | Yellow `#EBE565` |
+| Opportunities | Orange `#CB4B16` |
+| Service Fabric | Rose `#E84A5F` / daylight berry `#AD3E55` |
+| Saved-work navigation | Magenta `#D33682` |
+| DSA | Green document signal |
+| AI and freelance tracks | Seafoam |
+
+Blue, orange, violet and magenta come from DeepSeaFoam's Solarized-heritage
+extension group. Colored ink is an explicit application adaptation: mix the
+identity color with the current heading ink (72% accent in dark mode, 28% in
+daylight). This keeps small labels readable instead of putting raw yellow or
+violet text on an unsuitable background. These derived inks and 9% paper washes
+are not new canonical palette solids.
+
+Overview counters and Keep going reminders have distinct accents. Full-map
+stage bands aid scanning; the actual current checkpoint still has its labeled
+seafoam glow, and completed states still use the green status signal. A rose
+mission border is an identity, not an error. Errors retain their explicit
+messages and boundaries; color never replaces a name, status label, or icon.
+Primary actions, keyboard focus and tutorial glows stay seafoam for consistency.
 Print uses light paper and ink even when the on-screen theme is dark.
 
 These mappings are not a blanket accessibility certification. Check actual

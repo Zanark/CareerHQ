@@ -30,19 +30,19 @@ import { FreelancePage, RecallPage } from './OperationTools';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
-  { id: 'perspective', label: 'Keep going', icon: Compass },
-  { id: 'hq', label: 'Overview', icon: House },
-  { id: 'missions', label: 'Missions', icon: LayoutGrid },
-  { id: 'roadmap', label: 'Roadmap', icon: GitBranch },
-  { id: 'plan', label: 'Daily plan', icon: ListChecks },
-  { id: 'evidence', label: 'Saved work', icon: FolderOpen },
-  { id: 'history', label: 'History', icon: History },
-  { id: 'recall', label: 'Recall practice', icon: BrainCircuit },
+  { id: 'perspective', label: 'Keep going', icon: Compass, color: 'sand' },
+  { id: 'hq', label: 'Overview', icon: House, color: 'blue' },
+  { id: 'missions', label: 'Missions', icon: LayoutGrid, color: 'violet' },
+  { id: 'roadmap', label: 'Roadmap', icon: GitBranch, color: 'blue' },
+  { id: 'plan', label: 'Daily plan', icon: ListChecks, color: 'sand' },
+  { id: 'evidence', label: 'Saved work', icon: FolderOpen, color: 'magenta' },
+  { id: 'history', label: 'History', icon: History, color: 'amber' },
+  { id: 'recall', label: 'Recall practice', icon: BrainCircuit, color: 'violet' },
 ];
 const extraNav = [
-  { id: 'pipeline', label: 'Opportunities', icon: BriefcaseBusiness },
-  { id: 'readiness', label: 'Interview readiness', icon: Target },
-  { id: 'freelance', label: 'Freelance ledger', icon: BriefcaseBusiness },
+  { id: 'pipeline', label: 'Opportunities', icon: BriefcaseBusiness, color: 'amber' },
+  { id: 'readiness', label: 'Interview readiness', icon: Target, color: 'rose' },
+  { id: 'freelance', label: 'Freelance ledger', icon: BriefcaseBusiness, color: 'teal' },
 ];
 const capacities: { id: Capacity; label: string; description: string }[] = [
   { id: 'gentle', label: 'Gentle', description: 'Up to 15 minutes; one action.' },
@@ -107,7 +107,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const selected = missions.find(mission => mission.id === route.split('/')[1]);
   const todayPlan = state.plans[date] ?? [];
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
-  const title = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data' }, { id: 'guide', label: 'Help & glossary' }, { id: 'sources', label: 'Operation documents' }].find(item => item.id === page)?.label ?? selected?.name ?? 'Not found';
+  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }].find(item => item.id === page);
+  const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
     setOpportunityDialog(false);
@@ -182,7 +183,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     ...state.evidence.filter(item => `${item.title} ${item.summary}`.toLowerCase().includes(query.trim().toLowerCase())).map(item => ({ label: item.title, detail: 'Evidence', route: `evidence/${item.id}` })),
   ].slice(0, 7) : [];
 
-  const navButton = (item: typeof mainNav[number]) => <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${page === item.id || (item.id === 'missions' && page === 'mission') ? 'selected' : ''}`} aria-current={page === item.id || (item.id === 'missions' && page === 'mission') ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
+  const navButton = (item: typeof mainNav[number]) => <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${item.color} ${page === item.id || (item.id === 'missions' && page === 'mission') ? 'selected' : ''}`} aria-current={page === item.id || (item.id === 'missions' && page === 'mission') ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
 
   return <div className="app" data-workspace={practice ? 'practice' : 'saved'}>
     <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); headingRef.current?.focus(); }}>Skip to content</a>
@@ -199,10 +200,10 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
       <span className="nav-label second">CAREER</span>
       <nav>{extraNav.map(navButton)}</nav>
       <div className="sidebar-bottom">
-        <a href="#/sources" className={`nav-item ${page === 'sources' ? 'selected' : ''}`}><FileText size={18} /><span>Operation documents</span></a>
-        <button className="nav-item" onClick={onStartTutorial}><BookOpen size={18} /><span>{practice ? 'Restart tutorial' : 'Tutorial'}</span></button>
-        <a href="#/guide" className={`nav-item ${page === 'guide' ? 'selected' : ''}`}><CircleHelp size={18} /><span>Help & glossary</span></a>
-        <a href="#/settings" className={`nav-item ${page === 'settings' ? 'selected' : ''}`}><Settings2 size={18} /><span>Settings & data</span></a>
+        <a href="#/sources" className={`nav-item violet ${page === 'sources' ? 'selected' : ''}`}><FileText size={18} /><span>Operation documents</span></a>
+        <button className="nav-item magenta" onClick={onStartTutorial}><BookOpen size={18} /><span>{practice ? 'Restart tutorial' : 'Tutorial'}</span></button>
+        <a href="#/guide" className={`nav-item sand ${page === 'guide' ? 'selected' : ''}`}><CircleHelp size={18} /><span>Help & glossary</span></a>
+        <a href="#/settings" className={`nav-item blue ${page === 'settings' ? 'selected' : ''}`}><Settings2 size={18} /><span>Settings & data</span></a>
         <div className="local-status"><span className="status-dot" /><span>{practice ? 'Practice data' : 'Browser storage'}<small>{practice ? 'Discarded on exit' : 'No cloud sync'}</small></span><ShieldCheck size={17} /></div>
       </div>
     </aside>
@@ -213,7 +214,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
           {query && <div className="search-results"><span className="eyebrow">IN YOUR WORKSPACE</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission name or an artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
         </div><ThemeToggle appearance={appearance} /><button className="tutorial-launch" onClick={onStartTutorial} aria-label={practice ? 'Restart tutorial' : 'Start tutorial'} title="Interactive tutorial"><CircleHelp size={17} /><span>Tutorial</span></button></div>
       </header>
-      <main id="main-content" ref={headingRef} tabIndex={-1}>
+      <main id="main-content" className={`page-content ${selected?.color ?? pageInfo?.color ?? 'teal'}`} ref={headingRef} tabIndex={-1}>
         {appearance.notice && <div className="alert" role="status"><span>{appearance.notice}</span><button className="icon-button" aria-label="Dismiss theme notice" onClick={appearance.dismissNotice}><X size={17} /></button></div>}
         {workspace.conflict && <div className="alert error" role="alert"><span>This workspace changed in another tab. Reload to avoid overwriting newer work.</span><button onClick={() => location.reload()} className="button secondary">Reload</button></div>}
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
@@ -279,7 +280,7 @@ function PlanList({ actions, state, onEvidence, onResume }: { actions: DailyActi
     const mission = getMissionVersion(action.missionId, recordRoadmapVersion(action));
     const progress = state.missions[action.missionId];
     const unavailable = progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
-    return <article key={action.id} className={`plan-item ${action.completed ? 'done' : ''}`}><span className="plan-number">{action.completed ? <Check size={17} /> : `0${index + 1}`}</span><div className="plan-content"><div className="plan-meta"><span className={`mission-tag ${mission.color}`}>{mission.name}</span><span><Clock3 size={12} />{action.minutes} min</span></div><h3>{action.title}</h3><p>{action.reason}</p>{!action.completed && !!unavailable && <p className="attention-text">This mission changed. Open it to inspect the current checkpoint.</p>}<div className="plan-item-footer">{action.completed ? <span className="done-label"><CircleCheck size={14} />Evidence recorded</span> : <><button className="text-link" data-tour={`plan-open-${mission.id}`} onClick={() => onResume(action.missionId)}>Open checkpoint<ArrowUpRight size={14} /></button><button className="complete-button" disabled={!!unavailable} onClick={() => onEvidence(action)}><Plus size={13} />Log progress</button></>}</div></div></article>;
+    return <article key={action.id} className={`plan-item ${mission.color} ${action.completed ? 'done' : ''}`}><span className="plan-number">{action.completed ? <Check size={17} /> : `0${index + 1}`}</span><div className="plan-content"><div className="plan-meta"><span className={`mission-tag ${mission.color}`}>{mission.name}</span><span><Clock3 size={12} />{action.minutes} min</span></div><h3>{action.title}</h3><p>{action.reason}</p>{!action.completed && !!unavailable && <p className="attention-text">This mission changed. Open it to inspect the current checkpoint.</p>}<div className="plan-item-footer">{action.completed ? <span className="done-label"><CircleCheck size={14} />Evidence recorded</span> : <><button className="text-link" data-tour={`plan-open-${mission.id}`} onClick={() => onResume(action.missionId)}>Open checkpoint<ArrowUpRight size={14} /></button><button className="complete-button" disabled={!!unavailable} onClick={() => onEvidence(action)}><Plus size={13} />Log progress</button></>}</div></div></article>;
   })}</div>;
 }
 
@@ -391,7 +392,7 @@ function EvidencePage({ state, selectedId, onAdd }: { state: AppState; selectedI
 function EvidenceCard({ item, highlighted }: { item: Evidence; highlighted: boolean }) {
   const mission = getMissionVersion(item.missionId, recordRoadmapVersion(item));
   const checkpoint = mission.checkpoints.find(cp => cp.id === item.checkpointId);
-  return <article id={`proof-${item.id}`} className={`evidence-card ${highlighted ? 'highlighted' : ''}`}>
+  return <article id={`proof-${item.id}`} className={`evidence-card ${mission.color} ${highlighted ? 'highlighted' : ''}`}>
     <div className="evidence-card-top"><span className={`mission-tag ${mission.color}`}>{mission.operation}</span><span className="local-label"><LockKeyhole size={12} />Local · v{recordRoadmapVersion(item)}</span></div>
     <div className={`artifact-illustration ${mission.color}`}><FileCheck2 size={34} strokeWidth={1.2} /><span>{kindLabels[item.kind]}</span></div>
     <h3>{item.title}</h3><p>{item.summary}</p><div className="artifact-checkpoint"><Flag size={12} />{checkpoint?.title}</div>

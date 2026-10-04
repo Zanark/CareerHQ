@@ -26,7 +26,7 @@ export function Perspective({ state, practice }: { state: AppState; practice: bo
         <p>Each reminder has a source, a boundary, and one practical thing to try.</p>
       </div>
       <div className="perspective-research-grid">
-        {reminders.map((reminder, index) => <article className="perspective-reminder" key={reminder.id}>
+        {reminders.map((reminder, index) => <article className={`perspective-reminder ${['sand', 'blue', 'violet', 'rose'][index]}`} key={reminder.id}>
           <span className="perspective-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           <h3>{reminder.title}</h3>
           <p>{reminder.message}</p>
@@ -64,7 +64,7 @@ export function Perspective({ state, practice }: { state: AppState; practice: bo
         <div className="perspective-receipts">
           {recent.map(item => {
             const mission = getMissionVersion(item.missionId, recordRoadmapVersion(item));
-            return <a key={item.id} className="perspective-receipt" href={`#/evidence/${item.id}`}>
+            return <a key={item.id} className={`perspective-receipt ${mission.color}`} href={`#/evidence/${item.id}`}>
               <span className="perspective-receipt-meta">{mission.name} / v{recordRoadmapVersion(item)}</span>
               <h3>{item.title}</h3>
               <p>{item.summary}</p>
@@ -82,7 +82,7 @@ export function Perspective({ state, practice }: { state: AppState; practice: bo
       <a className="text-link" href="#/evidence">Open saved work<ArrowRight size={15} /></a>
     </section>
 
-    <section className="perspective-next" aria-labelledby="perspective-next-title">
+    <section className="perspective-next violet" aria-labelledby="perspective-next-title">
       <span className="eyebrow">MAKE THE NEXT ATTEMPT WORKABLE</span>
       <h2 id="perspective-next-title">You do not have to fix your whole life tonight.</h2>
       <p>Choose one concrete action. Notice what happens. Save what you learned, including what did not work. Adjust before trying again.</p>

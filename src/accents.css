@@ -1,0 +1,92 @@
+/* Content identity uses the full palette; status colors and focus cues keep their existing meaning. */
+:root[data-theme] .sidebar .nav-item > svg { color: var(--tone, var(--dsf-muted)); }
+:root[data-theme] .sidebar .nav-item.selected,
+:root[data-theme] .sidebar .nav-item.selected:hover {
+  color: var(--dsf-heading);
+  background: var(--wash);
+  box-shadow: inset 3px 0 var(--accent);
+}
+:root[data-theme] .nav-item.selected > svg,
+:root[data-theme] .nav-item.selected .nav-count { color: var(--tone); background: transparent; }
+:root[data-theme] .nav-item.selected .selected-dot { background: var(--accent); }
+:root[data-theme] .sidebar .nav-item:not(.selected):hover > svg { color: var(--tone, var(--dsf-heading)); }
+:root[data-theme] .page-content > .page-heading .eyebrow { color: var(--tone); }
+:root[data-theme] .page-content > .page-heading {
+  border-left: 4px solid var(--accent);
+  padding-left: 18px;
+}
+
+:root[data-theme] :is(.mission-card, .evidence-card, .pipeline-column) {
+  border-top: 4px solid var(--accent, var(--dsf-border));
+}
+:root[data-theme] .mission-card h3 { color: var(--tone); }
+:root[data-theme] .mission-card:hover { border-color: var(--accent); }
+:root[data-theme] .mission-card-bottom .icon-button { color: var(--tone); }
+:root[data-theme] .mission-tag { color: var(--tone); background: var(--wash); }
+:root[data-theme] .mission-subtitle { color: var(--tone); }
+:root[data-theme] .save-state-card { box-shadow: inset 5px 0 var(--accent); }
+:root[data-theme] .save-state-card .save-count { color: var(--tone); }
+:root[data-theme] .artifact-illustration {
+  background-color: var(--wash);
+  box-shadow: inset 0 -3px var(--accent);
+}
+:root[data-theme] .artifact-illustration > svg { color: var(--tone); }
+
+:root[data-theme] .overview-summary { overflow: hidden; }
+:root[data-theme] .overview-summary > a { background: var(--wash); border-top: 4px solid var(--accent); }
+:root[data-theme] .overview-summary strong { color: var(--tone); }
+:root[data-theme] :is(.overview-action, .overview-checkpoint, .plan-item, .perspective-receipt) {
+  box-shadow: inset 3px 0 var(--accent, transparent);
+}
+:root[data-theme] .overview-action .overview-row-content > span,
+:root[data-theme] .overview-checkpoint .overview-row-content h3,
+:root[data-theme] .overview-checkpoint > .text-link,
+:root[data-theme] .plan-item .text-link,
+:root[data-theme] .plan-item:not(.done) .plan-number { color: var(--tone); }
+:root[data-theme] .overview-list { overflow: hidden; }
+:root[data-theme] .focus-timer {
+  --timer-ink: color-mix(in srgb, var(--dsf-violet) var(--accent-ink-share), var(--dsf-heading));
+  border-top: 4px solid var(--dsf-violet);
+}
+:root[data-theme] .focus-timer .timer-time { color: var(--timer-ink); }
+
+:root[data-theme] .tree-mission { box-shadow: inset 4px 0 var(--accent); }
+:root[data-theme] .tree-mission strong,
+:root[data-theme] .tree-mission > svg { color: var(--tone); }
+:root[data-theme] .tree-mission.selected { border-color: var(--accent); }
+:root[data-theme] .mission-flowchart { border-top: 4px solid var(--accent); }
+:root[data-theme] .mission-flowchart > figcaption h3 { color: var(--tone); }
+:root[data-theme] .source-panel { box-shadow: inset 4px 0 var(--accent); }
+:root[data-theme] .source-heading > svg,
+:root[data-theme] .source-heading h3 { color: var(--tone); }
+.full-roadmap-stage { --stage-accent: var(--dsf-blue); }
+.full-roadmap-stage:nth-child(6n + 2) { --stage-accent: var(--dsf-violet); }
+.full-roadmap-stage:nth-child(6n + 3) { --stage-accent: var(--dsf-sun); }
+.full-roadmap-stage:nth-child(6n + 4) { --stage-accent: var(--dsf-sunset); }
+.full-roadmap-stage:nth-child(6n + 5) { --stage-accent: var(--dsf-magenta); }
+.full-roadmap-stage:nth-child(6n + 6) { --stage-accent: var(--dsf-error); }
+:root[data-theme] .full-roadmap-stage {
+  --stage-ink: color-mix(in srgb, var(--stage-accent) var(--accent-ink-share), var(--dsf-heading));
+  border-top: 5px solid var(--stage-accent);
+}
+:root[data-theme] .full-roadmap-stage-heading h3 { color: var(--stage-ink); }
+:root[data-theme] .full-roadmap-stage-heading { border-bottom: 1px solid var(--dsf-separator); margin-bottom: 24px; }
+
+:root[data-theme] .perspective-intro h1 span { color: var(--tone); }
+:root[data-theme] .perspective-intro .perspective-thesis { border-left-color: var(--dsf-violet); }
+:root[data-theme] .perspective-reminder { border-top: 5px solid var(--accent); }
+:root[data-theme] .perspective-number {
+  color: var(--tone); background: var(--wash); border: 1px solid var(--accent);
+  padding: 8px 11px; border-radius: 8px;
+}
+:root[data-theme] .perspective-reminder h3,
+:root[data-theme] .perspective-try > span,
+:root[data-theme] .perspective-source a { color: var(--tone); }
+:root[data-theme] .perspective-next { border-top: 4px solid var(--accent); background: var(--dsf-paper); }
+:root[data-theme] .perspective-next .eyebrow { color: var(--tone); }
+
+@media print {
+  :root[data-theme] :is(.mission-card, .evidence-card, .pipeline-column, .mission-flowchart, .perspective-reminder, .full-roadmap-stage) {
+    border-top-color: var(--dsf-border);
+  }
+}
