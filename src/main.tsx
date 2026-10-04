@@ -7,5 +7,6 @@ import './overview.css';
 import './tutorial/tutorial.css';
 import './roadmaps/roadmaps.css';
 import './source-panels.css';
+import './palette-transition.css';
 
 createRoot(document.getElementById('root')!).render(<App />);

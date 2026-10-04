@@ -314,7 +314,7 @@ test('a late sunrise request continues past the west horizon and returns from th
   await assertTheme(page, 'light');
 });
 
-test('theme motion stays within the tiny control instead of animating the page', async ({ page }) => {
+test('theme motion uses only the tiny control and one page fade', async ({ page }) => {
   await page.goto('./');
   await page.clock.install();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
@@ -325,11 +325,12 @@ test('theme motion stays within the tiny control instead of animating the page',
     return {
       local: target instanceof Element && !!target.closest('.theme-toggle'),
       property: animation instanceof CSSTransition ? animation.transitionProperty : null,
+      pageFade: target instanceof Element && target.matches('.palette-veil'),
     };
   }));
   expect(effects.length).toBeGreaterThan(0);
-  expect(effects.length).toBeLessThanOrEqual(6);
-  expect(effects.every(effect => effect.local && ['transform', 'opacity'].includes(effect.property ?? ''))).toBe(true);
+  expect(effects.length).toBeLessThanOrEqual(7);
+  expect(effects.every(effect => effect.pageFade || (effect.local && ['transform', 'opacity'].includes(effect.property ?? '')))).toBe(true);
 });
 
 test('sunny mode has a bright blue sky instead of the night palette', async ({ page }, testInfo) => {

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { nextSunAngle, readSunAngle, themeAngle } from './sunCycle';
 import type { OrbitTravel } from './sunCycle';
+import { createPaletteTransition } from './paletteTransition';
 
 export type Theme = 'dark' | 'light';
 export const THEME_STORAGE_KEY = 'careerhq.theme.v1';
@@ -13,6 +14,8 @@ export function useTheme(preview = false) {
   const travel = useRef<OrbitTravel>({ from: orbitAngle, to: orbitAngle });
   const [motion, setMotion] = useState<'sunrise' | 'sunset' | null>(null);
   const [notice, setNotice] = useState(document.documentElement.dataset.themeNotice ?? '');
+  const [palette] = useState(() => createPaletteTransition(document, THEME_COLORS, message =>
+    setNotice(previous => previous || message)));
   const timer = useRef<number | undefined>(undefined);
   const current = useRef(theme);
   const previewSnapshot = useRef<Theme | null>(null);
@@ -23,13 +26,14 @@ export function useTheme(preview = false) {
   }
 
   useLayoutEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme]);
-  }, [theme]);
+    palette.change(theme, document.documentElement.hasAttribute('data-theme-transition'));
+  }, [theme, palette]);
+  useEffect(() => () => palette.dispose(), [palette]);
 
   useLayoutEffect(() => {
     if (preview) {
       previewSnapshot.current = current.current;
+      palette.change(current.current, false);
       snapOrbit(current.current);
       setMotion(null);
       window.clearTimeout(timer.current);
@@ -48,6 +52,7 @@ export function useTheme(preview = false) {
     }
     previewSnapshot.current = null;
     current.current = restored;
+    palette.change(restored, false);
     snapOrbit(restored);
     setTheme(restored);
     setMotion(null);
@@ -70,6 +75,7 @@ export function useTheme(preview = false) {
       setNotice('');
       delete document.documentElement.dataset.themeNotice;
       current.current = next;
+      palette.change(next, false);
       snapOrbit(next);
       setTheme(next);
       setMotion(null);

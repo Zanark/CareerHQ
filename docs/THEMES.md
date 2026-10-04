@@ -11,9 +11,19 @@ quick clicks do not restart the motion or accumulate extra revolutions.
 
 The sun and moon share one compositor-friendly orbit with a 1.2-second easing
 curve. Sky, stars and two small daytime clouds fade locally; clouds also drift
-slightly. Only six transform/opacity effects are needed, not page-wide fades.
+slightly. Six transform/opacity effects animate the control.
 The pale-blue daytime sky, outlined yellow sun and soft daylight clouds use the
 same palette lineage. Night retains the deep-water sky with clouds hidden.
+
+The rest of the page changes through one composited opacity layer: a short
+350 ms cover in the deep-water color, followed by a 1050 ms gentle reveal.
+The palette switches only while fully covered, preventing a sudden light flash.
+A cutout leaves the sun/cloud scene visible, and the layer does not block clicks.
+Rapid requests are coalesced or queued rather than cutting a fade off abruptly.
+Reduced-motion settings skip the page fade. This uses standard Web Animations,
+not per-element color transitions or native snapshot transitions that block
+interaction on some browsers. Tutorial exit and external preference changes
+cancel any pending practice fade safely.
 
 The local preference uses `careerhq.theme.v1`, separately from career workspace
 data. Workspace export, import and reset do not include or change appearance.
