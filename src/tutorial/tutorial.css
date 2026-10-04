@@ -19,11 +19,13 @@
   border-radius: 14px;
   box-shadow: 0 12px 36px var(--dsf-shadow);
   padding: var(--tutorial-panel-padding-top) 22px 18px;
-  overflow: auto;
+  overflow: hidden;
   pointer-events: auto;
 }
 
 .tutorial-panel-floating { transition: none; }
+.tutorial-content { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
+.tutorial-head, .tutorial-progress-track, .tutorial-actions, .tutorial-footer-actions { flex-shrink: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .tutorial-panel-floating { transition: none; }
@@ -247,11 +249,21 @@
 }
 
 @media (max-width: 400px) {
+  .tutorial-actions .button.secondary svg { display: none; }
   .tutorial-panel-floating {
     left: 10px !important;
     right: 10px;
     width: auto !important;
   }
+}
+@media (max-height: 650px) {
+  .tutorial-panel-mobile .tutorial-footer-actions { display: none; }
+}
+@media (max-height: 450px) {
+  .tutorial-panel:not(.tutorial-map-guide) { overflow: auto; }
+  .tutorial-panel-mobile { max-height: calc(100dvh - 20px) !important; }
+  .tutorial-content { min-height: 80px; }
+  .tutorial-footer-actions { display: none; }
 }
 
 .tutorial-cues, .tutorial-cues * { pointer-events: none; }

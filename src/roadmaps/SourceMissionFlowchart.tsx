@@ -51,7 +51,7 @@ export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }
       <ol>{stages.map(stage => <li key={stage.id}><button type="button" aria-pressed={selected?.id === stage.id} onClick={() => setSelection(stage.id)}>{stage.title}<small>{stage.optional ? 'Optional reference; not a prerequisite' : stage.checkpointIds.length ? `${stage.checkpointIds.length} tracked ${stage.checkpointIds.length === 1 ? 'node' : 'nodes'}` : 'Reference / planning material only'}</small></button></li>)}</ol>
     </details>
     {selected && <>
-      <div className="source-stage-heading"><label>Roadmap stage<select aria-label="Roadmap stage" value={selected.id} onChange={event => setSelection(event.target.value)}>{stages.map(stage => <option value={stage.id} key={stage.id}>{stage.title}{stage.optional ? ' (optional)' : ''}</option>)}</select></label>{currentStage && <button className="button secondary" onClick={() => setSelection(null)}>Current stage</button>}</div>
+      <div className="source-stage-heading"><label>Roadmap stage<select data-tour="roadmap-stage" aria-label="Roadmap stage" value={selected.id} onChange={event => setSelection(event.target.value)}>{stages.map(stage => <option value={stage.id} key={stage.id}>{stage.title}{stage.optional ? ' (optional)' : ''}</option>)}</select></label>{currentStage && <button className="button secondary" onClick={() => setSelection(null)}>Current stage</button>}</div>
       <p className="source-stage-description">{selected.summary}{selected.optional && <Badge>Optional</Badge>}</p>
       {checkpoints.length ? <Diagram edges={edges} className="flow-canvas source-flow-canvas">
         <div className="flow-terminal" data-diagram-node="stage-start">{selected.title}</div>
@@ -67,7 +67,7 @@ export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }
         })}</div>)}
         <div className={`flow-terminal ${checkpoints.every(checkpoint => completed.has(checkpoint.id)) ? 'complete' : ''}`} data-diagram-node="stage-finish">All tracked nodes in this stage complete</div>
       </Diagram> : <div className="source-stage-tree"><ol>{selected.topics.map(topic => <li key={topic}><div className="source-reference-topic">{topic}</div></li>)}</ol><p className="source-privacy">These are reference topics or planning estimates, not invented checkpoint IDs or recorded achievements.</p></div>}
-      {checkpoints.length > 0 && <details className="source-stage-topics"><summary>Topics and completion criteria in this stage</summary>{checkpoints.map(checkpoint => <section key={checkpoint.id}><h4>{checkpoint.title}</h4><ul>{checkpoint.topics?.map(topic => <li key={topic}>{topic}</li>)}</ul><strong className="small">Completion evidence</strong><ul>{checkpoint.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul></section>)}</details>}
+      {checkpoints.length > 0 && <details className="source-stage-topics" data-tour="roadmap-stage-topics"><summary>Topics and completion criteria in this stage</summary>{checkpoints.map(checkpoint => <section key={checkpoint.id}><h4>{checkpoint.title}</h4><ul>{checkpoint.topics?.map(topic => <li key={topic}>{topic}</li>)}</ul><strong className="small">Completion evidence</strong><ul>{checkpoint.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul></section>)}</details>}
     </>}
     {checkpoints.length > 0 && <details className="source-flow-rule"><summary>How checkpoint completion works</summary>
       <Diagram edges={completionEdges} className="flow-canvas">

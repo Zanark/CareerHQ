@@ -85,6 +85,9 @@ test('overview stays bounded when all configured missions are active', async ({ 
 for (const width of [1440, 390, 320]) {
   test(`complete click-by-click tutorial preserves real data at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(180_000);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } });
+    });
     await page.setViewportSize({ width, height: width < 768 ? 844 : 1000 });
     await page.goto('./#/settings');
     await page.getByLabel('What are you working toward?').fill('Existing real-workspace fixture, not tutorial progress.');
@@ -152,10 +155,65 @@ for (const width of [1440, 390, 320]) {
           await page.locator('[data-tour="blocker-input"]').fill('');
           await page.locator('[data-tour="blocker-submit"]').click();
           break;
-        case 'pipeline-add':
+        case 'source-select-fabric':
+          await page.locator('[data-tour="source-mission"]').selectOption('fabric');
+          break;
+        case 'source-preview':
+          await page.locator('[data-tour="source-preview"] > summary').click();
+          break;
+        case 'source-adopt':
+          await confirm(page, () => page.locator('[data-tour="source-adopt"]').click());
+          break;
+        case 'source-archive':
+          await page.locator('[data-tour="source-archive"] > summary').click();
+          break;
+        case 'source-stage': {
+          const select = page.locator('[data-tour="roadmap-stage"]');
+          await select.selectOption({ index: await select.locator('option').count() - 1 });
+          break;
+        }
+
+        case 'source-topics':
+          await page.locator('[data-tour="roadmap-stage-topics"] > summary').click();
+          break;
+        case 'source-optional': {
+          await page.locator('[data-tour="source-mission"]').selectOption('credential');
+          const select = page.locator('[data-tour="roadmap-stage"]');
+          const optional = select.locator('option').filter({ hasText: '(optional)' }).first();
+          await select.selectOption((await optional.getAttribute('value'))!);
+          break;
+        }
+        case 'source-forecast':
+          await page.locator('[data-tour="source-mission"]').selectOption('algorithm');
+          break;
+        case 'full-map-open':
+          await page.locator('[data-tour="full-roadmap-open"]').click();
+          await expect(page.locator('.tutorial-map-guided')).toBeVisible();
+          break;
+        case 'full-map-zoom':
+          await page.locator('[data-tour="full-map-zoom-in"]').click();
+          break;
+        case 'full-map-inspect':
+          await page.locator('[data-tour="full-map-last-node"]').click();
+          break;
+        case 'full-map-current':
+          await page.locator('[data-tour="full-map-current"]').click();
+          break;
+        case 'full-map-fit':
+          await page.locator('[data-tour="full-map-fit"]').click();
+          break;
+        case 'full-map-close':
+          await page.locator('[data-tour="dialog-close"]').click();
+          break;
+        case 'pipeline-open':
           await page.locator('[data-tour="pipeline-add"]').click();
-          await expect(page.locator('dialog[open] .tutorial-panel')).toBeVisible();
+          break;
+        case 'pipeline-details':
           await page.locator('[data-tour="opportunity-example"]').click();
+          await page.locator('[data-tour="application-details"] > summary').click();
+          break;
+        case 'pipeline-add':
+          await expect(page.locator('dialog[open] .tutorial-panel')).toBeVisible();
           await page.locator('[data-tour="opportunity-submit"]').click();
           break;
         case 'pipeline-stage':
@@ -165,9 +223,22 @@ for (const width of [1440, 390, 320]) {
           await page.locator('[data-tour="pipeline-table"]').click();
           await expect(page.getByRole('table')).toBeVisible();
           break;
+        case 'pipeline-metrics':
+          await page.locator('[data-tour="application-metrics"] > summary').click();
+          await expect(page.locator('[data-tour="application-metrics"]')).toContainText('Tutorial variant');
+          break;
+        case 'review-filter-work':
+          await page.locator('[data-tour="saved-work-type"]').selectOption('code');
+          break;
         case 'review-recall':
           await page.locator('[data-tour="recall-add"]').first().click();
           await page.getByRole('dialog', { name: 'Record recall', exact: true }).getByRole('radio', { name: 'Partial', exact: true }).check();
+          await page.locator('[data-tour="recall-save"]').click();
+          break;
+        case 'review-independent':
+          await page.locator('[data-tour="recall-add"]').first().click();
+          await page.locator('[data-tour="recall-independent-choice"]').check();
+          for (const checkbox of await page.locator('[data-tour="recall-checks"] input[data-required="true"]').all()) await checkbox.check();
           await page.locator('[data-tour="recall-save"]').click();
           break;
         case 'freelance-add':
@@ -177,6 +248,15 @@ for (const width of [1440, 390, 320]) {
           break;
         case 'freelance-classify':
           await page.locator('[data-tour="freelance-verdict"]').first().selectOption('Apply Now');
+          break;
+        case 'freelance-research-examples':
+          await page.locator('[data-tour="freelance-research-examples"]').click();
+          break;
+        case 'freelance-brief':
+          for (const checkbox of (await page.locator('[data-tour="freelance-select"]').all()).slice(0, 5)) await checkbox.check();
+          break;
+        case 'freelance-copy':
+          await page.locator('[data-tour="freelance-copy"]').click();
           break;
         case 'readiness-coding':
           await page.locator('[data-tour="readiness-coding"]').getByRole('button', { name: 'Building', exact: true }).click();
@@ -201,8 +281,13 @@ for (const width of [1440, 390, 320]) {
           expect(sample.missions.pattern.completedCheckpointIds).toHaveLength(1);
           expect(sample.evidence).toHaveLength(2);
           expect(sample.opportunities[0].stage).toBe('Recruiter');
-          expect(sample.freelanceOpportunities).toHaveLength(1);
-          expect(sample.recalls).toHaveLength(1);
+          expect(sample.opportunities[0]).toMatchObject({ lane: 'ats', resumeVariant: 'Tutorial variant', effortMinutes: 5, frictionScore: 2 });
+          expect(sample.freelanceOpportunities).toHaveLength(10);
+          expect(sample.recalls).toHaveLength(2);
+          expect(sample.archives).toHaveLength(1);
+          expect(sample.archives[0].missionId).toBe('fabric');
+          expect(sample.missions.fabric.roadmapVersion).toBe('2.0.0');
+          expect(sample.missions.fabric.completedCheckpointIds).toEqual([]);
           expect(sample.objective).toBe('Temporary tutorial goal only.');
           break;
         }

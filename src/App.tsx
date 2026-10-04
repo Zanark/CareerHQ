@@ -19,6 +19,7 @@ import { Overview } from './Overview';
 import { usePracticeWorkspace } from './usePracticeWorkspace';
 import type { WorkspaceModel } from './useWorkspace';
 import { Tutorial } from './tutorial/Tutorial';
+import type { TutorialCommand } from './tutorial/types';
 import { RoadmapPage } from './roadmaps/RoadmapPage';
 import { MissionFlowchart } from './roadmaps/MissionFlowchart';
 import { FullMissionRoadmap } from './roadmaps/FullMissionRoadmap';
@@ -112,8 +113,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     setQuery('');
     navigate(target);
   }, []);
-  const commandTutorial = useCallback((command: 'open-evidence' | 'open-opportunity' | 'close-dialogs') => {
-    setFullRoadmapOpen(false);
+  const commandTutorial = useCallback((command: TutorialCommand) => {
+    setFullRoadmapOpen(command === 'open-roadmap');
     if (command === 'open-evidence') { setOpportunityDialog(false); setEvidenceDialog({ missionId: 'pattern' }); }
     else if (command === 'open-opportunity') { setEvidenceDialog(null); setOpportunityDialog(true); }
     else { setEvidenceDialog(null); setOpportunityDialog(false); }
@@ -234,8 +235,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'pipeline' && <PipelinePage state={state} onAdd={() => setOpportunityDialog(true)} commit={commit} notify={setToast} />}
         {page === 'readiness' && <ReadinessPage state={state} commit={commit} />}
         {page === 'freelance' && <FreelancePage state={state} commit={commit} practice={practice} />}
-        {page === 'recall' && <RecallPage state={state} commit={commit} />}
-        {page === 'sources' && <OperationSourcesPage state={state} commit={commit} />}
+        {page === 'recall' && <RecallPage state={state} commit={commit} practice={practice} />}
+        {page === 'sources' && <OperationSourcesPage key={selected?.id ?? 'pattern'} initialSelection={selected?.id} state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
         {(!['hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
@@ -246,7 +247,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     {evidenceDialog && <EvidenceDialog state={state} initialMission={evidenceDialog.missionId} action={evidenceDialog.action} practice={practice} onClose={() => setEvidenceDialog(null)} onSave={input => { const ok = commit(current => recordEvidence(current, input)); if (ok) setToast(input.advance ? 'Checkpoint completed. Next checkpoint unlocked.' : practice ? 'Practice example saved in the tutorial only.' : 'Progress saved.'); return ok; }} />}
     {opportunityDialog && <OpportunityDialog practice={practice} onClose={() => setOpportunityDialog(false)} onSave={opportunity => change('Opportunity added', current => ({ ...current, opportunities: [...current.opportunities, opportunity] }), 'escape')} />}
     {fullRoadmapOpen && page === 'mission' && selected && <FullMissionRoadmap key={`${selected.id}-${selected.roadmapVersion}`} mission={selected} state={state} onClose={closeFullRoadmap} />}
-    {practice && <Tutorial state={state} route={route} signals={{ evidenceOpen: !!evidenceDialog, opportunityOpen: opportunityDialog, focusRunning: focusSession.running, exportCount, importCount, searchQuery: query, theme: appearance.theme }} onNavigate={navigateTutorial} onCommand={commandTutorial} onExit={onExitTutorial} onRestart={onStartTutorial} />}
+    {practice && <Tutorial state={state} route={route} signals={{ evidenceOpen: !!evidenceDialog, opportunityOpen: opportunityDialog, fullRoadmapOpen, focusRunning: focusSession.running, exportCount, importCount, searchQuery: query, theme: appearance.theme }} onNavigate={navigateTutorial} onCommand={commandTutorial} onExit={onExitTutorial} onRestart={onStartTutorial} />}
   </div>;
 }
 
@@ -377,7 +378,7 @@ function EvidencePage({ state, selectedId, onAdd }: { state: AppState; selectedI
     <div className="filter-row evidence-filters" data-tour="saved-work-filter">
       <div className="input-with-icon"><Search size={16} /><input aria-label="Search evidence" placeholder="Search saved work..." value={query} onChange={event => setQuery(event.target.value)} /></div>
       <select value={filter} aria-label="Filter evidence by mission" onChange={event => setFilter(event.target.value)}><option value="all">All missions</option>{missions.filter(mission => !mission.planned).map(mission => <option key={mission.id} value={mission.id}>{mission.name}</option>)}</select>
-      <select aria-label="Filter evidence by type" value={kind} onChange={event => setKind(event.target.value)}><option value="all">All artifact types</option>{Object.entries(kindLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+      <select data-tour="saved-work-type" aria-label="Filter evidence by type" value={kind} onChange={event => setKind(event.target.value)}><option value="all">All artifact types</option>{Object.entries(kindLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
     </div>
     {evidence.length ? <div className="evidence-grid">{evidence.map(item => <EvidenceCard key={item.id} item={item} highlighted={item.id === selectedId} />)}</div> : <Empty title={state.evidence.length ? 'No work matches those filters.' : 'No saved work yet.'} icon="file">{state.evidence.length ? 'Try another mission, type, or search term.' : 'Use Add evidence to record a note, explanation, diagram, or link to code.'}</Empty>}
   </>;

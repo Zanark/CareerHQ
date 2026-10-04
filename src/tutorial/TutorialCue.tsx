@@ -49,7 +49,7 @@ export function TutorialCue({ target, panel, anchorRect }: {
         setLayout(null);
         return;
       }
-      const clickable = target.matches('button:not(:disabled),[role="button"],a[href],input[type="submit"]:not(:disabled)');
+      const clickable = target.matches('button:not(:disabled),[role="button"],a[href],summary,input[type="submit"]:not(:disabled),input[type="checkbox"]:not(:disabled),input[type="radio"]:not(:disabled)');
       const padding = clickable || target.matches('input,select,textarea') ? CONTROL_PADDING : SECTION_PADDING;
       const left = Math.max(clipLeft, rect.left - padding);
       const top = Math.max(clipTop, rect.top - padding);

@@ -71,6 +71,10 @@ export function OpportunityDialog({ onSave, onClose, practice = false }: { onSav
   const [error, setError] = useState('');
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
+  const [lane, setLane] = useState('');
+  const [resumeVariant, setResumeVariant] = useState('');
+  const [effort, setEffort] = useState('');
+  const [friction, setFriction] = useState('');
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -88,14 +92,17 @@ export function OpportunityDialog({ onSave, onClose, practice = false }: { onSav
     else setError('Could not save this opportunity. Check the form values and the workspace warning.');
   }
   return <Modal title="Add opportunity" subtitle="Track a role and its next step." onClose={onClose}><form className="stack-form" onSubmit={submit} data-tour="opportunity-form">
-    {practice && <button type="button" className="button secondary practice-example" data-tour="opportunity-example" onClick={() => { setCompany('Example Systems (tutorial)'); setRole('Platform Engineer (practice)'); }}>Fill example</button>}
+    {practice && <button type="button" className="button secondary practice-example" data-tour="opportunity-example" onClick={() => {
+      setCompany('Example Systems (tutorial)'); setRole('Platform Engineer (practice)');
+      setLane('ats'); setResumeVariant('Tutorial variant'); setEffort('5'); setFriction('2');
+    }}>Fill example</button>}
     <label>Company<input name="company" value={company} onChange={event => setCompany(event.target.value)} required maxLength={100} placeholder="Company name" /></label>
     <label>Role<input name="role" value={role} onChange={event => setRole(event.target.value)} required maxLength={150} placeholder="e.g. Platform Engineer" /></label>
     <label>Job listing <span className="optional">(optional)</span><input name="url" type="url" placeholder="https://..." maxLength={2000} /></label>
     <label>Next step <span className="optional">(optional)</span><textarea name="notes" rows={3} maxLength={1000} placeholder="One small thing to move this forward" /></label>
-    <details className="application-details"><summary>Application details (optional)</summary>
-      <div className="form-row"><label>Application lane<select name="lane" defaultValue=""><option value="">Not recorded</option><option value="easy-apply">Easy Apply</option><option value="ats">ATS / longer form</option><option value="referral">Referral / outreach</option><option value="other">Other</option></select></label><label>Resume variant<input name="resumeVariant" maxLength={120} placeholder="e.g. Backend / Platform" /></label></div>
-      <div className="form-row"><label>Time spent (minutes)<input name="effortMinutes" type="number" min={0} max={1440} step={1} /></label><label>Friction score (1-10)<input name="frictionScore" type="number" min={1} max={10} step={1} /></label></div>
+    <details className="application-details" data-tour="application-details"><summary>Application details (optional)</summary>
+      <div className="form-row"><label>Application lane<select name="lane" value={lane} onChange={event => setLane(event.target.value)}><option value="">Not recorded</option><option value="easy-apply">Easy Apply</option><option value="ats">ATS / longer form</option><option value="referral">Referral / outreach</option><option value="other">Other</option></select></label><label>Resume variant<input name="resumeVariant" value={resumeVariant} onChange={event => setResumeVariant(event.target.value)} maxLength={120} placeholder="e.g. Backend / Platform" /></label></div>
+      <div className="form-row"><label>Time spent (minutes)<input name="effortMinutes" value={effort} onChange={event => setEffort(event.target.value)} type="number" min={0} max={1440} step={1} /></label><label>Friction score (1-10)<input name="frictionScore" value={friction} onChange={event => setFriction(event.target.value)} type="number" min={1} max={10} step={1} /></label></div>
       <p className="muted small">Your own observations, not an automated fit or readiness score.</p>
     </details>
     <p className="privacy-note"><LockKeyhole size={14} />{practice ? 'Practice only. Discarded when you exit the tutorial.' : 'Local only. Never add passwords or confidential information.'}</p>

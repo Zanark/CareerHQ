@@ -71,8 +71,9 @@ Use **Current checkpoint** for a readable close-up, **+ / -** or **100%** to cha
 and drag, scroll or swipe to explore. Select a node for its action and completion criteria;
 this only inspects it and never changes the current checkpoint. **Escape** or **Close dialog**
 returns to the mission. Reduced-motion settings keep the highlight static.
-During tutorial practice, a compact **Back to tutorial** bar temporarily replaces the
-coach so it cannot cover the full map. Closing the map returns to the same tutorial step.
+During the **Full mission roadmap** lesson, a compact coach guides the map controls.
+If you open the map from another tutorial chapter, a **Back to tutorial** bar pauses
+that lesson without changing its step. Both layouts leave room for the map.
 
 Optional and forecast stages remain visible without invented progress. A completed track
 has no current-step glow. Existing v1 workspaces still show their actual v1 roadmap here;
@@ -93,8 +94,24 @@ The coach also uses padded, bordered panels; the overlay never changes the targe
 
 The tutorial covers actual controls using temporary data. Its files are named
 `careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the
-mission subjects. The roadmap-adoption step is explanatory rather than a hands-on
-adoption exercise.
+mission subjects. A deliberately older **practice** Service Fabric tracker lets you
+preview, adopt and inspect an archived roadmap without changing your real version.
+
+Use the **Chapter** menu to work on one area at a time:
+
+| Chapter | What you practice |
+| --- | --- |
+| PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
+| Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
+| Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
+| Opportunities | Optional application fields, saving a lead, moving its stage and finding the saved metadata |
+| Freelance research | A ten-lead fictional research set, filters, selecting five rows and copying a review brief |
+| Settings & backup / How data is stored | Example export/import, replacement warnings, and the real hosted-site device-transfer routine |
+
+Practice-only example buttons make independent chapter visits usable. They add labeled
+fictional records only when you click them. They do not create real applications, verify
+mastery, or complete source milestones. Clipboard access is optional: if the browser blocks
+Copy brief, use the text preview and Skip step rather than treating a failed copy as success.
 
 ### A normal working session
 

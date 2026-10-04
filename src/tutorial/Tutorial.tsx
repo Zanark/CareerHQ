@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, LogOut, RotateCcw, SkipForward, X } from 'lucide-react';
-import type { TutorialProps } from './types';
+import type { TutorialCommand, TutorialProps } from './types';
 import { chapters, steps } from './steps';
 import type { TutorialStep } from './steps';
 import { CUE_VIEWPORT_MARGIN, SECTION_PADDING, TutorialCue } from './TutorialCue';
@@ -15,6 +15,26 @@ function findOpenDialog(): HTMLElement | null {
 
 function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): HTMLElement | null {
   if (!targets || targets.length === 0) return null;
+  if (targets.includes('source-optional')) {
+    const mission = document.querySelector<HTMLSelectElement>('[data-tour="source-mission"]');
+    return mission?.value === 'credential' ? document.querySelector('[data-tour="roadmap-stage"]') : mission;
+  }
+  if (targets.includes('freelance-select')) {
+    return document.querySelector('[data-tour="freelance-select"]:not(:checked):not(:disabled)') ??
+      document.querySelector('[data-tour="freelance-copy"]');
+  }
+  if (targets.includes('application-details') && dialog) {
+    const company = dialog.querySelector<HTMLInputElement>('[name="company"]')?.value.trim();
+    const lane = dialog.querySelector<HTMLSelectElement>('[name="lane"]')?.value;
+    return company && lane ? dialog.querySelector('[data-tour="application-details"] > summary') : dialog.querySelector('[data-tour="opportunity-example"]');
+  }
+  if (targets.includes('recall-independent')) {
+    if (!dialog) return document.querySelector('[data-tour="recall-add"]');
+    const choice = dialog.querySelector<HTMLInputElement>('[data-tour="recall-independent-choice"]');
+    if (!choice?.checked) return choice;
+    return dialog.querySelector('[data-tour="recall-checks"] input[data-required="true"]:not(:checked)') ??
+      dialog.querySelector('[data-tour="recall-save"]');
+  }
   if (dialog && (targets.includes('evidence-example') || targets.includes('checkpoint-complete'))) {
     const title = dialog.querySelector<HTMLInputElement>('[name="title"]')?.value.trim() ?? '';
     const summary = dialog.querySelector<HTMLTextAreaElement>('[name="summary"]')?.value.trim() ?? '';
@@ -50,12 +70,12 @@ function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): 
   }
   for (const name of targets) {
     const scoped = dialog?.querySelector<HTMLElement>(`[data-tour="${name}"]`);
-    if (scoped) return scoped;
+    if (scoped) return scoped instanceof HTMLDetailsElement ? scoped.querySelector('summary') : scoped;
   }
   if (dialog) return null;
   for (const name of targets) {
     const global = document.querySelector<HTMLElement>(`[data-tour="${name}"]`);
-    if (global) return global;
+    if (global) return global instanceof HTMLDetailsElement ? global.querySelector('summary') : global;
   }
   return null;
 }
@@ -130,6 +150,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const enterThemeRef = useRef(signals.theme);
   const rafRef = useRef(0);
   const pendingRef = useRef(false);
+  const pendingCommand = useRef<{ route: string; stepId: string; command: TutorialCommand } | null>(null);
 
   const step: TutorialStep = steps[stepIndex];
   const total = steps.length;
@@ -140,18 +161,32 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   // Navigate / invoke command exactly once when the step changes.
   useEffect(() => {
     enterThemeRef.current = signals.theme;
-    if (stepRoute !== route) onNavigate(stepRoute);
-    if (step.command) onCommand(step.command);
+    pendingCommand.current = null;
+    if (stepRoute !== route) {
+      if (step.command) pendingCommand.current = { route: stepRoute, stepId: step.id, command: step.command };
+      onNavigate(stepRoute);
+    } else if (step.command) onCommand(step.command);
+    panelRef.current?.scrollTo({ top: 0 });
+    panelRef.current?.querySelector('.tutorial-content, .tutorial-map-copy')?.scrollTo({ top: 0 });
     setCollapsed(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex]);
 
-  // Evaluate the current step's completion condition.
   useEffect(() => {
-    if (step.kind !== 'action' || !step.check || achieved.has(step.id)) return;
-    const ok = step.check({ state, signals, route, enterTheme: enterThemeRef.current });
+    const pending = pendingCommand.current;
+    if (pending?.route === route && pending.stepId === step.id) {
+      pendingCommand.current = null;
+      onCommand(pending.command);
+    }
+  }, [route, step.id, onCommand]);
+
+  const checkStep = useCallback(() => {
+    if (step.kind !== 'action' || (!step.check && !step.checkUi) || achieved.has(step.id)) return;
+    const ok = (!step.check || step.check({ state, signals, route, enterTheme: enterThemeRef.current })) &&
+      (!step.checkUi || step.checkUi(document));
     if (ok) setAchieved((prev) => (prev.has(step.id) ? prev : new Set(prev).add(step.id)));
   }, [step, state, signals, route, achieved]);
+  useEffect(checkStep, [checkStep]);
 
   const scan = useCallback(() => {
     const dialog = findOpenDialog();
@@ -171,7 +206,8 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
       setTargetMissing(Boolean(step.targets && step.targets.length > 0));
     }
     setMobile(window.innerWidth <= MOBILE_WIDTH);
-  }, [step]);
+    checkStep();
+  }, [step, checkStep]);
 
   const schedule = useCallback(() => {
     if (pendingRef.current) return;
@@ -242,6 +278,16 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   useEffect(() => {
     const target = targetElement;
     if (!target || nextCue) return;
+    const map = target.closest('.full-roadmap-modal')?.querySelector<HTMLElement>('.full-roadmap-viewport');
+    if (map) {
+      if (map !== target && map.contains(target)) {
+        const surface = map.getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
+        map.scrollTo({ left: map.scrollLeft + rect.left + rect.width / 2 - surface.left - map.clientWidth / 2,
+          top: map.scrollTop + rect.top + rect.height / 2 - surface.top - map.clientHeight / 2 });
+      }
+      return;
+    }
     const coachHeight = window.innerWidth <= MOBILE_WIDTH ? (panelRef.current?.getBoundingClientRect().height ?? 0) + 32 : 0;
     const availableHeight = window.innerHeight - coachHeight;
     const fits = target.getBoundingClientRect().height + 2 * (SECTION_PADDING + CUE_VIEWPORT_MARGIN) <= availableHeight;
@@ -271,8 +317,10 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
     if (start !== undefined) goTo(start);
   }
   function showStep() {
-    if (stepRoute !== route) onNavigate(stepRoute);
-    if (step.command) onCommand(step.command);
+    if (stepRoute !== route) {
+      pendingCommand.current = step.command ? { route: stepRoute, stepId: step.id, command: step.command } : null;
+      onNavigate(stepRoute);
+    } else if (step.command) onCommand(step.command);
     else if (dialogHost) onCommand('close-dialogs');
     schedule();
   }
@@ -291,6 +339,21 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const placement = computePlacement(mobile ? null : targetRect, panelSize, mobile);
   const host = dialogHost ?? document.body;
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
+
+  if (dialogHost?.classList.contains('full-roadmap-modal') && step.chapter === 'full-map') return createPortal(
+    <>
+      <TutorialCue target={satisfied ? nextRef.current : targetElement} panel={panelRef.current} anchorRect={targetRect} />
+      <div ref={panelRef} data-step={step.id} className="tutorial-panel tutorial-map-guide tutorial-map-guided" role="region"
+        aria-label={`Tutorial step ${stepIndex + 1} of ${total}: ${step.title}`}>
+        <div className="tutorial-map-copy"><strong>{step.title}</strong><p>{satisfied && step.kind === 'action' ? 'Done. Click Next to continue.' : step.body}</p></div>
+        <div className="tutorial-map-actions">
+          <button type="button" className="button secondary" onClick={back}>Back</button>
+          <button type="button" className="button secondary" onClick={skip}>Skip step</button>
+          <button ref={nextRef} data-tutorial-next="next" type="button" className="button primary" disabled={!satisfied} onClick={next}>Next<ArrowRight size={14} /></button>
+          <button type="button" className="icon-button" aria-label="Exit tutorial" onClick={onExit}><X size={18} /></button>
+        </div>
+      </div>
+    </>, dialogHost);
 
   if (dialogHost?.classList.contains('full-roadmap-modal')) return createPortal(
     <div ref={panelRef} data-step={step.id} className="tutorial-panel tutorial-map-guide" role="region" aria-label="Tutorial roadmap practice">
@@ -328,6 +391,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
       <div className="tutorial-progress-track" aria-hidden="true"><div className="tutorial-progress-fill" style={{ width: `${progressPct}%` }} /></div>
       {!collapsed && (
         <>
+          <div className="tutorial-content">
           <label className="tutorial-chapter-nav">Chapter
             <select aria-label="Tutorial chapter" value={step.chapter} onChange={event => jumpToChapter(event.target.value)}>
               {chapters.map(chapter => <option key={chapter.id} value={chapter.id}>{chapter.title}</option>)}
@@ -346,6 +410,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
               <button type="button" className="button secondary" onClick={showStep}>Show this step</button>
             </div>
           )}
+          </div>
           <div className="tutorial-actions">
             <button type="button" className="button secondary" onClick={back} disabled={stepIndex === 0}>
               <ArrowLeft size={14} /> Back

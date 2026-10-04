@@ -67,7 +67,7 @@ export function Modal({ title, subtitle, children, onClose, wide = false, classN
     };
   }, [restoreFocus]);
   return <dialog ref={ref} className={`modal ${wide ? 'wide' : ''} ${className}`} aria-labelledby="dialog-title" onCancel={event => { event.preventDefault(); onClose(); }}>
-    <div className="modal-header"><div><span className="eyebrow">{eyebrow}</span><h2 id="dialog-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></div>
+    <div className="modal-header"><div><span className="eyebrow">{eyebrow}</span><h2 id="dialog-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" data-tour="dialog-close" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></div>
     {children}
   </dialog>;
 }

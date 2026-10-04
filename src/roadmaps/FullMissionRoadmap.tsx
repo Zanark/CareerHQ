@@ -149,20 +149,21 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
   return <Modal title={`${mission.name} full roadmap`} subtitle={subtitle}
     eyebrow={mission.operation} className="full-roadmap-modal" onClose={onClose} restoreFocus>
     <div className="full-roadmap-toolbar">
-      <button className="button secondary" onClick={() => changeZoom(null, 'fit')} aria-pressed={view.zoom === null}><Maximize2 size={17} />Fit all</button>
-      <button className="button primary" disabled={!current} onClick={() => {
+      <button className="button secondary" data-tour="full-map-fit" onClick={() => changeZoom(null, 'fit')} aria-pressed={view.zoom === null}><Maximize2 size={17} />Fit all</button>
+      <button className="button primary" data-tour="full-map-current" disabled={!current} onClick={() => {
         setSelectedId(current?.id);
+        setDetailsOpen(false);
         changeZoom(1, 'current');
       }}><Focus size={17} />Current checkpoint</button>
       <div className="full-roadmap-zoom" role="group" aria-label="Roadmap zoom">
-        <button className="icon-button" aria-label="Zoom out" disabled={zoom <= Math.min(fit, 0.25)} onClick={() => changeZoom(zoom / 1.5)}><Minus size={18} /></button>
+        <button className="icon-button" data-tour="full-map-zoom-out" aria-label="Zoom out" disabled={zoom <= Math.min(fit, 0.25)} onClick={() => changeZoom(zoom / 1.5)}><Minus size={18} /></button>
         <output aria-label="Roadmap zoom level">{Math.round(zoom * 100)}%</output>
-        <button className="icon-button" aria-label="Zoom in" disabled={zoom >= 2} onClick={() => changeZoom(zoom * 1.5)}><Plus size={18} /></button>
-        <button className="text-button" onClick={() => changeZoom(1)}>100%</button>
+        <button className="icon-button" data-tour="full-map-zoom-in" aria-label="Zoom in" disabled={zoom >= 2} onClick={() => changeZoom(zoom * 1.5)}><Plus size={18} /></button>
+        <button className="text-button" data-tour="full-map-readable" onClick={() => changeZoom(1)}>100%</button>
       </div>
     </div>
     <p className="full-roadmap-hint" id="full-roadmap-help">Zoom to read. Drag or scroll to explore. Viewing never changes progress.</p>
-    <div className={`full-roadmap-viewport ${dragging ? 'is-dragging' : ''}`} ref={viewport}
+    <div className={`full-roadmap-viewport ${dragging ? 'is-dragging' : ''}`} ref={viewport} data-tour="full-map-canvas"
       role="region" aria-label="Full roadmap canvas" aria-describedby="full-roadmap-help" tabIndex={0}
       onPointerDown={beginPan} onPointerUp={endPan} onPointerCancel={endPan}
       onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
@@ -189,6 +190,7 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
                       return <button key={checkpoint.id} ref={status === 'current' ? currentNode : undefined}
                         className={`full-roadmap-node ${status}`} data-diagram-node={checkpoint.id}
                         data-full-checkpoint={checkpoint.id} data-full-current={status === 'current' ? 'true' : undefined}
+                        data-tour={checkpoint.id === mission.checkpoints.at(-1)?.id ? 'full-map-last-node' : undefined}
                         aria-current={status === 'current' ? 'step' : undefined} aria-pressed={selected?.id === checkpoint.id}
                         onClick={() => { setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
                         <span className="full-roadmap-state">{status === 'complete' ? <Check size={16} /> : status === 'current' ? <Flag size={16} /> : <LockKeyhole size={16} />}

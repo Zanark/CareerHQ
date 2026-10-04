@@ -1,5 +1,6 @@
 import type { AppState } from '../domain/types';
-import type { TutorialSignals } from './types';
+import type { TutorialCommand, TutorialSignals } from './types';
+import { fullMapSteps, sourceSteps } from './featureSteps';
 import type { Theme } from '../useTheme';
 
 export interface CheckContext {
@@ -22,9 +23,11 @@ export interface TutorialStep {
   /** Route to navigate to once, when this step becomes current. */
   route?: string;
   /** Command to invoke once, when this step becomes current (opens real UI, never submits data). */
-  command?: 'open-evidence' | 'open-opportunity' | 'close-dialogs';
+  command?: TutorialCommand;
   /** For action steps: condition that marks the step as demonstrated. Ignored for explain steps. */
   check?: (ctx: CheckContext) => boolean;
+  /** Read actual control state for actions that do not modify workspace records. */
+  checkUi?: (root: Document) => boolean;
 }
 
 export interface TutorialChapter {
@@ -40,6 +43,8 @@ export const chapters: TutorialChapter[] = [
   { id: 'evidence', title: 'Recording evidence' },
   { id: 'review', title: 'Review & roadmap' },
   { id: 'control', title: 'Mission control' },
+  { id: 'sources', title: 'PDFs & roadmap updates' },
+  { id: 'full-map', title: 'Full mission roadmap' },
   { id: 'pipeline', title: 'Opportunities' },
   { id: 'freelance', title: 'Freelance research' },
   { id: 'readiness', title: 'Readiness & interview mode' },
@@ -54,7 +59,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'welcome-intro', chapter: 'welcome', kind: 'explain',
     title: 'Welcome to the practice tutorial',
-    body: 'Follow the glowing border and pointing hand. Use the indicated control, then click Next when it lights up. This is temporary practice data; your real progress stays unchanged. Skip or exit whenever you need.',
+    body: 'Follow the glow and hand. Try the action, then click Next. Use Chapter to jump between features. This is temporary practice; your real progress stays untouched.',
   },
   // Overview
   {
@@ -121,7 +126,7 @@ export const steps: TutorialStep[] = [
     id: 'mission-roadmap-intro', chapter: 'mission', kind: 'explain',
     targets: ['mission-roadmap'],
     title: 'A mission roadmap',
-    body: 'Follow the connected nodes downward. The diamond explains the actual rule: evidence and confirmed criteria advance you; otherwise you practice again. The diagram itself does not change progress.',
+    body: 'Follow the connected nodes downward. Roadmap stage changes which part you inspect. Expand How checkpoint completion works for the evidence-and-criteria rule. Browsing the diagram never changes progress.',
   },
   {
     id: 'mission-full-roadmap', chapter: 'mission', kind: 'explain',
@@ -171,9 +176,21 @@ export const steps: TutorialStep[] = [
     body: 'Your practice notes and completion evidence appear here. Try the mission/type filters or search. This is not an encrypted vault.',
   },
   {
+    id: 'review-filter-work', chapter: 'review', kind: 'action',
+    targets: ['saved-work-type'], title: 'Filter the evidence list',
+    body: 'Choose Code in All artifact types. Filters only change this view; they never delete evidence. If you chose another kind for your example, an empty filtered list is expected. Mission and text filters work alongside this one.',
+    checkUi: root => root.querySelector<HTMLSelectElement>('[data-tour="saved-work-type"]')?.value === 'code',
+  },
+  {
     id: 'review-history', chapter: 'review', kind: 'explain', route: 'history',
     title: 'History',
     body: 'This separate page records actions, checkpoint completions, and setting changes in order. Records survive normal app updates; tutorial records are discarded on exit.',
+  },
+  {
+    id: 'review-recall-setup', chapter: 'review', kind: 'action', route: 'recall',
+    targets: ['recall-example', 'recall-add'], title: 'Bring saved work into recall',
+    body: 'Recall lists saved DSA and System Design work. If you jumped here and the list is empty, click Add tutorial recall example. It creates one fictional practice note, not a completed checkpoint. If work is already listed, continue.',
+    check: ({ state }) => state.evidence.some(item => item.missionId === 'pattern' || item.missionId === 'system'),
   },
   {
     id: 'review-recall', chapter: 'review', kind: 'action', route: 'recall',
@@ -181,6 +198,12 @@ export const steps: TutorialStep[] = [
     title: 'Practice a recall check',
     body: 'Click Record recall, choose Partial, then Save recall. Reviews track memory separately; they do not undo or grant checkpoint completion. Independent recall requires its self-checks and spaced reviews before Retained.',
     check: ({ state }) => state.recalls.some(review => review.outcome === 'partial'),
+  },
+  {
+    id: 'review-independent', chapter: 'review', kind: 'action',
+    targets: ['recall-independent'], title: 'Try the independent-recall checks',
+    body: 'Open Record recall, choose Independent, tick the required checks, then save. These are fictional practice confirmations. A real review must be honest; independent reviews also need spacing before Retained appears. No checkpoint is completed by doing this.',
+    check: ({ state }) => state.recalls.some(review => review.outcome === 'independent'),
   },
   {
     id: 'review-master-roadmap', chapter: 'review', kind: 'explain', route: 'roadmap',
@@ -223,12 +246,28 @@ export const steps: TutorialStep[] = [
     body: 'Click Move to background. Its checkpoint and evidence stay intact, but it no longer gets a daily action.',
     check: ({ state }) => state.missions.fabric.mode === 'background',
   },
+  ...sourceSteps,
+  ...fullMapSteps,
   // Pipeline
   {
+    id: 'pipeline-open', chapter: 'pipeline', kind: 'action', route: 'pipeline',
+    targets: ['pipeline-add'], title: 'Open a career opportunity',
+    body: 'Click Add opportunity. This is a manual tracker, not a job search or application service. Use only fictional details during this practice.',
+    check: ({ signals }) => signals.opportunityOpen,
+  },
+  {
+    id: 'pipeline-details', chapter: 'pipeline', kind: 'action', command: 'open-opportunity',
+    targets: ['application-details'], title: 'Explore the optional application data',
+    body: 'Click Fill example, then expand Application details. The example includes a lane, resume variant, minutes spent, and friction score. These are your observations, not an automatic fit score; they are optional in real use.',
+    checkUi: root => root.querySelector<HTMLDetailsElement>('[data-tour="application-details"]')?.open === true &&
+      ['lane', 'resumeVariant', 'effortMinutes', 'frictionScore'].every(name =>
+        !!root.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-tour="opportunity-form"] [name="${name}"]`)?.value),
+  },
+  {
     id: 'pipeline-add', chapter: 'pipeline', kind: 'action', route: 'pipeline',
-    targets: ['opportunity-example', 'opportunity-form', 'pipeline-add'],
+    command: 'open-opportunity', targets: ['opportunity-example', 'opportunity-form'],
     title: 'Add an opportunity',
-    body: 'Click Add opportunity, then Fill example, then Add opportunity inside the form. This creates only a fictional tutorial entry.',
+    body: 'Review the fictional form and click Add opportunity inside it. If you skipped the example step, Fill example supplies safe values. Saving tracks the lead; it does not apply for the role or complete a mission.',
     check: ({ state }) => state.opportunities.length >= 1,
   },
   {
@@ -245,6 +284,12 @@ export const steps: TutorialStep[] = [
     body: 'Click Table for a compact list, or Board to group roles by stage. Both views edit the same opportunities; a stage change is recorded in History.',
   },
   {
+    id: 'pipeline-metrics', chapter: 'pipeline', kind: 'action',
+    targets: ['application-metrics'], title: 'Find the saved application details',
+    body: 'Expand Resume variants, application lanes and effort. Your example lane, variant, minutes, and friction appear here. These remain manual observations; they do not raise readiness or complete a checkpoint.',
+    checkUi: root => root.querySelector<HTMLDetailsElement>('[data-tour="application-metrics"]')?.open === true,
+  },
+  {
     id: 'freelance-add', chapter: 'freelance', kind: 'action', route: 'freelance',
     targets: ['freelance-example', 'freelance-add', 'freelance-save'],
     title: 'Research a freelance opportunity',
@@ -259,10 +304,27 @@ export const steps: TutorialStep[] = [
     check: ({ state }) => state.freelanceOpportunities.some(item => item.verdict === 'Apply Now'),
   },
   {
-    id: 'freelance-brief', chapter: 'freelance', kind: 'explain',
-    targets: ['freelance-brief'],
-    title: 'Prepare a review brief',
-    body: 'The source sprint collects ten opportunities, then reviews five. Once five rows are selected, Copy brief prepares text for your own coach conversation. Nothing is sent to an AI service.',
+    id: 'freelance-research-examples', chapter: 'freelance', kind: 'action',
+    targets: ['freelance-research-examples', 'freelance-filters'], title: 'Practice with a research set',
+    body: 'Click Fill research examples to bring this temporary ledger to ten fictional leads. This shortcut exists only in practice. The real sprint requires you to research and classify actual opportunities; no checkpoint is completed automatically.',
+    check: ({ state }) => state.freelanceOpportunities.length >= 10,
+  },
+  {
+    id: 'freelance-filters', chapter: 'freelance', kind: 'explain',
+    targets: ['freelance-filters'], title: 'Narrow a research list',
+    body: 'Try the platform and verdict filters. They hide rows, not delete them. Return both filters to All before selecting the five leads for your brief.',
+  },
+  {
+    id: 'freelance-brief', chapter: 'freelance', kind: 'action',
+    targets: ['freelance-select'], title: 'Select five leads',
+    body: 'With both filters set to All, check five rows. The hand moves to the next unchecked row. Exactly five enables Copy brief. This selection is temporary and clears when you leave or reload the page.',
+    checkUi: root => root.querySelector<HTMLButtonElement>('[data-tour="freelance-copy"]')?.disabled === false,
+  },
+  {
+    id: 'freelance-copy', chapter: 'freelance', kind: 'action',
+    targets: ['freelance-copy'], title: 'Copy the review brief',
+    body: 'Click Copy brief. The text goes to your clipboard, not to an AI service. If clipboard access is blocked, copy the preview manually and use Skip step. A prepared brief is not a completed coach review or an application.',
+    checkUi: root => !!root.querySelector('[data-tour="freelance-copy-success"]'),
   },
   // Readiness & interview mode
   {
@@ -285,12 +347,6 @@ export const steps: TutorialStep[] = [
     targets: ['goal-form'],
     title: 'Your objective',
     body: 'This optional text is a reminder for yourself. It does not change how missions or plans behave.',
-  },
-  {
-    id: 'source-upgrades', chapter: 'settings', kind: 'explain', route: 'sources',
-    targets: ['operation-source'],
-    title: 'Roadmap documents and upgrades',
-    body: 'Operation documents show source stages, optional plans, and limitations. Existing older roadmaps keep their saved position until you confirm adoption. Adoption archives the previous progress and grants no new completion. This practice workspace already uses the latest definitions.',
   },
   {
     id: 'settings-export', chapter: 'settings', kind: 'action', route: 'settings',
@@ -317,21 +373,31 @@ export const steps: TutorialStep[] = [
     id: 'persistence-explain', chapter: 'persistence', kind: 'explain', route: 'settings',
     targets: ['storage-info'],
     title: 'Where your data lives',
-    body: 'Your real data is saved only in this browser, in localStorage, on this device and origin. There is no account, server sync, or streak tracking. Refreshing or reopening this app here keeps your data; clearing site data deletes it. To use another browser or device, export a backup and import it there. Backups are plain, readable JSON. Future app versions may need an explicit migration step before opening an older backup.',
+    body: 'Progress lives in this browser, not in a GitHub account. Refreshing the hosted site keeps compatible data; clearing site data can remove it. Our chat context is separate from website progress. Using the same URL on another machine does not synchronize records.',
+  },
+  {
+    id: 'persistence-transfer', chapter: 'persistence', kind: 'explain',
+    targets: ['backup-export', 'backup-import'], title: 'Move your real data between machines',
+    body: 'Outside this tutorial, export the latest real backup from Settings & data, transfer it privately, then import it at zanark.github.io/CareerHQ on the other machine. Export any destination progress first: import replaces, not merges. Carry the latest backup when switching back.',
+  },
+  {
+    id: 'persistence-boundaries', chapter: 'persistence', kind: 'explain',
+    targets: ['storage-info'], title: 'Know what a backup contains',
+    body: 'Backups are unencrypted JSON records, including archived roadmap progress. They do not include the PDFs, linked code or diagram files, your theme preference, or this chat. Tutorial-example files are not real backups. Keep real exports private and out of GitHub.',
   },
   // Search, theme, print, help
   {
     id: 'tools-search', chapter: 'tools', kind: 'action', route: 'hq',
     targets: ['global-search'],
     title: 'Global search',
-    body: 'Type DSA or a saved-work title in global search. Matching missions and saved evidence appear below; click a result to open it. Opportunities are tracked on their own page, not in this search.',
+    body: 'Focus global search with Ctrl+K, or click it, then type DSA or a saved-work title. Click a result to open it. Opportunities are tracked on their own page, not in this search.',
     check: ({ signals }) => signals.searchQuery.trim().length > 0,
   },
   {
     id: 'tools-theme', chapter: 'tools', kind: 'action',
     targets: ['theme-switch'],
     title: 'Day and night theme',
-    body: 'Click the theme toggle. This change is temporary for the tutorial; your real preference is restored when you exit.',
+    body: 'Click the theme toggle. The sun rises on the right/east and sets on the left/west; daytime has clouds and the page changes gradually. Reduced motion keeps things still. This practice preference is temporary and restores on exit.',
     check: ({ signals, enterTheme }) => signals.theme !== enterTheme,
   },
   {
@@ -350,6 +416,6 @@ export const steps: TutorialStep[] = [
   {
     id: 'finish', chapter: 'finish', kind: 'explain',
     title: 'Back to your real workspace',
-    body: 'That covers the real controls: plan, focus, evidence, missions, pipeline, readiness, backups, search, and theme. Exit to return to your real workspace exactly as you left it, or Restart to try the tutorial again on fresh practice data.',
+    body: 'You have covered the current tracking tools, document adoption, full maps, recall, application details, research briefs, and backup transfer. Exit to return to your real workspace. Practice examples are discarded; no real checkpoint, application, or machine transfer was completed by this tutorial.',
   },
 ];

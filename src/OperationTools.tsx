@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ClipboardCopy, Info, LockKeyhole, Plus } from 'lucide-react';
 import { getCheckpoint, getMissionVersion, recordRoadmapVersion } from './domain/catalog';
-import { recordChange, recordRecall, recallSummary } from './domain/engine';
+import { recordChange, recordEvidence, recordRecall, recallSummary } from './domain/engine';
 import type {
   AppState, FreelanceOpportunity, MissionId, RecallEntry, RoadmapVersion,
 } from './domain/types';
@@ -13,7 +13,7 @@ import './operation-tools.css';
 type Commit = (transform: (state: AppState) => AppState) => boolean;
 
 export function ApplicationMetrics({ state }: { state: AppState }) {
-  return <details className="panel application-details-table"><summary>Resume variants, application lanes and effort</summary>
+  return <details className="panel application-details-table" data-tour="application-metrics"><summary>Resume variants, application lanes and effort</summary>
     <p className="muted small">Optional observations entered with an opportunity. They are not an automatic fit or readiness score.</p>
     <div className="table-scroll"><table><thead><tr><th>Role</th><th>Lane</th><th>Resume variant</th><th>Minutes</th><th>Friction (1-10)</th></tr></thead>
       <tbody>{state.opportunities.map(item => <tr key={item.id}><td><strong>{item.company}</strong><small>{item.role}</small></td><td>{item.lane ?? 'Not recorded'}</td><td>{item.resumeVariant || 'Not recorded'}</td><td>{item.effortMinutes ?? 'Not recorded'}</td><td>{item.frictionScore ?? 'Not recorded'}</td></tr>)}</tbody></table></div>
@@ -94,6 +94,7 @@ export function FreelancePage({ state, commit, practice = false }: { state: AppS
   }
 
   function setVerdict(opportunity: FreelanceOpportunity, verdict: FreelanceOpportunity['verdict']) {
+    setCopied(false);
     commit(current => recordChange({
       ...current,
       freelanceOpportunities: current.freelanceOpportunities.map(item => item.id === opportunity.id ? { ...item, verdict } : item),
@@ -133,12 +134,23 @@ export function FreelancePage({ state, commit, practice = false }: { state: AppS
     <PageHeading eyebrow="SIDE INCOME · OPPORTUNITY LEDGER" title="Freelance opportunities" description="Research leads before you apply. Classifications are your judgment, not an automatic score.">
       <button className="button primary" data-tour="freelance-add" onClick={() => setShowAdd(true)}><Plus size={16} />Add opportunity</button>
     </PageHeading>
+    {practice && opportunities.length < RESEARCH_TARGET && <button className="button secondary practice-example"
+      data-tour="freelance-research-examples" onClick={() => commit(current => recordChange({
+        ...current, freelanceOpportunities: [...current.freelanceOpportunities,
+          ...Array.from({ length: Math.max(0, RESEARCH_TARGET - current.freelanceOpportunities.length) }, (_, index): FreelanceOpportunity => ({
+            id: crypto.randomUUID(), title: `Tutorial research lead ${current.freelanceOpportunities.length + index + 1}`,
+            platform: index % 2 ? 'Example marketplace' : 'Example projects',
+            url: '', skills: index % 2 ? 'API development, testing' : 'Documentation, automation',
+            budget: 'Illustrative only', verdict: 'Unreviewed',
+            notes: 'Fictional tutorial example, not a real opportunity.', createdAt: new Date().toISOString(),
+          }))],
+      }, 'Tutorial research examples added', 'income'))}>Fill research examples</button>}
     <div className="operation-tools-note"><Info size={16} /><p>Research the market first. A lead sitting here is not an application, a commitment, or a sign of readiness &mdash; it is only a note to look into further.</p></div>
     <div className="operation-tools-stats">
       <div className="operation-tools-stat"><strong>{opportunities.length} / {RESEARCH_TARGET}</strong><span>Collected vs. this sprint's research target</span></div>
       <div className="operation-tools-stat"><strong>{classifiedCount} / {opportunities.length}</strong><span>Classified (verdict set beyond Unreviewed)</span></div>
     </div>
-    <div className="freelance-filters">
+    <div className="freelance-filters" data-tour="freelance-filters">
       <select aria-label="Filter by platform" value={platformFilter} onChange={event => setPlatformFilter(event.target.value)}>
         <option value="all">All platforms</option>
         {platforms.map(platform => <option key={platform} value={platform}>{platform}</option>)}
@@ -153,7 +165,7 @@ export function FreelancePage({ state, commit, practice = false }: { state: AppS
     {filtered.length ? <div className="table-scroll"><table className="freelance-table"><thead><tr>
       <th>Select</th><th>Role / title</th><th>Platform</th><th>Skills</th><th>Budget</th><th>Verdict</th><th>Link</th>
     </tr></thead><tbody>{filtered.map(item => <tr key={item.id}>
-      <td className="freelance-select-cell"><input type="checkbox" aria-label={`Select ${item.title} for review brief`}
+      <td className="freelance-select-cell"><input type="checkbox" data-tour="freelance-select" aria-label={`Select ${item.title} for review brief`}
         checked={selectedIds.includes(item.id)}
         disabled={!selectedIds.includes(item.id) && selectedIds.length >= MAX_BRIEF_SELECTION}
         onChange={event => toggleSelect(item.id, event.target.checked)} /></td>
@@ -172,9 +184,9 @@ export function FreelancePage({ state, commit, practice = false }: { state: AppS
       <p className="muted small">Select exactly {MAX_BRIEF_SELECTION} rows above to build a plain-text brief for your own review. This selection is not saved and clears on reload.</p>
       <textarea readOnly rows={8} value={briefText || 'Select opportunities above to generate a brief.'} aria-label="Review brief text" />
       <div className="freelance-brief-actions">
-        <button className="button secondary" disabled={selected.length !== MAX_BRIEF_SELECTION} onClick={copyBrief}><ClipboardCopy size={15} />Copy brief</button>
-        {copied && <span className="muted small">Copied to clipboard.</span>}
-        {copyError && <span className="freelance-brief-error" role="alert">{copyError}</span>}
+        <button className="button secondary" data-tour="freelance-copy" disabled={selected.length !== MAX_BRIEF_SELECTION} onClick={copyBrief}><ClipboardCopy size={15} />Copy brief</button>
+        {copied && <span className="muted small" data-tour="freelance-copy-success">Copied to clipboard.</span>}
+        {copyError && <span className="freelance-brief-error" data-tour="freelance-copy-error" role="alert">{copyError}</span>}
       </div>
     </div>
     {showAdd && <AddOpportunityModal practice={practice} onSave={addOpportunity} onClose={() => setShowAdd(false)} />}
@@ -226,15 +238,15 @@ function RecordRecallModal({ item, history, onSave, onClose }: {
   return <Modal title="Record recall" subtitle={`${item.missionName} · ${item.checkpointTitle}`} onClose={onClose}>
     <form onSubmit={submit} className="stack-form">
       <div className="form-context"><span className="eyebrow">CHECKPOINT</span><strong>{item.checkpointTitle}</strong><small>Roadmap v{item.roadmapVersion}{item.archived ? ' (archived)' : ''}</small></div>
-      <fieldset className="recall-checks"><legend>Self-check from memory, not from notes</legend>
-        <label className="checkbox-label"><input type="checkbox" checked={explanation} onChange={event => setExplanation(event.target.checked)} /><span>Explain from memory</span></label>
-        <label className="checkbox-label"><input type="checkbox" checked={diagram} onChange={event => setDiagram(event.target.checked)} /><span>Draw from memory{item.missionId === 'system' ? '' : ' (optional for this mission)'}</span></label>
-        <label className="checkbox-label"><input type="checkbox" checked={exercise} onChange={event => setExercise(event.target.checked)} /><span>Complete exercise</span></label>
+      <fieldset className="recall-checks" data-tour="recall-checks"><legend>Self-check from memory, not from notes</legend>
+        <label className="checkbox-label"><input type="checkbox" data-required="true" checked={explanation} onChange={event => setExplanation(event.target.checked)} /><span>Explain from memory</span></label>
+        <label className="checkbox-label"><input type="checkbox" data-required={item.missionId === 'system'} checked={diagram} onChange={event => setDiagram(event.target.checked)} /><span>Draw from memory{item.missionId === 'system' ? '' : ' (optional for this mission)'}</span></label>
+        <label className="checkbox-label"><input type="checkbox" data-required="true" checked={exercise} onChange={event => setExercise(event.target.checked)} /><span>Complete exercise</span></label>
       </fieldset>
       <fieldset className="recall-outcome" data-tour="recall-outcome"><legend>Outcome</legend>
         <label><input type="radio" name="outcome" checked={outcome === 'needs-review'} onChange={() => setOutcome('needs-review')} />Needs review</label>
         <label><input type="radio" name="outcome" checked={outcome === 'partial'} onChange={() => setOutcome('partial')} />Partial</label>
-        <label><input type="radio" name="outcome" checked={outcome === 'independent'} onChange={() => setOutcome('independent')} />Independent</label>
+        <label><input type="radio" name="outcome" data-tour="recall-independent-choice" checked={outcome === 'independent'} onChange={() => setOutcome('independent')} />Independent</label>
       </fieldset>
       <label>Notes <span className="optional">(optional)</span><textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={3} placeholder="What came back easily, what didn't." /></label>
       <p className="privacy-note"><LockKeyhole size={14} />Self-reported retention, not an AI assessment. Saving does not change your learning roadmap or grant new mastery.</p>
@@ -247,11 +259,15 @@ function RecordRecallModal({ item, history, onSave, onClose }: {
   </Modal>;
 }
 
-export function RecallPage({ state, commit }: { state: AppState; commit: Commit }) {
+export function RecallPage({ state, commit, practice = false }: { state: AppState; commit: Commit; practice?: boolean }) {
   const [missionFilter, setMissionFilter] = useState<'all' | 'pattern' | 'system'>('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeItem, setActiveItem] = useState<RecallWorkItem | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
+  const exampleMission = (['pattern', 'system'] as const).find(id => {
+    const progress = state.missions[id];
+    return progress.mode === 'active' && progress.status !== 'completed' && !progress.blocker;
+  });
 
   const items = useMemo(() => {
     const map = new Map<string, RecallWorkItem>();
@@ -290,6 +306,17 @@ export function RecallPage({ state, commit }: { state: AppState; commit: Commit 
 
   return <>
     <PageHeading eyebrow="PATTERN & SYSTEM FORGE" title="Spaced recall" description="Check in on what you can still retrieve from memory. This is self-reported, not a new assessment." />
+    {practice && !items.length && <div className="panel">
+      <p className="muted small">This chapter needs saved work. Add a fictional practice note without completing a checkpoint.</p>
+      <button className="button secondary" data-tour="recall-example" disabled={!exampleMission} onClick={() => {
+        if (exampleMission) commit(current => recordEvidence(current, {
+          missionId: exampleMission, checkpointId: current.missions[exampleMission].checkpointId,
+          title: 'Tutorial recall example', summary: 'Fictional practice note for learning the recall controls, not real completed work.',
+          kind: 'note', url: '', advance: false, criteriaConfirmed: false,
+        }));
+      }}>Add tutorial recall example</button>
+      {!exampleMission && <p className="muted small">Bring an unblocked DSA or System Design mission into focus first.</p>}
+    </div>}
     <div className="operation-tools-note"><Info size={16} /><p>Rough rhythm: a first review around 24 hours after practice, a second about 4&ndash;5 days later. Two appropriately spaced independent reviews move a checkpoint toward Retained. A later review that doesn't go well simply flags it as Needs review &mdash; it does not delete your checkpoint completion or undo the roadmap. There is no backlog to feel behind on; only checkpoints with saved work appear here.</p></div>
     <div className="recall-filters">
       <select aria-label="Filter by mission" value={missionFilter} onChange={event => setMissionFilter(event.target.value as typeof missionFilter)}>
