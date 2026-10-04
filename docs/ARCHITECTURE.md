@@ -8,7 +8,7 @@ plan as proof of capability.
 
 | Layer | Responsibility |
 | --- | --- |
-| `src/domain/catalog.ts`, `operations/*`, `legacyCatalog.ts` | Exact-version definitions: frozen v1/v2 references and DSA v3 append. Latest is per mission; `getMissions(state)` selects the saved version, never silently adopts. |
+| `src/domain/catalog.ts`, `operations/*`, `legacyCatalog.ts` | Exact-version definitions: frozen v1/v2 references, DSA v3 append and independently adopted System v3 modules. Latest is per mission; saved versions never silently change. |
 | `src/domain/types.ts` — `AppState` | Versioned runtime shape: progress, plans, evidence, history, readiness, opportunities. |
 | `src/domain/engine.ts` — `parseState` | Schema and cross-reference validation before accepting persisted or imported state. |
 | `src/domain/engine.ts` — `generatePlan`, `recordEvidence` | Capacity-bounded planning and evidence-gated, prerequisite-aware completion. |
@@ -18,9 +18,16 @@ plan as proof of capability.
 | `src/roadmaps/*` | Read-only mission tree and top-down checkpoint flowcharts, using accessible HTML nodes and locally drawn SVG connections. |
 | `src/perspective/*`, `personalProofSchema.ts` | Personal evidence page: supplied past accomplishments and saved work. Strictly validated, confirmed history imports merge without changing checkpoint progress; no research or motivational filler. |
 | `src/dsa/*`, `operations/dsaStudy*`, `dsaProblemSets.ts` | Read-only 50-section DSA practice reference, preserving source group/difficulty/URL/page and intentional repeats. No per-problem achievements are inferred. |
+| `src/system/*` | The supplied System Design concept tree and readable/searchable browser, separate from versioned checkpoint progress. Source reading-route and grouping edges are not prerequisite gates. |
+| `operations/systemPractice*`, `src/system/SystemPractice.tsx` | The 72-module System v3 source progression, 15 read-only cases, complete practice prompts and diagnostics. Context links connect the separate concepts source without inventing case prerequisites. |
+| `src/roadmaps/useMapViewport.ts` | Shared fit/zoom, pointer panning, focus/centering, resize measurement and lifecycle cleanup for both tracked and concept maps. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
+
+Large DSA problem references and System practice summaries are emitted into a
+separately cacheable static data chunk. They remain local bundled content, not a
+runtime service or a request containing personal progress.
 
 There is no backend, authentication layer, remote database, agent execution service,
 or model call. Nine missions are represented; eight have documented tracking units and
@@ -59,6 +66,9 @@ checkpoints can share evidence identity through that append lineage. Explicit
 v2→v3 adoption preserves original records and carries genuine progress, while
 new topics start unconfirmed. Completion totals deduplicate shared identities
 across the active tracker and archives; other upgrades do not guess a mapping.
+System v3 therefore archives v1/v2 on explicit adoption and starts its detailed
+modules unconfirmed. Case references are deliberately outside checkpoint identity,
+completion counts and evidence validation.
 
 ## History and authority
 

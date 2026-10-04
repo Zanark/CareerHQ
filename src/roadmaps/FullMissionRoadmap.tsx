@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PointerEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { BookOpen, Check, Flag, Focus, LockKeyhole, Maximize2, Minus, Plus } from 'lucide-react';
 import { getLatestMission, getProgressForVersion, prerequisitesFor } from '../domain/catalog';
 import type { AppState, Checkpoint, Mission } from '../domain/types';
@@ -9,34 +8,43 @@ import type { DiagramEdge } from './Diagram';
 import { checkpointLevels, roadmapGroups } from './roadmapGraph';
 import './full-roadmap.css';
 import { dsaStudySectionFor } from '../domain/operations/dsaStudy';
+import { useMapViewport } from './useMapViewport';
+import { SystemConceptMap } from '../system/SystemConcepts';
+import { systemConceptGroups, systemConcepts } from '../system/concepts';
+import { systemPracticeFor } from '../domain/operations/systemPracticeStudy';
+import { systemPracticeCases } from '../domain/operations/systemPracticeContent';
 
-type Anchor = 'fit' | 'current' | { x: number; y: number } | { checkpointId: string };
 const stageNodeId = (id: string) => `full-stage-${id}`;
+const caseNodeId = (id: string) => `practice-${id}`;
 
 export function FullMissionRoadmap({ mission, state, onClose }: {
   mission: Mission; state: AppState; onClose: () => void;
 }) {
   const latest = getLatestMission(mission.id);
-  const hasExpandedDsa = mission.id === 'pattern' && mission.roadmapVersion !== latest.roadmapVersion;
-  const [showSaved, setShowSaved] = useState(false);
-  const preview = hasExpandedDsa && !showSaved;
+  const hasExpanded = ['pattern', 'system'].includes(mission.id) && mission.roadmapVersion !== latest.roadmapVersion;
+  const [mode, setMode] = useState<'complete' | 'saved' | 'concepts'>('complete');
+  const showSaved = mode === 'saved';
+  const concepts = mission.id === 'system' && mode === 'concepts';
+  const preview = hasExpanded && !showSaved && !concepts;
   const displayed = preview ? latest : mission;
   const groupCount = roadmapGroups(displayed).length;
-  const subtitle = `${groupCount} stages · ${displayed.checkpoints.length} ${preview ? 'checkpoints' : 'tracked checkpoints'} · ${preview ? 'Preview' : 'Tracker'} v${displayed.roadmapVersion}`;
+  const subtitle = concepts ? `${systemConceptGroups.length} sections · ${systemConcepts.length} concept nodes`
+    : `${groupCount} stages · ${displayed.checkpoints.length} ${preview ? 'checkpoints' : 'tracked checkpoints'} · ${preview ? 'Preview' : 'Tracker'} v${displayed.roadmapVersion}`;
 
   return <Modal title={`${mission.name} full roadmap`} subtitle={subtitle}
-    eyebrow={mission.operation} className={`full-roadmap-modal ${preview ? 'full-roadmap-preview' : ''}`} onClose={onClose} restoreFocus>
-    {hasExpandedDsa && <div className="full-roadmap-version-bar" data-tour="full-map-version">
-      <label>View<select aria-label="Roadmap view" value={showSaved ? 'saved' : 'complete'}
-        onChange={event => setShowSaved(event.target.value === 'saved')}>
-        <option value="complete">Complete curriculum · v{latest.roadmapVersion}</option>
+    eyebrow={mission.operation} className={`full-roadmap-modal ${preview || concepts ? 'full-roadmap-preview' : ''}`} onClose={onClose} restoreFocus>
+    {(hasExpanded || mission.id === 'system') && <div className="full-roadmap-version-bar" data-tour="full-map-version">
+      <label>View<select aria-label="Roadmap view" value={mode}
+        onChange={event => { const next = event.target.value; if (next === 'complete' || next === 'saved' || next === 'concepts') setMode(next); }}>
+        <option value="complete">{mission.id === 'system' ? `Problems & exercises · v${latest.roadmapVersion}` : `Complete curriculum · v${latest.roadmapVersion}`}</option>
+        {mission.id === 'system' && <option value="concepts">Concepts · system-design.pdf</option>}
         <option value="saved">My saved tracker · v{mission.roadmapVersion}</option>
       </select></label>
-      <span>{preview ? `Saved: v${mission.roadmapVersion}` : 'Your saved progress'}</span>
-      <a className="text-link" href={`#/sources/${mission.id}`}>Review tracker update</a>
+      <span>{preview || concepts ? `Saved: v${mission.roadmapVersion}` : 'Your saved progress'}</span>
+      <a className="text-link" href={`#/sources/${mission.id}`}>{mission.id === 'system' ? 'Source and tracker' : 'Review tracker update'}</a>
     </div>}
-    <RoadmapCanvas key={`${displayed.id}-${displayed.roadmapVersion}`} mission={displayed}
-      savedMission={mission} preview={preview} state={state} onClose={onClose} />
+    {concepts ? <SystemConceptMap onClose={onClose} /> : <RoadmapCanvas key={`${displayed.id}-${displayed.roadmapVersion}`} mission={displayed}
+      savedMission={mission} preview={preview} state={state} onClose={onClose} />}
   </Modal>;
 }
 
@@ -68,113 +76,15 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
     }));
   }, [mission, groups, completed, current?.id]);
 
-  const viewport = useRef<HTMLDivElement>(null);
-  const graph = useRef<HTMLDivElement>(null);
-  const currentNode = useRef<HTMLButtonElement>(null);
-  const checkpointNodes = useRef(new Map<string, HTMLButtonElement>());
-  const pendingAnchor = useRef<Anchor | null>(null);
-  const drag = useRef<{ id: number; x: number; y: number; left: number; top: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [size, setSize] = useState({ width: 1, height: 1, viewportWidth: 1, viewportHeight: 1, ready: false });
-  const [view, setView] = useState<{ zoom: number | null; revision: number }>({ zoom: null, revision: 0 });
+  const { viewport, graph, size, view, fit, zoom, dragging, changeZoom, registerNode, panProps } = useMapViewport(onClose);
   const [selectedId, setSelectedId] = useState<string | undefined>(current?.id ?? mission.checkpoints[0]?.id);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const cases = mission.id === 'system' && mission.roadmapVersion === '3.0.0' ? systemPracticeCases : [];
+  const selectedCase = cases.find(unit => unit.id === selectedCaseId);
   const selected = mission.checkpoints.find(checkpoint => checkpoint.id === selectedId);
   const studySection = mission.id === 'pattern' ? dsaStudySectionFor(selected) : undefined;
+  const systemPractice = mission.id === 'system' ? systemPracticeFor(selected) : undefined;
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const fit = Math.min(1, Math.max(1, size.viewportWidth - 48) / size.width, Math.max(1, size.viewportHeight - 48) / size.height);
-  const zoom = view.zoom ?? fit;
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('hashchange', onClose);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('hashchange', onClose);
-    };
-  }, [onClose]);
-
-  useLayoutEffect(() => {
-    const surface = viewport.current;
-    const content = graph.current;
-    if (!surface || !content) return;
-    let frame = 0;
-    const measure = () => {
-      if (!surface.clientWidth || !surface.clientHeight || !content.offsetWidth || !content.offsetHeight) return;
-      const next = {
-        width: content.offsetWidth, height: content.offsetHeight,
-        viewportWidth: surface.clientWidth, viewportHeight: surface.clientHeight, ready: true,
-      };
-      setSize(previous => previous.width === next.width && previous.height === next.height &&
-        previous.viewportWidth === next.viewportWidth && previous.viewportHeight === next.viewportHeight &&
-        previous.ready === next.ready ? previous : next);
-    };
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    });
-    observer.observe(surface);
-    observer.observe(content);
-    measure();
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
-  }, []);
-
-  useLayoutEffect(() => {
-    const surface = viewport.current;
-    const content = graph.current;
-    const anchor = pendingAnchor.current;
-    if (!surface || !content || !size.ready || !anchor) return;
-    pendingAnchor.current = null;
-    if (anchor === 'fit') {
-      surface.scrollTo({ left: 0, top: 0 });
-      return;
-    }
-    const surfaceBox = surface.getBoundingClientRect();
-    const contentBox = content.getBoundingClientRect();
-    const node = anchor === 'current' ? currentNode.current :
-      'checkpointId' in anchor ? checkpointNodes.current.get(anchor.checkpointId) : undefined;
-    const checkpointBox = node?.getBoundingClientRect();
-    const x = checkpointBox ? checkpointBox.left + checkpointBox.width / 2 :
-      typeof anchor === 'object' && 'x' in anchor ? contentBox.left + anchor.x * zoom : contentBox.left;
-    const y = checkpointBox ? checkpointBox.top + checkpointBox.height / 2 :
-      typeof anchor === 'object' && 'y' in anchor ? contentBox.top + anchor.y * zoom : contentBox.top;
-    surface.scrollTo({
-      left: surface.scrollLeft + x - surfaceBox.left - surface.clientWidth / 2,
-      top: surface.scrollTop + y - surfaceBox.top - surface.clientHeight / 2,
-    });
-    node?.focus({ preventScroll: true });
-  }, [view, size, zoom]);
-
-  function changeZoom(value: number | null, anchor?: 'fit' | 'current' | { checkpointId: string }) {
-    const surface = viewport.current;
-    const content = graph.current;
-    if (!surface || !content) return;
-    const surfaceBox = surface.getBoundingClientRect();
-    const contentBox = content.getBoundingClientRect();
-    pendingAnchor.current = anchor ?? {
-      x: (surfaceBox.left + surface.clientWidth / 2 - contentBox.left) / zoom,
-      y: (surfaceBox.top + surface.clientHeight / 2 - contentBox.top) / zoom,
-    };
-    setView(previous => ({
-      zoom: value === null ? null : Math.max(Math.min(fit, 0.25), Math.min(2, value)),
-      revision: previous.revision + 1,
-    }));
-  }
-
-  function beginPan(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== 'mouse' || event.button !== 0 || (event.target instanceof Element && event.target.closest('button'))) return;
-    const surface = event.currentTarget;
-    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, left: surface.scrollLeft, top: surface.scrollTop };
-    surface.setPointerCapture(event.pointerId);
-    setDragging(true);
-    event.preventDefault();
-  }
-
-  function endPan(event: PointerEvent<HTMLDivElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    drag.current = null;
-    setDragging(false);
-  }
 
   function statusOf(checkpoint: Checkpoint) {
     if (preview) return 'reference';
@@ -185,21 +95,34 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
   return <>
     <div className="full-roadmap-toolbar">
       <button className="button secondary" data-tour="full-map-fit" onClick={() => changeZoom(null, 'fit')} aria-pressed={view.zoom === null}><Maximize2 size={17} />Fit all</button>
-      {!preview && <button className="button primary" data-tour="full-map-current" disabled={!current} onClick={() => {
+      {!preview && <button className="button primary" data-tour="full-map-current" aria-label="Current checkpoint" disabled={!current} onClick={() => {
+        setSelectedCaseId(null);
         setSelectedId(current?.id);
         setDetailsOpen(false);
-        changeZoom(1, 'current');
-      }}><Focus size={17} />Current checkpoint</button>}
-      {mission.id === 'pattern' && <select className="full-roadmap-topic-finder" aria-label="Find a roadmap topic" value=""
+        if (current) changeZoom(1, { nodeId: current.id });
+      }}><Focus size={17} /><span className="full-roadmap-current-label">Current checkpoint</span></button>}
+      {['pattern', 'system'].includes(mission.id) && <select className="full-roadmap-topic-finder" aria-label="Find a roadmap topic" value=""
         onChange={event => {
+          const practiceCase = cases.find(unit => caseNodeId(unit.id) === event.target.value);
+          if (practiceCase) {
+            setSelectedCaseId(practiceCase.id);
+            setSelectedId(undefined);
+            setDetailsOpen(true);
+            changeZoom(1, { nodeId: caseNodeId(practiceCase.id) });
+            return;
+          }
           const checkpoint = mission.checkpoints.find(candidate => candidate.id === event.target.value);
           if (!checkpoint) return;
+          setSelectedCaseId(null);
           setSelectedId(checkpoint.id);
           setDetailsOpen(true);
-          changeZoom(1, { checkpointId: checkpoint.id });
+          changeZoom(1, { nodeId: checkpoint.id });
         }}>
-        <option value="" disabled>Find a topic...</option>
+        <option value="" disabled>{mission.id === 'system' ? 'Find a module/case...' : 'Find a topic...'}</option>
         {mission.checkpoints.map(checkpoint => <option key={checkpoint.id} value={checkpoint.id}>{checkpoint.title}</option>)}
+        {cases.length > 0 && <optgroup label="Case studies - practice bank">
+          {cases.map(unit => <option key={unit.id} value={caseNodeId(unit.id)}>Case {unit.letter}: {unit.title}</option>)}
+        </optgroup>}
       </select>}
       <div className="full-roadmap-zoom" role="group" aria-label="Roadmap zoom">
         <button className="icon-button" data-tour="full-map-zoom-out" aria-label="Zoom out" disabled={zoom <= Math.min(fit, 0.25)} onClick={() => changeZoom(zoom / 1.5)}><Minus size={18} /></button>
@@ -211,14 +134,7 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
     <p className="full-roadmap-hint" id="full-roadmap-help">Zoom to read. Drag or scroll to explore. Viewing never changes progress.</p>
     <div className={`full-roadmap-viewport ${dragging ? 'is-dragging' : ''}`} ref={viewport} data-tour="full-map-canvas"
       role="region" aria-label="Full roadmap canvas" aria-describedby="full-roadmap-help" tabIndex={0}
-      onPointerDown={beginPan} onPointerUp={endPan} onPointerCancel={endPan}
-      onLostPointerCapture={() => { drag.current = null; setDragging(false); }}
-      onPointerMove={event => {
-        const start = drag.current;
-        if (!start || start.id !== event.pointerId) return;
-        event.currentTarget.scrollLeft = start.left - (event.clientX - start.x);
-        event.currentTarget.scrollTop = start.top - (event.clientY - start.y);
-      }}>
+      {...panProps}>
       <div className="full-roadmap-space">
         <div className="full-roadmap-plane" data-ready={size.ready} style={{ width: size.width * zoom, height: size.height * zoom }}>
           <div className="full-roadmap-graph" ref={graph} style={{ transform: `scale(${zoom})` }}>
@@ -233,16 +149,12 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
                   {group.levels.map((level, index) => <div className="full-roadmap-level" key={index}>
                     {level.map(checkpoint => {
                       const status = statusOf(checkpoint);
-                      return <button key={checkpoint.id} ref={node => {
-                        if (node) checkpointNodes.current.set(checkpoint.id, node);
-                        else checkpointNodes.current.delete(checkpoint.id);
-                        if (status === 'current') currentNode.current = node;
-                      }}
+                      return <button key={checkpoint.id} ref={node => registerNode(checkpoint.id, node)}
                         className={`full-roadmap-node ${status}`} data-diagram-node={checkpoint.id}
                         data-full-checkpoint={checkpoint.id} data-full-current={status === 'current' ? 'true' : undefined}
                         data-tour={checkpoint.id === mission.checkpoints.at(-1)?.id ? 'full-map-last-node' : undefined}
                         aria-current={status === 'current' ? 'step' : undefined} aria-pressed={selected?.id === checkpoint.id}
-                        onClick={() => { setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
+                        onClick={() => { setSelectedCaseId(null); setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
                         <span className="full-roadmap-state">{status === 'complete' ? <Check size={16} /> : status === 'current' ? <Flag size={16} /> : status === 'reference' ? <BookOpen size={16} /> : <LockKeyhole size={16} />}
                           {status === 'complete' ? 'Completed' : status === 'current' ? 'Current checkpoint' : status === 'available' ? 'Available' : status === 'reference' ? 'Not tracked' : 'Locked'}</span>
                         <strong>{checkpoint.sourceId && !checkpoint.title.startsWith(checkpoint.sourceId) ? `${checkpoint.sourceId} · ` : ''}{checkpoint.title}</strong>
@@ -254,6 +166,14 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
                     <p>{group.summary}</p>
                     <ul>{group.topics.map(topic => <li key={topic}>{topic}</li>)}</ul>
                     <strong>Reference only; no completion credit.</strong>
+                  </div>}
+                  {group.id === 'system-practice-i' && cases.length > 0 && <div className="full-roadmap-case-bank">
+                    <h4>15 case-study exercises</h4><p>Choose independently. These are practice references, not required serial checkpoints.</p>
+                    {cases.map(unit => <button key={unit.id} className="full-roadmap-case-node" data-system-case={unit.id}
+                      ref={node => registerNode(caseNodeId(unit.id), node)} aria-pressed={selectedCaseId === unit.id}
+                      onClick={() => { setSelectedId(undefined); setSelectedCaseId(unit.id); setDetailsOpen(true); }}>
+                      <span className="full-roadmap-state"><BookOpen size={16} />Case {unit.letter} / Practice</span><strong>{unit.title}</strong>
+                    </button>)}
                   </div>}
                 </section>)}
                 {!groups.length && <p className="diagram-pending">This roadmap has no defined stages or checkpoints yet. No progress has been invented.</p>}
@@ -274,7 +194,15 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
           {prerequisitesFor(mission, selected).length > 0 && <p><strong>Requires: </strong>{prerequisitesFor(mission, selected).map(id => mission.checkpoints.find(checkpoint => checkpoint.id === id)?.title).join(', ')}</p>}
           {!!selected.topics?.length && <><h4>Topics</h4><ul>{selected.topics.map(topic => <li key={topic}>{topic}</li>)}</ul></>}
           {studySection && <p><a className="text-link" href={`#/dsa/${studySection.number}`}>Open this topic's practice set</a></p>}
+          {systemPractice && <p><a className="text-link" href={`#/system-practice/${systemPractice.id}`}>Open these design exercises</a></p>}
           <p>View only. Record evidence from the mission page to update progress.</p>
+        </div>
+      </details>}
+      {selectedCase && <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
+        <summary><span>Case-study practice</span><strong>{selectedCase.title}</strong><span>Details</span></summary>
+        <div className="full-roadmap-details"><p>{selectedCase.summary}</p>
+          <p>Independently selectable practice, not a required serial checkpoint. This inspection records no completion.</p>
+          <a className="text-link" href={`#/system-practice/${selectedCase.id}`}>Open this case-study exercise</a>
         </div>
       </details>}
       {mission.roadmapVersion !== getLatestMission(mission.id).roadmapVersion && <p className="full-roadmap-summary">This is your saved v{mission.roadmapVersion} roadmap. <a href={`#/sources/${mission.id}`}>Review the newer operation documents</a> before adopting a different version.</p>}

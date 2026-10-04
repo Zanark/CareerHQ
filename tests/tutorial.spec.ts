@@ -105,6 +105,15 @@ for (const width of [1440, 390, 320]) {
       await expect(coach).toHaveAttribute('data-step', step.id);
       visited.push(step.id);
       switch (step.id) {
+        case 'system-concepts-search':
+          await page.getByLabel('Search System Design concepts', { exact: true }).fill('Circuit Breaker');
+          break;
+        case 'system-practice-select':
+          await page.getByLabel('System Design module or case', { exact: true }).selectOption('module-52');
+          break;
+        case 'system-practice-transfer':
+          await page.locator('[data-tour="system-transfer-drills"] > summary').click();
+          break;
         case 'dsa-library-section':
           await page.getByLabel('DSA source section', { exact: true }).selectOption('9');
           break;

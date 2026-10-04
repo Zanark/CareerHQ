@@ -27,7 +27,7 @@ function advance(state: AppState, missionId: MissionId = 'pattern'): AppState {
   return recordEvidence(state, input(state, missionId, { advance: true, criteriaConfirmed: true }));
 }
 
-function planned(state = createInitialState(false), date = localDate()): AppState {
+function planned(state = createInitialState(false, '2.0.0'), date = localDate()): AppState {
   return { ...state, plans: { ...state.plans, [date]: generatePlan(state, date) } };
 }
 
@@ -224,7 +224,7 @@ describe('local dates and deterministic daily plans', () => {
   });
 
   it('takes focus first, then interview mode priorities, using definition order as the tiebreak', () => {
-    const state = createInitialState(false);
+    const state = createInitialState(false, '2.0.0');
     state.focusMissionId = 'neural';
     state.missions.neural.mode = 'active';
     // No interview weight applies to neural; among the remaining equal-priority active
@@ -279,7 +279,7 @@ describe('local dates and deterministic daily plans', () => {
   });
 
   it('preserves an explicitly empty plan and never carries missed actions forward', () => {
-    const state = planned(createInitialState(false), '2026-10-03');
+    const state = planned(createInitialState(false, '2.0.0'), '2026-10-03');
     const yesterday = structuredClone(state.plans['2026-10-03']);
     const today = generatePlan(state);
     expect(today).toHaveLength(3);
@@ -297,7 +297,7 @@ describe('local dates and deterministic daily plans', () => {
   );
 
   it('accepts a real leap day', () => {
-    expect(generatePlan(createInitialState(false), '2028-02-29')).toHaveLength(3);
+    expect(generatePlan(createInitialState(false, '2.0.0'), '2028-02-29')).toHaveLength(3);
   });
 
   it('stamps each generated action with the mission roadmap version and a version-qualified stable ID', () => {
@@ -687,7 +687,7 @@ describe('recall tracking and spaced-repetition self-assessment', () => {
       checks: { explanation: true, diagram: false, exercise: true }, notes: 'Complete.',
     })).not.toThrow();
 
-    let system = createInitialState(false);
+    let system = createInitialState(false, '2.0.0');
     system = recordEvidence(system, input(system, 'system'));
     const systemCp = system.missions.system.checkpointId;
     expect(() => recordRecall(system, {

@@ -33,7 +33,7 @@ The supplied operation documents define nine missions. Tracking granularity is e
 | Mission | Documented tracking |
 | --- | --- |
 | Pattern Forge | 48 checkpoints: the unchanged 5-checkpoint HashMap start plus 43 DSA topic reviews, across 14 stages |
-| System Forge | 28 topic-group milestones across 7 stages |
+| System Forge | 72 modules across 9 phases, plus 15 independently selectable case-study references and a separate concepts map |
 | Escape Velocity | 1 ongoing workflow; application and rehabilitation workstreams are parallel |
 | Fabric Core | 32 numbered checkpoints across 5 stages |
 | Blueprint | 5 phase-level milestones; no invented fine-grained numbering |
@@ -92,6 +92,33 @@ throughout, not a mandatory late checklist.
 
 ### First, find the PDF content
 
+**System Design has two supplied sources:** the one-page `system-design.pdf` is
+the concepts map; the 183-page `SystemDesign_RoadMap.pdf` is the problem-solving
+curriculum. **System Design → Full roadmap** offers **Problems & exercises**,
+**Concepts**, and **My saved tracker**, regardless of your saved version.
+The concepts view preserves 20 source sections and 160 concept placements.
+The problems view includes 72 tracked modules and all 15 case-study references.
+
+Use **Find a concept** to center a term at readable size. **My saved tracker**
+returns to your actual System Forge checkpoints. The [concept browser](https://zanark.github.io/CareerHQ/#/system-concepts)
+also presents every branch at ordinary text size, with search and source attribution.
+Repeated patterns stay under each source category. The source asks for an overview
+of the cloud patterns, not mastery of all of them. This concepts reference adds no
+checkpoint gates and records no completion. The [problems browser](https://zanark.github.io/CareerHQ/#/system-practice)
+provides all 146 module practice prompts, 15 cases with 195 scope/deep-dive prompts,
+transfer drills, module-specific gates and eight periodic diagnostics.
+
+Existing System v1/v2 users must explicitly **Adopt documented roadmap** to start
+the module tracker. Their old position, completion evidence, plans and recall
+records remain archived; they are not guessed into completion of the more detailed
+modules. New modules start unconfirmed. Export a backup before adopting.
+Case studies remain independently selectable practice, not mandatory serial
+checkpoints; the source does not prescribe case-to-case prerequisites. Record actual
+case work as evidence for the active relevant module rather than treating a link
+click as a completed case. Source component outlines are discussion prompts, not
+production execution diagrams. Specialized patterns begin at overview depth and
+are deepened when an exercise needs them.
+
 1. Open [Operation documents](https://zanark.github.io/CareerHQ/#/sources).
 2. Choose an area from **Mission**. For example, **DSA · Pattern Forge**.
 3. Read **Sources, scope and supporting material**, then use **Roadmap stage** to
@@ -106,8 +133,9 @@ On a mission page, **Full roadmap** beside its name opens every stage together.
 For **DSA**, it opens the complete curriculum from the **EXPANDED** PDF even when
 your saved tracker is still v1 or v2. **Roadmap view → My saved tracker** shows your
 older position; **Complete curriculum** is a read-only preview until you explicitly
-adopt it. Previewing never resets, remaps or awards progress. Other missions open
-their saved version as before.
+adopt it. Previewing never resets, remaps or awards progress. **System Design**
+opens the complete problem curriculum, with Concepts and the saved tracker available separately.
+Other missions open their saved version as before.
 
 It starts at **Fit all**, not a stage filter. Use **Find a topic** to jump directly
 to DFS, BFS, DP or another DSA topic at readable size, with its requirements and
@@ -157,6 +185,8 @@ Use the **Chapter** menu to work on one area at a time:
 | --- | --- |
 | Keep going | Your own past accomplishments, completed work versus practice, and private history that never awards checkpoint credit |
 | DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
+| System Design concepts | The supplied concepts map, source grouping, pattern-overview guidance and contextual search |
+| System Design problems | Module practice sets, changing constraints, source gates, diagnostics and independently selectable case studies |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
@@ -213,6 +243,8 @@ estimates, not measured learning time.
 | --- | --- | --- |
 | Keep going | Read your own source-linked past accomplishments and actual saved work; load private history after reviewing it | No research quotes, generic motivation, invented wins, or automatic checkpoint credit; Overview remains the default |
 | DSA practice library | Browse all 50 expanded DSA sections and curated problem links | No automatic solve tracking, completion credit, or requirement to clear every listed problem |
+| System Design concepts | Browse or search the attached one-page roadmap and its repeated pattern contexts | No automatic mastery claims, new required checkpoint gates, or changes to the saved System Forge tracker |
+| System Design problems | Work through the 72-module source progression and browse 15 cases, prompts, transfer tasks and diagnostics | No AI assessment, automatic adoption, or mandatory case-to-case completion chain |
 | Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
 | Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |
 | Opportunities | Record roles, application stages and optional effort/resume details | No job search, application submission or resume evaluation |

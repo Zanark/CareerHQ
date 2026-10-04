@@ -28,6 +28,8 @@ import { FullMissionRoadmap } from './roadmaps/FullMissionRoadmap';
 import { SourcePanel, OperationSourcesPage } from './SourcePanel';
 import { FreelancePage, RecallPage } from './OperationTools';
 import { DsaLibrary, DsaPracticeLink } from './dsa/DsaLibrary';
+import { SystemConceptsPage } from './system/SystemConcepts';
+import { SystemPracticePage, SystemPracticeLink } from './system/SystemPractice';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -108,7 +110,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const selected = missions.find(mission => mission.id === route.split('/')[1]);
   const todayPlan = state.plans[date] ?? [];
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
-  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }].find(item => item.id === page);
+  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }, { id: 'system-concepts', label: 'System Design concepts', color: 'blue' }, { id: 'system-practice', label: 'System Design problems', color: 'blue' }].find(item => item.id === page);
   const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
@@ -185,7 +187,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   ].slice(0, 7) : [];
 
   const navButton = (item: typeof mainNav[number]) => {
-    const selected = page === item.id || (item.id === 'missions' && ['mission', 'dsa'].includes(page));
+    const selected = page === item.id || (item.id === 'missions' && ['mission', 'dsa', 'system-concepts', 'system-practice'].includes(page));
     return <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${item.color} ${selected ? 'selected' : ''}`} aria-current={selected ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
   };
 
@@ -226,6 +228,10 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
         {page === 'perspective' && <Perspective state={state} practice={practice} commit={commit} />}
         {page === 'dsa' && <DsaLibrary key={route} state={state} sectionNumber={route.split('/')[1]} />}
+        {page === 'system-concepts' && <SystemConceptsPage key={route} groupId={route.split('/')[1]} />}
+        {page === 'system-practice' && <SystemPracticePage key={route} state={state}
+          entryId={route.split('/')[1] === 'concept' ? route.split('/')[3] : route.split('/')[1]}
+          conceptGroupId={route.split('/')[1] === 'concept' ? route.split('/')[2] : undefined} />}
         {page === 'hq' && <Overview state={state} date={date} practice={practice} onEvidence={openEvidence} onResume={resume} onExport={exportBackup} />}
         {page === 'missions' && <MissionsPage state={state} onResume={resume} />}
         {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} onFullRoadmap={() => setFullRoadmapOpen(true)} />}
@@ -249,7 +255,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'sources' && <OperationSourcesPage key={selected?.id ?? 'pattern'} initialSelection={selected?.id} state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
-        {(!['perspective', 'dsa', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
+        {(!['perspective', 'dsa', 'system-concepts', 'system-practice', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
         <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
       </main>
     </div>
@@ -357,6 +363,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify, onF
           if (commit(current => activateCheckpoint(current, mission.id, checkpoint.id))) notify('Current checkpoint changed. Existing evidence is preserved.');
         }}>Make current: {checkpoint.title}</button>)}</div></section>}
         {mission.id === 'pattern' && <DsaPracticeLink checkpoint={save.checkpoint} />}
+        {mission.id === 'system' && <SystemPracticeLink checkpoint={save.checkpoint} />}
         <SectionTitle title={`Checkpoint flowchart · v${mission.roadmapVersion}`} /><MissionFlowchart mission={mission} state={state} />
       </div><div className="right-rail">
         <section className="panel"><SectionTitle title="Blocker" />

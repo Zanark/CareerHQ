@@ -69,7 +69,7 @@ function roundTrip(state: AppState): AppState {
 }
 
 describe('exact catalog versions and verified append identity', () => {
-  it('freezes the original 87-node catalog and replaces only the latest DSA mission', () => {
+  it('freezes the original 87-node catalog and preserves the latest DSA prefix', () => {
     expect(v2Missions.reduce((sum, mission) => sum + mission.checkpoints.length, 0)).toBe(87);
     expect(previous.checkpoints).toHaveLength(5);
     expect(previous.stages).toHaveLength(2);
@@ -82,7 +82,7 @@ describe('exact catalog versions and verified append identity', () => {
     previous.checkpoints.forEach((checkpoint, index) => expect(latest.checkpoints[index]).toBe(checkpoint));
     expect(latest.stages?.slice(0, 2)).toEqual(previous.stages);
     expect(missions.map(mission => mission.id)).toEqual([...missionIds]);
-    for (const mission of v2Missions.filter(mission => mission.id !== 'pattern')) {
+    for (const mission of v2Missions.filter(mission => !['pattern', 'system'].includes(mission.id))) {
       expect(getLatestMission(mission.id)).toBe(mission);
       expect(getMissionVersion(mission.id, '2.0.0')).toBe(mission);
     }
@@ -115,7 +115,7 @@ describe('exact catalog versions and verified append identity', () => {
         .toBe(checkpointIdentity('pattern', checkpoint.id, '2.0.0'));
     }
     expect(checkpointEvidenceVersion('pattern', firstAppended.id, '3.0.0')).toBe('3.0.0');
-    const system = getLatestMission('system');
+    const system = getMissionVersion('system', '2.0.0');
     expect(checkpointEvidenceVersion('system', system.checkpoints[0].id, '2.0.0')).toBe('2.0.0');
     const legacy = getMissionVersion('pattern', '1.0.0');
     expect(isVerifiedAppend(latest, legacy)).toBe(false);
@@ -124,7 +124,7 @@ describe('exact catalog versions and verified append identity', () => {
   });
 
   it.each<[MissionId, RoadmapVersion]>([
-    ['income', '1.0.0'], ['system', '3.0.0'], ['fabric', '3.0.0'], ['algorithm', '3.0.0'],
+    ['income', '1.0.0'], ['escape', '3.0.0'], ['fabric', '3.0.0'], ['algorithm', '3.0.0'],
     ['pattern', '9.0.0' as RoadmapVersion],
   ])('rejects nonexistent %s / %s combinations rather than returning latest', (id, version) => {
     expect(() => getMissionVersion(id, version)).toThrow('roadmap exists');
@@ -157,7 +157,7 @@ describe('exact catalog versions and verified append identity', () => {
     expect(getMission('pattern', old)).toBe(previous);
     expect(getMissions(old)).toEqual(v2Missions);
     expect(hasRoadmapUpdate('pattern', old)).toBe(true);
-    expect(hasRoadmapUpdate('system', old)).toBe(false);
+    expect(hasRoadmapUpdate('system', old)).toBe(true);
     expect(JSON.stringify(roundTrip(old))).toBe(serialized);
     const legacy = createInitialState(false, '1.0.0');
     for (const id of missionIds) expect(legacy.missions[id].roadmapVersion).toBe(id === 'income' ? '2.0.0' : '1.0.0');
@@ -350,7 +350,7 @@ describe('explicit DSA append adoption preserves saved work', () => {
     expect(roundTrip(state)).toEqual(state);
   });
 
-  it('keeps unrelated v1 adoption reset semantics and rejects updates for current v2 missions', () => {
+  it('keeps unrelated v1 adoption reset semantics and rejects updates for current missions', () => {
     let state = createInitialState(false, '1.0.0');
     state = recordEvidence(state, input(state, {
       missionId: 'system', checkpointId: state.missions.system.checkpointId, advance: true, criteriaConfirmed: true,
@@ -359,7 +359,7 @@ describe('explicit DSA append adoption preserves saved work', () => {
     const updated = upgradeRoadmap(state, 'system');
     expect(updated.archives[0].progress).toEqual(state.missions.system);
     expect(updated.missions.system).toMatchObject({
-      roadmapVersion: '2.0.0', completedCheckpointIds: [], status: 'not-started', blocker: '',
+      roadmapVersion: getLatestMission('system').roadmapVersion, completedCheckpointIds: [], status: 'not-started', blocker: '',
     });
     expect(updated.missions.pattern).toEqual(state.missions.pattern);
     expect(() => upgradeRoadmap(updated, 'system')).toThrow('already on the latest version');
@@ -495,31 +495,37 @@ describe('append lineage keeps import and recall validation strict', () => {
     expect(() => parseState(updated)).toThrow('no matching progress');
   });
 
-  it.each(['evidence', 'plan', 'recall'] as const)('rejects nonexistent mission/version combinations in %s records', kind => {
+  it.each(['evidence', 'plan'] as const)('rejects nonexistent mission/version combinations in %s records', kind => {
     const state = recordEvidence(createInitialState(false), input(createInitialState(false), {
-      missionId: 'system', checkpointId: getLatestMission('system').checkpoints[0].id,
+      missionId: 'escape', checkpointId: getLatestMission('escape').checkpoints[0].id,
     }));
     if (kind === 'evidence') state.evidence[0].roadmapVersion = '3.0.0';
     if (kind === 'plan') {
+      state.capacity = 'deep';
       state.plans[localDate()] = generatePlan(state);
-      state.plans[localDate()].find(action => action.missionId === 'system')!.roadmapVersion = '3.0.0';
+      state.plans[localDate()].find(action => action.missionId === 'escape')!.roadmapVersion = '3.0.0';
     }
-    if (kind === 'recall') state.recalls.push({
-      id: 'unknown-version-recall', missionId: 'system', roadmapVersion: '3.0.0',
+    expect(() => parseState(state)).toThrow('unknown roadmap version');
+  });
+
+  it('rejects unsupported versions in recall records', () => {
+    const state = createInitialState(false);
+    state.recalls.push({
+      id: 'unknown-version-recall', missionId: 'system', roadmapVersion: '4.0.0' as RoadmapVersion,
       checkpointId: getLatestMission('system').checkpoints[0].id, outcome: 'partial',
       checks: { explanation: true, diagram: false, exercise: false }, notes: '', createdAt: state.updatedAt,
     });
-    expect(() => parseState(state)).toThrow('unknown roadmap version');
+    expect(() => parseState(state)).toThrow('Invalid workspace');
   });
 
   it('rejects nonexistent active and archived versions and unstamped v2 evidence', () => {
     const unknown = createInitialState(false);
-    unknown.missions.system.roadmapVersion = '3.0.0';
+    unknown.missions.fabric.roadmapVersion = '3.0.0';
     expect(() => parseState(unknown)).toThrow('Unknown roadmap version');
     const unknownArchive = createInitialState(false);
     unknownArchive.archives.push({
-      missionId: 'system', archivedAt: unknownArchive.updatedAt,
-      progress: { ...unknownArchive.missions.system, roadmapVersion: '3.0.0' },
+      missionId: 'fabric', archivedAt: unknownArchive.updatedAt,
+      progress: { ...unknownArchive.missions.fabric, roadmapVersion: '3.0.0' },
     });
     expect(() => parseState(unknownArchive)).toThrow('unknown roadmap');
     const unstamped = upgradeRoadmap(oldState(1), 'pattern');

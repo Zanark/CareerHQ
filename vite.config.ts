@@ -5,7 +5,11 @@ export default defineConfig(({ command }) => ({
   base: '/CareerHQ/',
   build: {
     rollupOptions: {
-      output: { manualChunks: id => id.includes('node_modules') ? 'vendor' : undefined },
+      output: { manualChunks: id => {
+        if (id.includes('node_modules')) return 'vendor';
+        if (/(?:dsaProblemSets|systemPracticeContent)\.ts$/.test(id)) return 'practice-reference-data';
+        return undefined;
+      } },
     },
   },
   plugins: [

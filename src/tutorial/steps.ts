@@ -46,6 +46,8 @@ export const chapters: TutorialChapter[] = [
   { id: 'control', title: 'Mission control' },
   { id: 'sources', title: 'PDFs & roadmap updates' },
   { id: 'dsa-practice', title: 'DSA practice library' },
+  { id: 'system-concepts', title: 'System Design concepts' },
+  { id: 'system-practice', title: 'System Design problems' },
   { id: 'full-map', title: 'Full mission roadmap' },
   { id: 'pipeline', title: 'Opportunities' },
   { id: 'freelance', title: 'Freelance research' },
@@ -274,6 +276,34 @@ export const steps: TutorialStep[] = [
     title: 'Inspect a manageable problem set',
     body: 'Choose Easy in Row difficulty. Open a problem on LeetCode when ready to practice. No solve is recorded by opening a link; genuine work is saved from the current mission checkpoint.',
     checkUi: root => root.querySelector<HTMLSelectElement>('[aria-label="Filter DSA problems by difficulty"]')?.value === 'Easy',
+  },
+  {
+    id: 'system-concepts-intro', chapter: 'system-concepts', kind: 'explain', route: 'system-concepts', command: 'close-dialogs',
+    targets: ['system-concepts-intro'], title: 'The System Design concepts map',
+    body: 'This is the supplied system-design.pdf concept roadmap, separate from the problems workbook and your saved tracker. All source branches are included. Cloud patterns ask for an overview, not mastery of every pattern. Full roadmap lets you switch between problems, concepts and saved progress.',
+  },
+  {
+    id: 'system-concepts-search', chapter: 'system-concepts', kind: 'action',
+    targets: ['system-concept-search'], title: 'Find a concept in its source context',
+    body: 'Search for Circuit Breaker. The reliability section keeps both High Availability and Resiliency occurrences, because the source places it in both. Searching or reading does not complete a checkpoint.',
+    checkUi: root => root.querySelector<HTMLInputElement>('[aria-label="Search System Design concepts"]')?.value.trim().toLowerCase() === 'circuit breaker',
+  },
+  {
+    id: 'system-practice-intro', chapter: 'system-practice', kind: 'explain', route: 'system-practice/module-01',
+    targets: ['system-practice-intro'], title: 'The problem-solving roadmap',
+    body: 'SystemDesign_RoadMap.pdf supplies 72 modules, 15 case studies and eight diagnostics. Modules have practice tasks and transfer gates. Cases are an independently browsable practice bank, not required serial checkpoints. Browsing does not adopt this version or complete work.',
+  },
+  {
+    id: 'system-practice-select', chapter: 'system-practice', kind: 'action',
+    targets: ['system-practice-select'], title: 'Open a design module',
+    body: 'Choose 52. Circuit Breakers. Read its practice tasks, then expand the transfer drills to see how the same concept changes under load or failure.',
+    check: ({ route }) => route === 'system-practice/module-52',
+  },
+  {
+    id: 'system-practice-transfer', chapter: 'system-practice', kind: 'action', route: 'system-practice/module-52',
+    targets: ['system-transfer-drills'], title: 'Practice transfer, not memorization',
+    body: 'Expand Change the constraints: transfer drills. The source asks you to adapt a design, explain failure behavior and defend a trade-off. Completing the reading is not the same as completing the module.',
+    checkUi: root => root.querySelector<HTMLDetailsElement>('[data-tour="system-transfer-drills"]')?.open === true,
   },
   ...fullMapSteps,
   // Pipeline

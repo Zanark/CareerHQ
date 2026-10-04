@@ -5,6 +5,8 @@ import { upgradeRoadmap } from './domain/engine';
 import type { AppState, Mission, MissionId } from './domain/types';
 import { Badge, PageHeading } from './components';
 import { MissionFlowchart } from './roadmaps/MissionFlowchart';
+import { SYSTEM_CONCEPT_SOURCE } from './system/concepts';
+import { SYSTEM_PRACTICE_SOURCE } from './domain/operations/systemPracticeStudy';
 
 type Commit = (transform: (state: AppState) => AppState) => boolean;
 
@@ -34,6 +36,11 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
       <button className="button primary" data-tour="source-adopt" onClick={adopt}><RefreshCw size={15} />{append ? 'Append expanded roadmap' : 'Adopt documented roadmap'}</button>
     </div>}
     {missionId === 'pattern' && <p className="source-notice"><a className="text-link" data-tour="dsa-library-open" href="#/dsa/1">Browse all 50 DSA sections and problem sets<ArrowRight size={14} /></a></p>}
+    {missionId === 'system' && <div className="system-concept-entry" data-tour="system-concepts-open">
+      <p><strong>Two connected roadmaps:</strong> {SYSTEM_CONCEPT_SOURCE.document} is the concepts map; {SYSTEM_PRACTICE_SOURCE} supplies the modules, problems and case studies. Full roadmap lets you switch between both and your saved tracker. Cloud patterns begin at overview depth, not mastery of every pattern.</p>
+      <div className="button-row"><a className="text-link" href="#/system-concepts">Browse and search all System Design concepts<ArrowRight size={14} /></a>
+      <a className="text-link" href="#/system-practice">Open System Design problems and case studies<ArrowRight size={14} /></a></div>
+    </div>}
     {notice && <p className="source-notice" role="status">{notice}</p>}
     {missionId === 'income' && <p className="source-notice"><a className="text-link" href="#/freelance">Open freelance opportunity ledger<ArrowRight size={14} /></a></p>}
     {['pattern', 'system'].includes(missionId) && <p className="source-notice"><a className="text-link" href="#/recall">Review saved work in recall practice<ArrowRight size={14} /></a></p>}

@@ -170,11 +170,12 @@ test('Fabric opens beside the mission title with all 5 stages and 32 checkpoints
 });
 
 test('System keeps all 7 stages and 28 source topic groups connected in one overview', async ({ page }) => {
-  const state = createInitialState(false);
+  const state = createInitialState(false, '2.0.0');
   const mission = getMission('system', state);
   await loadMission(page, state, mission.id);
   const before = await storage(page);
   const dialog = await openRoadmap(page, mission);
+  await dialog.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expectMap(dialog, mission, 7, 28);
   await expectConnections(dialog, mission);
   await expectCurrent(dialog, state.missions.system.checkpointId);

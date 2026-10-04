@@ -1,0 +1,52 @@
+.system-concepts-page { display: grid; gap: 22px; }
+.system-concept-notice { border: 1px solid var(--dsf-separator); border-left: 4px solid var(--dsf-blue); border-radius: 10px; padding: 20px; background: var(--dsf-paper); }
+.system-concept-notice p { font-size: .75rem; }
+.system-concept-notice p + p { margin-top: 12px; }
+.system-concept-notice strong { color: var(--dsf-heading); }
+.system-concept-notice a, .system-concept-related a { color: var(--dsf-accent); text-decoration: underline; text-underline-offset: 3px; }
+.system-concept-search { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px; }
+.system-concept-search label { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; font-size: .6875rem; }
+.system-concept-search input { width: 100%; font-size: .75rem; }
+.system-concept-search > span { font-size: .6875rem; color: var(--dsf-muted); padding-bottom: 10px; }
+.system-concept-reading, .system-concept-empty { font-size: .6875rem; color: var(--dsf-muted); }
+.system-concept-browser-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.system-concept-card { min-width: 0; border: 1px solid var(--dsf-separator); border-top: 4px solid var(--accent); background: var(--dsf-paper); border-radius: 12px; padding: 22px; }
+.system-concept-order { display: block; color: var(--tone); font-size: .625rem; letter-spacing: .08em; margin-bottom: 12px; }
+:root[data-theme] .system-concept-card h2 { color: var(--tone); font-size: 1rem; line-height: 1.5; }
+.system-concept-card > p { font-size: .75rem; margin-top: 12px; }
+.system-concept-practice { margin-top: 18px; }
+.system-concept-branches { margin: 16px 0 0 8px; padding: 0 0 0 16px; border-left: 1px solid var(--dsf-border); list-style: none; }
+.system-concept-branches > li { position: relative; padding-top: 12px; min-width: 0; }
+.system-concept-branches > li::before { content: ""; position: absolute; left: -16px; top: 26px; width: 14px; height: 1px; background: var(--dsf-border); }
+.system-concept-branches li > span { display: block; font-size: .75rem; line-height: 1.7; overflow-wrap: anywhere; color: var(--dsf-heading); }
+.system-concept-branches .system-concept-branches { margin-top: 3px; }
+.system-concept-related { padding-top: 22px; border-top: 1px solid var(--dsf-separator); }
+.system-concept-related h2 { font-size: 1rem; }
+.system-concept-related > div { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 16px 0; font-size: .75rem; }
+.system-concept-related > p { color: var(--dsf-muted); font-size: .6875rem; }
+.system-concept-map-diagram { padding: 32px; }
+.system-concept-map-grid { display: grid; grid-template-columns: repeat(10, 312px); gap: 36px; align-items: start; }
+.system-concept-map-group { padding: 17px; border: 1px solid var(--dsf-separator); border-top: 4px solid var(--accent); border-radius: 12px; }
+.system-concept-map-group .system-concept-branches { border-color: transparent; margin-left: 0; padding-left: 17px; }
+.system-concept-map-group .system-concept-branches > li { padding-top: 10px; }
+.system-concept-map-group .system-concept-branches > li::before { display: none; }
+.system-concept-node { display: block; width: 100%; padding: 11px 12px; text-align: left; border: 1px solid var(--dsf-border); border-radius: 7px; background: var(--dsf-paper); color: var(--dsf-heading); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
+.system-concept-map-group > .system-concept-node { color: var(--tone); border-color: var(--accent); font-weight: 650; }
+.system-concept-node[aria-pressed="true"] { outline: 3px solid var(--dsf-accent); outline-offset: 3px; }
+.system-concept-node:hover { border-color: var(--dsf-accent); }
+.system-concept-map-diagram .diagram-edge[data-kind="member"] > path { stroke-dasharray: 3 4; }
+.system-concept-map-diagram .diagram-edge[data-kind="cross-stage"] > path { stroke: var(--dsf-blue); }
+.system-concept-inspector > strong { color: var(--dsf-heading); }
+.system-concept-inspector p + p, .system-concept-inspector strong + p { margin-top: 7px; }
+.system-concept-source { font-size: .625rem; color: var(--dsf-muted); }
+.system-concept-entry { padding-top: 15px; font-size: .75rem; }
+.system-concept-entry p { margin-bottom: 10px; }
+@media (max-width: 850px) { .system-concept-browser-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) {
+  .system-concept-card, .system-concept-notice { padding: 18px; }
+  .system-concept-search label { flex-basis: 100%; }
+}
+@media print {
+  .system-concept-search { display: none; }
+  .system-concept-card { break-inside: avoid; }
+}

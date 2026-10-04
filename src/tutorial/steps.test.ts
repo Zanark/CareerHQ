@@ -21,6 +21,8 @@ describe('current tutorial curriculum', () => {
       'review-recall-setup', 'review-independent', 'settings-export', 'settings-import', 'persistence-transfer',
       'evidence-save', 'evidence-complete', 'control-blocker', 'tools-theme', 'perspective-intro',
       'dsa-library', 'dsa-library-section', 'dsa-library-filter',
+      'system-concepts-intro', 'system-concepts-search',
+      'system-practice-intro', 'system-practice-select', 'system-practice-transfer',
     ]) expect(ids.has(id), id).toBe(true);
   });
 });
