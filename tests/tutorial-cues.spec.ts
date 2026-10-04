@@ -115,11 +115,16 @@ test('the ring follows scrolling and resizing without persistent observers after
   await expect(page.locator('.tutorial-cues')).toHaveCount(0);
 });
 
-for (const width of [1440, 390]) {
-  test(`section borders leave space around heading text without resizing content at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 1000 });
+for (const { width, height, fallbackFont } of [
+  { width: 1440, height: 1000, fallbackFont: false },
+  { width: 390, height: 1000, fallbackFont: false },
+  { width: 390, height: 844, fallbackFont: true },
+]) {
+  test(`section borders leave space around heading text without resizing content at ${width}px${fallbackFont ? ' with fallback fonts' : ''}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height });
     await page.addInitScript(() => localStorage.setItem('careerhq.theme.v1', 'light'));
     await start(page);
+    if (fallbackFont) await page.addStyleTag({ content: 'body, button, input, select, textarea { font-family: Arial, sans-serif !important; }' });
     const coach = page.locator('.tutorial-panel');
     const before = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
     await coach.getByRole('combobox', { name: 'Tutorial chapter' }).selectOption('overview');

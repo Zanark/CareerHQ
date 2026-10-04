@@ -6,7 +6,8 @@ interface HandBox { left: number; top: number; direction: 'up' | 'down' | 'left'
 interface CueLayout { box: CueBox; hand: HandBox | null }
 const HAND_SIZE = 48;
 const GAP = 12;
-const SECTION_PADDING = 12;
+export const SECTION_PADDING = 12;
+export const CUE_VIEWPORT_MARGIN = 3;
 const CONTROL_PADDING = 6;
 
 function overlaps(a: { left: number; top: number; width: number; height: number }, b: DOMRect) {
@@ -26,10 +27,10 @@ export function TutorialCue({ target, panel, anchorRect }: {
         return;
       }
       const rect = target.getBoundingClientRect();
-      let clipLeft = 3;
-      let clipTop = 3;
-      let clipRight = innerWidth - 3;
-      let clipBottom = innerHeight - 3;
+      let clipLeft = CUE_VIEWPORT_MARGIN;
+      let clipTop = CUE_VIEWPORT_MARGIN;
+      let clipRight = innerWidth - CUE_VIEWPORT_MARGIN;
+      let clipBottom = innerHeight - CUE_VIEWPORT_MARGIN;
       for (let parent = target.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
         const style = getComputedStyle(parent);
         const bounds = parent.getBoundingClientRect();

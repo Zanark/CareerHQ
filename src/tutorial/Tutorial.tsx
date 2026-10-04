@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, LogOut, RotateCcw, SkipF
 import type { TutorialProps } from './types';
 import { chapters, steps } from './steps';
 import type { TutorialStep } from './steps';
-import { TutorialCue } from './TutorialCue';
+import { CUE_VIEWPORT_MARGIN, SECTION_PADDING, TutorialCue } from './TutorialCue';
 
 const MOBILE_WIDTH = 640;
 const PANEL_MARGIN = 24;
@@ -242,8 +242,11 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   useEffect(() => {
     const target = targetElement;
     if (!target || nextCue) return;
-    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+    const coachHeight = window.innerWidth <= MOBILE_WIDTH ? (panelRef.current?.getBoundingClientRect().height ?? 0) + 32 : 0;
+    const availableHeight = window.innerHeight - coachHeight;
+    const fits = target.getBoundingClientRect().height + 2 * (SECTION_PADDING + CUE_VIEWPORT_MARGIN) <= availableHeight;
     target.classList.add('tutorial-highlight');
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: fits ? 'center' : 'start', inline: 'nearest' });
     return () => target.classList.remove('tutorial-highlight');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.id, targetElement, nextCue]);
