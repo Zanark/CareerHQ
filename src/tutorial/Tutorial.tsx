@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, LogOut, RotateCcw, SkipForward, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripHorizontal, LogOut, RotateCcw, SkipForward, X } from 'lucide-react';
 import type { TutorialCommand, TutorialProps } from './types';
 import { chapters, steps } from './steps';
 import type { TutorialStep } from './steps';
 import { CUE_VIEWPORT_MARGIN, SECTION_PADDING, TutorialCue } from './TutorialCue';
+import { useTutorialPosition } from './useTutorialPosition';
 
 const MOBILE_WIDTH = 640;
 const PANEL_MARGIN = 24;
@@ -151,6 +152,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const rafRef = useRef(0);
   const pendingRef = useRef(false);
   const pendingCommand = useRef<{ route: string; stepId: string; command: TutorialCommand } | null>(null);
+  const moveHelpId = useId();
 
   const step: TutorialStep = steps[stepIndex];
   const total = steps.length;
@@ -337,6 +339,10 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   }
 
   const placement = computePlacement(mobile ? null : targetRect, panelSize, mobile);
+  const movable = useTutorialPosition(panelRef, {
+    width: mobile ? window.innerWidth - 20 : placement.width,
+    height: panelSize.height,
+  }, dialogHost);
   const host = dialogHost ?? document.body;
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
 
@@ -364,12 +370,15 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
 
   const panel = (
     <>
-    <TutorialCue target={nextCue ? nextRef.current : targetElement} panel={panelRef.current} anchorRect={targetRect} />
+    <TutorialCue target={nextCue ? nextRef.current : targetElement} panel={panelRef.current} anchorRect={targetRect} panelPosition={movable.position} />
     <div
       ref={panelRef}
       data-step={step.id}
-      className={`tutorial-panel ${mobile ? 'tutorial-panel-mobile' : 'tutorial-panel-floating'} ${collapsed ? 'tutorial-collapsed' : ''}`}
-      style={mobile
+      data-position={movable.position ? 'manual' : 'auto'}
+      className={`tutorial-panel ${mobile ? 'tutorial-panel-mobile' : 'tutorial-panel-floating'} ${collapsed ? 'tutorial-collapsed' : ''} ${movable.dragging ? 'tutorial-dragging' : ''}`}
+      style={movable.position
+        ? { ...movable.position, bottom: 'auto', right: 'auto', width: mobile ? window.innerWidth - 20 : placement.width, maxHeight: placement.maxHeight }
+        : mobile
         ? { maxHeight: collapsed ? undefined : placement.maxHeight }
         : { top: placement.top, left: placement.left, width: placement.width, maxHeight: placement.maxHeight }}
       role="region"
@@ -377,6 +386,19 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
       onKeyDown={(event) => { if (event.key === 'Escape' && !(event.target instanceof HTMLSelectElement)) { event.preventDefault(); event.stopPropagation(); handleEscape(); } }}
     >
       <div className="tutorial-head">
+        <div className="tutorial-position-bar">
+          <button type="button" className="tutorial-drag-handle" aria-label="Drag to move tutorial window"
+            aria-describedby={moveHelpId} aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home"
+            title="Drag to move. Arrow keys move; Home resets." {...movable.handleProps}>
+            <GripHorizontal size={17} /><span>Drag to move</span>
+          </button>
+          <button type="button" className="tutorial-position-reset" onClick={movable.reset}
+            disabled={!movable.position} aria-label="Reset tutorial position" title="Restore automatic positioning">
+            <RotateCcw size={13} />Reset position
+          </button>
+          <span id={moveHelpId} className="sr-only">Drag with a mouse or touch. Arrow keys move this window; Shift moves farther. Home restores automatic positioning. Escape cancels an active drag.</span>
+        </div>
+        <div className="tutorial-head-main">
         <div className="tutorial-head-text">
           <span className="tutorial-eyebrow">{currentChapter?.title ?? 'Tutorial'} &middot; {stepIndex + 1}/{total}</span>
           {!collapsed && <h2 className="tutorial-title">{step.title}</h2>}
@@ -386,6 +408,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
             {collapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
           <button type="button" className="icon-button" aria-label="Exit tutorial" onClick={onExit}><X size={18} /></button>
+        </div>
         </div>
       </div>
       <div className="tutorial-progress-track" aria-hidden="true"><div className="tutorial-progress-fill" style={{ width: `${progressPct}%` }} /></div>

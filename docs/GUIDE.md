@@ -93,6 +93,12 @@ hand, perform the indicated action, then select **Next**. Back, Skip and Exit ar
 available throughout. Exit returns to your real workspace; practice changes are discarded.
 Highlight borders sit outside the content with breathing room around headings and controls.
 The coach also uses padded, bordered panels; the overlay never changes the target's layout.
+Use **Drag to move** at the top of the floating coach to move it with a mouse or
+touch. Your chosen position stays across steps while the tutorial is open and is
+kept inside the viewport. **Reset position** returns to automatic placement.
+With the handle focused, arrow keys move it, Shift moves farther, and Home resets;
+Escape cancels an active drag. The compact full-roadmap bars remain docked to keep
+the map canvas clear. Position is not written to your workspace or backup.
 
 The tutorial covers actual controls using temporary data. Its files are named
 `careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the

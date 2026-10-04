@@ -35,9 +35,9 @@
   --tutorial-panel-padding-top: 18px;
   position: fixed;
   left: 10px;
-  right: 10px;
+  right: auto;
   bottom: 10px;
-  width: auto !important;
+  width: calc(100vw - 20px);
   border-radius: 14px;
   padding-inline: 16px;
   padding-bottom: 16px;
@@ -50,10 +50,24 @@
 
 .tutorial-head {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tutorial-head-main {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
+
+.tutorial-position-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tutorial-drag-handle, .tutorial-position-reset { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; font-size: .5625rem; line-height: 1.4; color: var(--dsf-muted); }
+.tutorial-drag-handle { touch-action: none; user-select: none; cursor: grab; }
+.tutorial-drag-handle:hover, .tutorial-position-reset:not(:disabled):hover { color: var(--dsf-accent); }
+.tutorial-dragging .tutorial-drag-handle { cursor: grabbing; }
+.tutorial-dragging { user-select: none; }
+.tutorial-position-reset { white-space: nowrap; }
 
 .tutorial-head-text {
   display: flex;

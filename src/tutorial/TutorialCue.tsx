@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 
 interface CueBox { left: number; top: number; width: number; height: number; radius: string }
@@ -14,10 +14,12 @@ function overlaps(a: { left: number; top: number; width: number; height: number 
   return a.left < b.right && a.left + a.width > b.left && a.top < b.bottom && a.top + a.height > b.top;
 }
 
-export function TutorialCue({ target, panel, anchorRect }: {
+export function TutorialCue({ target, panel, anchorRect, panelPosition }: {
   target: HTMLElement | null; panel: HTMLElement | null; anchorRect: DOMRect | null;
+  panelPosition?: { left: number; top: number } | null;
 }) {
   const [layout, setLayout] = useState<CueLayout | null>(null);
+  const measurePosition = useRef<(() => void) | null>(null);
   useLayoutEffect(() => {
     if (!target) { setLayout(null); return; }
     let frame = 0;
@@ -50,7 +52,13 @@ export function TutorialCue({ target, panel, anchorRect }: {
         return;
       }
       const clickable = target.matches('button:not(:disabled),[role="button"],a[href],summary,input[type="submit"]:not(:disabled),input[type="checkbox"]:not(:disabled),input[type="radio"]:not(:disabled)');
-      const padding = clickable || target.matches('input,select,textarea') ? CONTROL_PADDING : SECTION_PADDING;
+      const control = clickable || target.matches('input,select,textarea');
+      const panelRect = panel && !panel.contains(target) ? panel.getBoundingClientRect() : null;
+      if (control && panelRect && overlaps(rect, panelRect)) {
+        setLayout(null);
+        return;
+      }
+      const padding = control ? CONTROL_PADDING : SECTION_PADDING;
       const left = Math.max(clipLeft, rect.left - padding);
       const top = Math.max(clipTop, rect.top - padding);
       const right = Math.min(clipRight, rect.right + padding);
@@ -70,7 +78,6 @@ export function TutorialCue({ target, panel, anchorRect }: {
         const ordered = panel?.contains(target) ? [candidates[1], candidates[2], candidates[0], candidates[3]] : candidates;
         const fits = ordered.filter(candidate => candidate.left >= 4 && candidate.top >= 4 &&
           candidate.left + HAND_SIZE <= innerWidth - 4 && candidate.top + HAND_SIZE <= innerHeight - 4);
-        const panelRect = panel && !panel.contains(target) ? panel.getBoundingClientRect() : null;
         hand = fits.find(candidate => !panelRect || !overlaps({ ...candidate, width: HAND_SIZE, height: HAND_SIZE }, panelRect)) ?? fits[0] ?? null;
       }
       const next = { box, hand };
@@ -80,6 +87,7 @@ export function TutorialCue({ target, panel, anchorRect }: {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(measure);
     };
+    measurePosition.current = measure;
     measure();
     const observer = new ResizeObserver(schedule);
     observer.observe(target);
@@ -88,6 +96,7 @@ export function TutorialCue({ target, panel, anchorRect }: {
     window.addEventListener('scroll', schedule, true);
     window.visualViewport?.addEventListener('resize', schedule);
     return () => {
+      measurePosition.current = null;
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', schedule);
@@ -95,6 +104,10 @@ export function TutorialCue({ target, panel, anchorRect }: {
       window.visualViewport?.removeEventListener('resize', schedule);
     };
   }, [target, panel, anchorRect]);
+
+  useLayoutEffect(() => {
+    measurePosition.current?.();
+  }, [panelPosition?.left, panelPosition?.top]);
 
   if (!layout || !target) return null;
   const { box, hand } = layout;

@@ -60,7 +60,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'welcome-intro', chapter: 'welcome', kind: 'explain',
     title: 'Welcome to the practice tutorial',
-    body: 'Follow the glow and hand. Try the action, then click Next. Use Chapter to jump between features. This is temporary practice; your real progress stays untouched.',
+    body: 'Follow the glow and hand. Try the action, then click Next. If this window blocks your view, use Drag to move at the top; Reset position restores automatic placement. Use Chapter to jump between features. Practice is temporary; your real progress stays untouched.',
   },
   {
     id: 'perspective-intro', chapter: 'perspective', kind: 'explain', route: 'perspective',
