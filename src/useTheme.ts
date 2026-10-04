@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { nextSunAngle, readSunAngle, themeAngle } from './sunCycle';
+import type { OrbitTravel } from './sunCycle';
 
 export type Theme = 'dark' | 'light';
 export const THEME_STORAGE_KEY = 'careerhq.theme.v1';
@@ -7,11 +9,18 @@ export const THEME_MOTION_MS = 1200;
 
 export function useTheme(preview = false) {
   const [theme, setTheme] = useState<Theme>(() => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  const [orbitAngle, setOrbitAngle] = useState(() => themeAngle(theme));
+  const travel = useRef<OrbitTravel>({ from: orbitAngle, to: orbitAngle });
   const [motion, setMotion] = useState<'sunrise' | 'sunset' | null>(null);
   const [notice, setNotice] = useState(document.documentElement.dataset.themeNotice ?? '');
   const timer = useRef<number | undefined>(undefined);
   const current = useRef(theme);
   const previewSnapshot = useRef<Theme | null>(null);
+  function snapOrbit(next: Theme) {
+    const angle = themeAngle(next);
+    travel.current = { from: angle, to: angle };
+    setOrbitAngle(angle);
+  }
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -21,6 +30,7 @@ export function useTheme(preview = false) {
   useLayoutEffect(() => {
     if (preview) {
       previewSnapshot.current = current.current;
+      snapOrbit(current.current);
       setMotion(null);
       window.clearTimeout(timer.current);
       delete document.documentElement.dataset.themeTransition;
@@ -38,6 +48,7 @@ export function useTheme(preview = false) {
     }
     previewSnapshot.current = null;
     current.current = restored;
+    snapOrbit(restored);
     setTheme(restored);
     setMotion(null);
     window.clearTimeout(timer.current);
@@ -59,6 +70,7 @@ export function useTheme(preview = false) {
       setNotice('');
       delete document.documentElement.dataset.themeNotice;
       current.current = next;
+      snapOrbit(next);
       setTheme(next);
       setMotion(null);
       window.clearTimeout(timer.current);
@@ -71,12 +83,17 @@ export function useTheme(preview = false) {
     };
   }, [preview]);
 
-  function toggle() {
+  function toggle(button: HTMLElement) {
     const next = current.current === 'dark' ? 'light' : 'dark';
+    const from = readSunAngle(button, travel.current);
+    const to = nextSunAngle(from, next);
+    travel.current = { from, to };
+    setOrbitAngle(to);
     current.current = next;
     setTheme(next);
     window.clearTimeout(timer.current);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      snapOrbit(next);
       setMotion(null);
       delete document.documentElement.dataset.themeTransition;
     } else {
@@ -100,5 +117,5 @@ export function useTheme(preview = false) {
     }
   }
 
-  return { theme, motion, notice, dismissNotice: () => setNotice(''), toggle };
+  return { theme, orbitAngle, motion, notice, dismissNotice: () => setNotice(''), toggle };
 }

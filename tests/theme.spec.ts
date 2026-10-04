@@ -226,50 +226,57 @@ async function animationFrame(toggle: Locator, milliseconds: number) {
       y: bounds.y + bounds.height / 2 - scene.y,
       top: bounds.top - scene.top,
       sceneHeight: scene.height,
+      sceneWidth: scene.width,
     };
   }, milliseconds);
 }
 
-test('sunrise and sunset use one continuous orbit with natural horizon occlusion', async ({ page }, testInfo) => {
+test('the sun repeatedly rises on the east/right and sets on the west/left', async ({ page }, testInfo) => {
   await page.goto('./');
   await assertTheme(page, 'dark');
   const before = await workspace(page);
   await page.clock.install();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   const toggle = themeSwitch(page);
-  for (const [motion, theme] of [['sunrise', 'light'], ['sunset', 'dark']] as const) {
+  let cycle = 0;
+  for (const [motion, theme] of [['sunrise', 'light'], ['sunset', 'dark'], ['sunrise', 'light'], ['sunset', 'dark']] as const) {
     await toggle.click();
     await expect(toggle).toHaveAttribute('data-motion', motion);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const frames = [];
-    for (const milliseconds of [0, THEME_MOTION_MS / 3, THEME_MOTION_MS]) {
+    for (const milliseconds of [0, THEME_MOTION_MS / 4, THEME_MOTION_MS * .75, THEME_MOTION_MS]) {
       const frame = await animationFrame(toggle, milliseconds);
       expect(frame.animationCount).toBeGreaterThan(0);
       expect(frame.transitionProperty).toBe('transform');
       frames.push(frame);
-      const path = testInfo.outputPath(`${motion}-${milliseconds}ms.png`);
+      const path = testInfo.outputPath(`${motion}-${cycle}-${milliseconds}ms.png`);
       await toggle.screenshot({ path, animations: 'allow' });
-      await testInfo.attach(`${motion}-${milliseconds}ms`, { path, contentType: 'image/png' });
+      await testInfo.attach(`${motion}-${cycle}-${milliseconds}ms`, { path, contentType: 'image/png' });
     }
     expect(frames[0].transform).not.toBe(frames[1].transform);
     expect(frames[1].transform).not.toBe(frames[2].transform);
     if (motion === 'sunrise') {
       expect(frames[0].y).toBeGreaterThan(frames[1].y);
       expect(frames[1].y).toBeGreaterThan(frames[2].y);
+      expect(frames[2].x).toBeGreaterThan(frames[2].sceneWidth / 2);
       expect(frames[2].y).toBeLessThan(21);
+      expect(frames[3].y).toBeLessThan(21);
     } else {
       expect(frames[0].y).toBeLessThan(frames[1].y);
       expect(frames[1].y).toBeLessThan(frames[2].y);
-      expect(frames[2].top).toBeGreaterThan(frames[2].sceneHeight);
+      expect(frames[1].x).toBeLessThan(frames[1].sceneWidth / 2);
+      expect(frames[1].y).toBeLessThan(21);
+      expect(frames[3].top).toBeGreaterThan(frames[3].sceneHeight);
     }
-    await testInfo.attach(`${motion}-computed-frames`, { body: JSON.stringify(frames), contentType: 'application/json' });
+    await testInfo.attach(`${motion}-${cycle}-computed-frames`, { body: JSON.stringify(frames), contentType: 'application/json' });
     await page.clock.runFor(THEME_MOTION_MS + 150);
     await expect.poll(() => toggle.getAttribute('data-motion')).toBeNull();
+    cycle++;
   }
   expect(await workspace(page)).toBe(before);
 });
 
-test('reversing mid-flight preserves the current sun position instead of restarting', async ({ page }) => {
+test('retargeting mid-flight preserves the current sun position instead of restarting', async ({ page }) => {
   await page.goto('./');
   await page.clock.install();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
@@ -287,6 +294,26 @@ test('reversing mid-flight preserves the current sun position instead of restart
   await assertTheme(page, 'dark');
 });
 
+test('a late sunrise request continues past the west horizon and returns from the east', async ({ page }) => {
+  await page.goto('./');
+  await selectTheme(page, 'light');
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const toggle = themeSwitch(page);
+  await toggle.click();
+  const before = await animationFrame(toggle, THEME_MOTION_MS / 2);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('data-motion', 'sunrise');
+  const retargeted = await animationFrame(toggle, 0);
+  expect(Math.hypot(retargeted.x - before.x, retargeted.y - before.y)).toBeLessThan(.25);
+  const rising = await animationFrame(toggle, THEME_MOTION_MS * .75);
+  expect(rising.x).toBeGreaterThan(rising.sceneWidth / 2);
+  expect(rising.y).toBeLessThan(21);
+  await animationFrame(toggle, THEME_MOTION_MS);
+  await page.clock.runFor(THEME_MOTION_MS + 150);
+  await assertTheme(page, 'light');
+});
+
 test('theme motion stays within the tiny control instead of animating the page', async ({ page }) => {
   await page.goto('./');
   await page.clock.install();
@@ -301,7 +328,7 @@ test('theme motion stays within the tiny control instead of animating the page',
     };
   }));
   expect(effects.length).toBeGreaterThan(0);
-  expect(effects.length).toBeLessThanOrEqual(4);
+  expect(effects.length).toBeLessThanOrEqual(6);
   expect(effects.every(effect => effect.local && ['transform', 'opacity'].includes(effect.property ?? ''))).toBe(true);
 });
 
@@ -324,9 +351,13 @@ test('sunny mode has a bright blue sky instead of the night palette', async ({ p
   expect(daytime.rgb.every(channel => channel > 180)).toBe(true);
   expect(daytime.rgb[2]).toBeGreaterThan(daytime.rgb[0]);
   await expect(page.locator('.theme-sun path')).toHaveCSS('stroke', 'rgb(203, 75, 22)');
+  await expect(page.locator('.theme-clouds')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.theme-clouds path')).toHaveCount(2);
   const path = testInfo.outputPath('sunny-sky-control.png');
   await themeSwitch(page).screenshot({ path });
   await testInfo.attach('sunny-sky-control', { path, contentType: 'image/png' });
+  await selectTheme(page, 'dark');
+  await expect(page.locator('.theme-clouds')).toHaveCSS('opacity', '0');
 });
 
 test('reduced motion changes theme immediately without animated transition state', async ({ page }) => {

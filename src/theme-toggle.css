@@ -23,15 +23,16 @@
 .theme-sky::before, .theme-sky::after { content: ""; position: absolute; inset: 0; will-change: opacity; }
 .theme-sky::before { background: color-mix(in srgb, var(--dsf-blue) 24%, #FCFAF2); opacity: 1; }
 .theme-sky::after { background: radial-gradient(ellipse at 50% 100%, var(--dsf-sunset), transparent 75%); opacity: .28; }
-/* A single rotating layer keeps the celestial path continuous, including reversals. */
-.theme-orbit { position: absolute; left: 7px; top: 11px; width: 42px; height: 42px; transform: rotate(0deg); transform-origin: 50% 50%; will-change: transform; }
+/* Continuing counter-clockwise makes the sun enter on the east and leave on the west. */
+.theme-orbit { position: absolute; left: 7px; top: 11px; width: 42px; height: 42px; transform: rotate(var(--theme-orbit-angle, -180deg)); transform-origin: 50% 50%; will-change: transform; }
 .theme-sun { position: absolute; left: 11px; top: -10px; color: var(--dsf-sun); }
 .theme-sun circle { stroke: var(--dsf-sunset); stroke-width: 1.2px; }
 .theme-sun path { stroke: var(--dsf-sunset); }
 .theme-moon { position: absolute; left: 13px; top: 34px; color: var(--dsf-pearl); transform: rotate(180deg); }
 .theme-stars { position: absolute; inset: 0; color: var(--dsf-pearl); opacity: 0; will-change: opacity; }
+.theme-clouds { position: absolute; inset: 0; color: #FCFAF2; opacity: 1; transform: translate(0, 0); will-change: opacity, transform; }
 .theme-water { position: absolute; bottom: -1px; left: 0; color: var(--dsf-hero-accent); }
-.theme-toggle[aria-checked="true"] .theme-orbit { transform: rotate(180deg); }
+.theme-toggle[aria-checked="true"] .theme-clouds { opacity: 0; transform: translate(3px, 2px); }
 .theme-toggle[aria-checked="true"] .theme-stars { opacity: .85; }
 .theme-toggle[aria-checked="true"] .theme-sky::before,
 .theme-toggle[aria-checked="true"] .theme-sky::after { opacity: 0; }
@@ -39,6 +40,7 @@
 .theme-toggle[data-motion] .theme-stars,
 .theme-toggle[data-motion] .theme-sky::before,
 .theme-toggle[data-motion] .theme-sky::after { transition: opacity var(--theme-motion-duration) cubic-bezier(.4, 0, .2, 1); }
+.theme-toggle[data-motion] .theme-clouds { transition: opacity var(--theme-motion-duration) cubic-bezier(.4, 0, .2, 1), transform var(--theme-motion-duration) cubic-bezier(.4, 0, .2, 1); }
 @media (max-width: 760px) {
   .theme-toggle-label { display: none; }
   .theme-toggle { width: 66px; height: 40px; padding: 3px; }
