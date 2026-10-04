@@ -27,6 +27,7 @@ import { MissionFlowchart } from './roadmaps/MissionFlowchart';
 import { FullMissionRoadmap } from './roadmaps/FullMissionRoadmap';
 import { SourcePanel, OperationSourcesPage } from './SourcePanel';
 import { FreelancePage, RecallPage } from './OperationTools';
+import { DsaLibrary, DsaPracticeLink } from './dsa/DsaLibrary';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -107,7 +108,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const selected = missions.find(mission => mission.id === route.split('/')[1]);
   const todayPlan = state.plans[date] ?? [];
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
-  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }].find(item => item.id === page);
+  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }].find(item => item.id === page);
   const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
@@ -183,7 +184,10 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     ...state.evidence.filter(item => `${item.title} ${item.summary}`.toLowerCase().includes(query.trim().toLowerCase())).map(item => ({ label: item.title, detail: 'Evidence', route: `evidence/${item.id}` })),
   ].slice(0, 7) : [];
 
-  const navButton = (item: typeof mainNav[number]) => <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${item.color} ${page === item.id || (item.id === 'missions' && page === 'mission') ? 'selected' : ''}`} aria-current={page === item.id || (item.id === 'missions' && page === 'mission') ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
+  const navButton = (item: typeof mainNav[number]) => {
+    const selected = page === item.id || (item.id === 'missions' && ['mission', 'dsa'].includes(page));
+    return <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${item.color} ${selected ? 'selected' : ''}`} aria-current={selected ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
+  };
 
   return <div className="app" data-workspace={practice ? 'practice' : 'saved'}>
     <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); headingRef.current?.focus(); }}>Skip to content</a>
@@ -221,6 +225,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {practice && <div className="tutorial-practice-banner"><strong>Practice tutorial</strong><span>Temporary data. Your real progress is untouched.</span><button onClick={onExitTutorial}>Exit tutorial</button></div>}
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
         {page === 'perspective' && <Perspective state={state} practice={practice} />}
+        {page === 'dsa' && <DsaLibrary key={route} state={state} sectionNumber={route.split('/')[1]} />}
         {page === 'hq' && <Overview state={state} date={date} practice={practice} onEvidence={openEvidence} onResume={resume} onExport={exportBackup} />}
         {page === 'missions' && <MissionsPage state={state} onResume={resume} />}
         {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} onFullRoadmap={() => setFullRoadmapOpen(true)} />}
@@ -244,7 +249,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'sources' && <OperationSourcesPage key={selected?.id ?? 'pattern'} initialSelection={selected?.id} state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
-        {(!['perspective', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
+        {(!['perspective', 'dsa', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
         <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
       </main>
     </div>
@@ -266,7 +271,7 @@ function MissionCard({ mission, state, onResume }: { mission: Mission; state: Ap
   return <article className={`mission-card ${mission.color}`}>
     <div className="mission-card-top"><MissionIcon mission={mission} /><Badge tone={progress.mode === 'active' ? 'green' : ''}>{mission.planned ? 'Planned' : progress.status === 'completed' ? 'Completed' : progress.mode === 'active' ? 'In focus' : 'Background'}</Badge></div>
     <span className="mission-subtitle">{mission.operation}</span><h3>{mission.name}</h3>
-    <p className="source-version-label">{mission.roadmapVersion === '1.0.0' ? 'Previous roadmap · update available' : `Operation docs · ${mission.coverage ?? 'documented'}`}</p>
+    <p className="source-version-label">{mission.roadmapVersion !== getMission(mission.id).roadmapVersion ? `Previous roadmap v${mission.roadmapVersion} · update available` : `Operation docs · v${mission.roadmapVersion} · ${mission.coverage ?? 'documented'}`}</p>
     <p className="checkpoint-title">{save.checkpoint?.title ?? (mission.coverage === 'forecast' ? 'Planning timeline available' : 'Roadmap not yet defined')}</p>
     <div className="mission-progress-label"><span>{save.stage}</span><span>{save.completed}/{save.total}</span></div>
     <Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} />
@@ -351,6 +356,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify, onF
         {alternatives.length > 0 && <section className="panel available-checkpoints"><h4>Other available checkpoints</h4><p className="muted small">Choose one current checkpoint. This does not complete the previous one.</p><div className="button-row">{alternatives.map(checkpoint => <button key={checkpoint.id} className="button secondary" onClick={() => {
           if (commit(current => activateCheckpoint(current, mission.id, checkpoint.id))) notify('Current checkpoint changed. Existing evidence is preserved.');
         }}>Make current: {checkpoint.title}</button>)}</div></section>}
+        {mission.id === 'pattern' && <DsaPracticeLink checkpoint={save.checkpoint} />}
         <SectionTitle title={`Checkpoint flowchart · v${mission.roadmapVersion}`} /><MissionFlowchart mission={mission} state={state} />
       </div><div className="right-rail">
         <section className="panel"><SectionTitle title="Blocker" />

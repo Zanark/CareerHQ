@@ -8,7 +8,7 @@ plan as proof of capability.
 
 | Layer | Responsibility |
 | --- | --- |
-| `src/domain/catalog.ts`, `operations/*`, `legacyCatalog.ts` | Versioned public definitions: documented v2 roadmaps plus frozen v1 references. `getMissions(state)` selects the active version per mission. |
+| `src/domain/catalog.ts`, `operations/*`, `legacyCatalog.ts` | Exact-version definitions: frozen v1/v2 references and DSA v3 append. Latest is per mission; `getMissions(state)` selects the saved version, never silently adopts. |
 | `src/domain/types.ts` — `AppState` | Versioned runtime shape: progress, plans, evidence, history, readiness, opportunities. |
 | `src/domain/engine.ts` — `parseState` | Schema and cross-reference validation before accepting persisted or imported state. |
 | `src/domain/engine.ts` — `generatePlan`, `recordEvidence` | Capacity-bounded planning and evidence-gated, prerequisite-aware completion. |
@@ -17,6 +17,7 @@ plan as proof of capability.
 | `src/tutorial/*` | Guided steps, state-derived completion gates, real-control highlighting and dialog-aware coaching. |
 | `src/roadmaps/*` | Read-only mission tree and top-down checkpoint flowcharts, using accessible HTML nodes and locally drawn SVG connections. |
 | `src/perspective/*` | Optional Keep going page: bundled research summaries with source limits, plus read-only recent evidence from the selected real or practice workspace. No scoring or predictions. |
+| `src/dsa/*`, `operations/dsaStudy*`, `dsaProblemSets.ts` | Read-only 50-section DSA practice reference, preserving source group/difficulty/URL/page and intentional repeats. No per-problem achievements are inferred. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
@@ -52,6 +53,12 @@ that small workflow; the website has no Mermaid runtime or external rendering de
 The roadmap is **configuration in source control**; progress is **runtime state in a browser**.
 Changing the configuration is not a progress update. Future schema or roadmap revisions
 need an explicit migration story; unsupported backups must not be silently coerced.
+
+The DSA v3 definition declares its exact v2 prefix. Only verified identical
+checkpoints can share evidence identity through that append lineage. Explicit
+v2→v3 adoption preserves original records and carries genuine progress, while
+new topics start unconfirmed. Completion totals deduplicate shared identities
+across the active tracker and archives; other upgrades do not guess a mapping.
 
 ## History and authority
 

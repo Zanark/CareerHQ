@@ -32,7 +32,7 @@ The supplied operation documents define nine missions. Tracking granularity is e
 
 | Mission | Documented tracking |
 | --- | --- |
-| Pattern Forge | 5 HashMap checkpoints; later techniques remain reference material |
+| Pattern Forge | 48 checkpoints: the unchanged 5-checkpoint HashMap start plus 43 DSA topic reviews, across 14 stages |
 | System Forge | 28 topic-group milestones across 7 stages |
 | Escape Velocity | 1 ongoing workflow; application and rehabilitation workstreams are parallel |
 | Fabric Core | 32 numbered checkpoints across 5 stages |
@@ -53,6 +53,42 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 **CareerHQ is the tracker, not the teacher.** Use your learning material, editor, lab,
 or coach to do the work. Come back here to record the result and keep your place.
 The built-in data describes what to work on; it does not claim you have already done it.
+
+### The appended DSA roadmap
+
+The expanded 105-page DSA/LeetCode PDF is now part of **Pattern Forge v3**.
+The original five HashMap checkpoints and their branches are unchanged.
+The extension adds 43 topic reviews in the dependency-aware order from Appendix A,
+not the chapter-number order.
+
+If your DSA tracker is already v2, open **DSA → Append expanded roadmap** and
+review the confirmation. It preserves your genuine HashMap completions, current
+checkpoint, blocker, saved work and history. If all five were finished, the next
+checkpoint becomes the foundation bridge; those five are counted once, not again
+because an archive exists. Existing v1 trackers still use the older explicit
+archive-and-start adoption path. Export a backup before either operation.
+
+**[DSA practice library](https://zanark.github.io/CareerHQ/#/dsa/1)** includes all
+50 source sections, 939 problem appearances and 371 distinct problem IDs. Repeated
+appearances are intentional. Use the section selector, row-difficulty filter and
+problem search; **Open practice set** on the mission opens the relevant section.
+The full roadmap inspector links to each appended topic's practice too.
+
+The sets are curated choices, not 939 required completions. Foundation/Core/Stress
+are the source's group labels and do not always match a row's Easy/Medium/Hard label.
+Both are preserved. Opening links or browsing ahead never records work or unlocks
+checkpoints. Actual practice is logged through the current mission checkpoint.
+Some source problems use later techniques: follow the section guidance rather than
+treating an early Hard example as a prerequisite for learning the basics.
+
+The requested append places a **foundation bridge** after the retained HashMap
+track rather than inserting retroactive requirements. The source omits a phase
+placement for Divide & Conquer; its core is placed after recursion and sorting,
+with advanced counting revisited later. These are explicit integration decisions.
+Topic order within each phase is the app's conservative learning sequence, not a
+claim that the PDF specifies a formal prerequisite edge between every pair.
+Protocol, revision, practice ladder and other study-method sections remain available
+throughout, not a mandatory late checklist.
 
 ### First, find the PDF content
 
@@ -110,6 +146,7 @@ Use the **Chapter** menu to work on one area at a time:
 | Chapter | What you practice |
 | --- | --- |
 | Keep going | Evidence-based encouragement, the limits of research, and the distinction between real and example records |
+| DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
@@ -157,6 +194,7 @@ estimates, not measured learning time.
 | Page | Use it for | What it does not do |
 | --- | --- | --- |
 | Keep going | Read grounded encouragement and revisit your actual saved work; expand Evidence & limits for each source | No guaranteed outcomes, invented achievements, streak pressure or progress changes; Overview remains the default landing page |
+| DSA practice library | Browse all 50 expanded DSA sections and curated problem links | No automatic solve tracking, completion credit, or requirement to clear every listed problem |
 | Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
 | Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |
 | Opportunities | Record roles, application stages and optional effort/resume details | No job search, application submission or resume evaluation |

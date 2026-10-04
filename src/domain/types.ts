@@ -1,6 +1,6 @@
 export const missionIds = ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm', 'income'] as const;
 export type MissionId = typeof missionIds[number];
-export type RoadmapVersion = '1.0.0' | '2.0.0';
+export type RoadmapVersion = '1.0.0' | '2.0.0' | '3.0.0';
 export type Capacity = 'gentle' | 'steady' | 'deep';
 export type MissionMode = 'active' | 'background' | 'planned';
 export type CheckpointStatus = 'not-started' | 'in-progress' | 'completed';
@@ -19,6 +19,8 @@ export interface Checkpoint {
   minutes: number;
   criteria: string[];
   sourceId?: string;
+  /** Section 1-50 in the expanded DSA study source; absent on retained checkpoints. */
+  studySection?: number;
   topics?: string[];
   prerequisites?: string[];
   source?: SourceReference;
@@ -57,6 +59,7 @@ export interface Mission {
   icon: string;
   owner: string;
   roadmapVersion: RoadmapVersion;
+  appendFrom?: RoadmapVersion;
   planned: boolean;
   dependencies: MissionId[];
   checkpoints: Checkpoint[];

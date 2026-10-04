@@ -105,6 +105,12 @@ for (const width of [1440, 390, 320]) {
       await expect(coach).toHaveAttribute('data-step', step.id);
       visited.push(step.id);
       switch (step.id) {
+        case 'dsa-library-section':
+          await page.getByLabel('DSA source section', { exact: true }).selectOption('9');
+          break;
+        case 'dsa-library-filter':
+          await page.getByLabel('Filter DSA problems by difficulty', { exact: true }).selectOption('Easy');
+          break;
         case 'plan-capacity':
           await page.locator('[data-tour="capacity"]').getByRole('button', { name: 'Gentle', exact: true }).click();
           break;

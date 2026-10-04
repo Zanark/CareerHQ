@@ -125,7 +125,7 @@ test('Show this step reopens a roadmap after returning from a different route', 
   await page.locator('[data-tour="full-roadmap-open"]').click();
   await next(page, 'full-map-zoom');
   await page.getByRole('link', { name: 'Review the newer operation documents', exact: true }).click();
-  await expect(page).toHaveURL(/#\/sources$/);
+  await expect(page).toHaveURL(/#\/sources\/fabric$/);
   await page.getByRole('button', { name: 'Show this step', exact: true }).click();
   await expect(page).toHaveURL(/#\/mission\/fabric$/);
   await expect(page.locator('.full-roadmap-modal')).toBeVisible();

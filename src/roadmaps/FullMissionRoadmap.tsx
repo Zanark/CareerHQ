@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Check, Flag, Focus, LockKeyhole, Maximize2, Minus, Plus } from 'lucide-react';
-import { getProgressForVersion, prerequisitesFor } from '../domain/catalog';
+import { getLatestMission, getProgressForVersion, prerequisitesFor } from '../domain/catalog';
 import type { AppState, Checkpoint, Mission } from '../domain/types';
 import { Modal } from '../components';
 import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
 import { checkpointLevels, roadmapGroups } from './roadmapGraph';
 import './full-roadmap.css';
+import { dsaStudySectionFor } from '../domain/operations/dsaStudy';
 
 type Anchor = 'fit' | 'current' | { x: number; y: number };
 const stageNodeId = (id: string) => `full-stage-${id}`;
@@ -48,6 +49,7 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
   const [view, setView] = useState<{ zoom: number | null; revision: number }>({ zoom: null, revision: 0 });
   const [selectedId, setSelectedId] = useState<string | undefined>(current?.id ?? mission.checkpoints[0]?.id);
   const selected = mission.checkpoints.find(checkpoint => checkpoint.id === selectedId);
+  const studySection = mission.id === 'pattern' ? dsaStudySectionFor(selected) : undefined;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const fit = Math.min(1, Math.max(1, size.viewportWidth - 48) / size.width, Math.max(1, size.viewportHeight - 48) / size.height);
   const zoom = view.zoom ?? fit;
@@ -219,10 +221,11 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
         <summary><span>{selected.id === current?.id ? 'Your current checkpoint' : 'Inspect checkpoint'}</span><strong>{selected.title}</strong><span>Details</span></summary>
         <div className="full-roadmap-details"><p>{selected.action}</p><h4>Completion criteria</h4><ul>{selected.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul>
           {prerequisitesFor(mission, selected).length > 0 && <p><strong>Requires: </strong>{prerequisitesFor(mission, selected).map(id => mission.checkpoints.find(checkpoint => checkpoint.id === id)?.title).join(', ')}</p>}
+          {studySection && <p><a className="text-link" href={`#/dsa/${studySection.number}`}>Open this topic's practice set</a></p>}
           <p>View only. Record evidence from the mission page to update progress.</p>
         </div>
       </details>}
-      {mission.roadmapVersion === '1.0.0' && <p className="full-roadmap-summary">This is your saved v1 roadmap. <a href="#/sources">Review the newer operation documents</a> before adopting a different version.</p>}
+      {mission.roadmapVersion !== getLatestMission(mission.id).roadmapVersion && <p className="full-roadmap-summary">This is your saved v{mission.roadmapVersion} roadmap. <a href={`#/sources/${mission.id}`}>Review the newer operation documents</a> before adopting a different version.</p>}
     </div>
   </Modal>;
 }

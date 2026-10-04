@@ -198,7 +198,7 @@ test('Pattern shows the real late-branch current checkpoint even when background
   await loadMission(page, state, mission.id);
   const before = await storage(page);
   const dialog = await openRoadmap(page, mission);
-  await expectMap(dialog, mission, 2, 5);
+  await expectMap(dialog, mission, 14, 48);
   await expectConnections(dialog, mission);
   await expectCurrent(dialog, grouping.id);
   await expect(dialog.locator(`[data-connection="${frequency.id}:${grouping.id}"]`)).toBeVisible();
@@ -377,7 +377,7 @@ test('reduced motion keeps a bright static glow on only the real current node', 
   await loadMission(page, state, mission.id);
   const before = await storage(page);
   const dialog = await openRoadmap(page, mission);
-  await expectMap(dialog, mission, 2, 5);
+  await expectMap(dialog, mission, 14, 48);
   await expectCurrent(dialog, state.missions.pattern.checkpointId);
   const styles = await dialog.locator(nodeSelector).evaluateAll(nodes => nodes.map(node => {
     const glow = getComputedStyle(node, '::after');
@@ -425,7 +425,7 @@ test('320x568 Tutorial fits the roadmap with its compact guide and resumes the s
   await expect(coach.getByRole('button', { name: 'Next', exact: true })).toHaveCount(0);
   await expect(coach.getByRole('button', { name: 'Back to tutorial', exact: true })).toBeVisible();
   await expect(coach.getByRole('button', { name: 'Exit tutorial', exact: true })).toBeVisible();
-  await expectMap(dialog, getMission('pattern', state), 2, 5);
+  await expectMap(dialog, getMission('pattern', state), 14, 48);
   await expectCurrent(dialog, practiceCurrent!);
   await expect(coach).toHaveAttribute('data-step', 'mission-full-roadmap');
   await expect.poll(() => dialog.evaluate(root => {

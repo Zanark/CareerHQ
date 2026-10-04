@@ -57,7 +57,7 @@ test('v1 migration preserves records and adopting a roadmap requires confirmatio
   expect(await stored(page)).toEqual(migrated);
   await confirmation(page, () => page.getByRole('button', { name: 'Adopt documented roadmap', exact: true }).click());
   const adopted = await stored(page);
-  expect(adopted.missions.pattern.roadmapVersion).toBe('2.0.0');
+  expect(adopted.missions.pattern.roadmapVersion).toBe('3.0.0');
   expect(adopted.missions.pattern.completedCheckpointIds).toEqual([]);
   expect(adopted.missions.pattern.blocker).toBe('');
   expect(adopted.archives[0].progress).toEqual(migrated.missions.pattern);

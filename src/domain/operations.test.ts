@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMissionVersion, missions, prerequisitesFor } from './catalog';
+import { getMissionVersion, v2Missions as missions, prerequisitesFor } from './catalog';
 import { missionIds } from './types';
 
 const pages: Record<string, number> = {

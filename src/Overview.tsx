@@ -1,6 +1,6 @@
 import { ArrowRight, Check, Clock3, Download, HardDrive, Plus } from 'lucide-react';
-import { getMissionVersion, getMissions, recordRoadmapVersion } from './domain/catalog';
-import { getSaveState } from './domain/engine';
+import { getLatestMission, getMissionVersion, getMissions, recordRoadmapVersion } from './domain/catalog';
+import { countCompletedCheckpoints, getSaveState } from './domain/engine';
 import type { AppState, DailyAction, MissionId } from './domain/types';
 import { MissionIcon, Progress, SectionTitle, statusLabels } from './components';
 
@@ -17,10 +17,9 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
   const visibleMissions = [...active].sort((left, right) =>
     Number(right.id === state.focusMissionId) - Number(left.id === state.focusMissionId)).slice(0, 3);
-  const completed = Object.values(state.missions).reduce((sum, mission) => sum + mission.completedCheckpointIds.length, 0) +
-    state.archives.reduce((sum, archive) => sum + archive.progress.completedCheckpointIds.length, 0);
+  const completed = countCompletedCheckpoints(state);
   return <div className="overview-page">
-    {!practice && missions.some(mission => mission.roadmapVersion === '1.0.0') && <div className="source-available"><span>Documented roadmaps are available. Your previous saved positions are preserved.</span><a href="#/sources">Review updates<ArrowRight size={13} /></a></div>}
+    {!practice && missions.some(mission => mission.roadmapVersion !== getLatestMission(mission.id).roadmapVersion) && <div className="source-available"><span>Documented roadmaps are available. Your previous saved positions are preserved.</span><a href="#/sources">Review updates<ArrowRight size={13} /></a></div>}
     <div className="overview-heading">
       <div><h1>Overview</h1><time dateTime={date}>{new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</time></div>
       <button className="button primary" onClick={() => onEvidence()}><Plus size={16} />Log progress</button>

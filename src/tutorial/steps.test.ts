@@ -20,6 +20,7 @@ describe('current tutorial curriculum', () => {
       'pipeline-details', 'pipeline-metrics', 'freelance-research-examples', 'freelance-brief', 'freelance-copy',
       'review-recall-setup', 'review-independent', 'settings-export', 'settings-import', 'persistence-transfer',
       'evidence-save', 'evidence-complete', 'control-blocker', 'tools-theme', 'perspective-intro',
+      'dsa-library', 'dsa-library-section', 'dsa-library-filter',
     ]) expect(ids.has(id), id).toBe(true);
   });
 });

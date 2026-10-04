@@ -206,7 +206,7 @@ describe('roadmap upgrade from a real migrated legacy workspace: archive validit
     expect(upgraded.archives[0].progress).toEqual(beforeUpgrade);
 
     const latest = getMission('pattern');
-    expect(upgraded.missions.pattern.roadmapVersion).toBe('2.0.0');
+    expect(upgraded.missions.pattern.roadmapVersion).toBe(latest.roadmapVersion);
     expect(upgraded.missions.pattern.checkpointId).toBe(latest.checkpoints[0].id);
     expect(upgraded.missions.pattern.status).toBe('not-started');
     expect(upgraded.missions.pattern.completedCheckpointIds).toEqual([]);

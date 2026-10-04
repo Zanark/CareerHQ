@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, FileText, History, RefreshCw } from 'lucide-react';
-import { getCheckpoint, getMission, getMissionVersion, missions } from './domain/catalog';
+import { getCheckpoint, getLatestMission, getMission, getMissionVersion, missions } from './domain/catalog';
 import { upgradeRoadmap } from './domain/engine';
 import type { AppState, Mission, MissionId } from './domain/types';
 import { Badge, PageHeading } from './components';
@@ -12,23 +12,28 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
   missionId: MissionId; state: AppState; commit: Commit; expanded?: boolean;
 }) {
   const active = getMission(missionId, state);
-  const latest = getMissionVersion(missionId, '2.0.0');
+  const latest = getLatestMission(missionId);
   const [notice, setNotice] = useState('');
   const pending = active.roadmapVersion !== latest.roadmapVersion;
+  const append = pending && latest.appendFrom === active.roadmapVersion;
   const archives = state.archives.filter(archive => archive.missionId === missionId);
 
   function adopt() {
-    if (!window.confirm(`Adopt the documented ${latest.operation} roadmap?\n\nYour previous checkpoint, blocker and completion record will be archived. All saved work and history stay available. New checkpoints start unconfirmed; old progress is not credited to different topics.\n\nYour existing daily plan will be preserved. Refresh an untouched plan to use the new checkpoint.`)) return;
+    const change = append
+      ? 'Your existing HashMap checkpoints, completion evidence, current position and blocker are retained. Only new topic checkpoints start unconfirmed. The previous tracker is also archived; completed work is counted once.'
+      : 'Your previous checkpoint, blocker and completion record will be archived. All saved work and history stay available. New checkpoints start unconfirmed; old progress is not credited to different topics.';
+    if (!window.confirm(`${append ? 'Append the expanded' : 'Adopt the documented'} ${latest.operation} roadmap?\n\n${change}\n\nYour existing daily plan will be preserved. Refresh an untouched plan to use the new checkpoint.`)) return;
     const ok = commit(current => upgradeRoadmap(current, missionId));
-    setNotice(ok ? 'Documented roadmap adopted. Previous progress is preserved below; refresh an untouched daily plan when ready.' : 'Roadmap was not changed. Check the workspace warning.');
+    setNotice(ok ? append ? 'Expanded roadmap appended. Existing HashMap progress is retained; new topics start unconfirmed. Refresh an untouched daily plan when ready.' : 'Documented roadmap adopted. Previous progress is preserved below; refresh an untouched daily plan when ready.' : 'Roadmap was not changed. Check the workspace warning.');
   }
 
   return <section className={`source-panel ${latest.color}`} data-tour="operation-source">
     <div className="source-heading"><FileText size={18} /><div><h3>Operation documents</h3><p>Documented roadmap v{latest.roadmapVersion} · Active tracker v{active.roadmapVersion}</p></div><Badge>{latest.coverage ?? 'documented'}</Badge></div>
     {pending && <div className="source-upgrade">
-      <p>Your saved position still uses the previous roadmap. Review the documented content before switching; no existing work will be silently reclassified.</p>
-      <button className="button primary" data-tour="source-adopt" onClick={adopt}><RefreshCw size={15} />Adopt documented roadmap</button>
+      <p>{append ? 'The expanded DSA roadmap is available to append after your existing HashMap track. Your current position and genuine completions stay; new topics receive no automatic credit.' : 'Your saved position still uses the previous roadmap. Review the documented content before switching; no existing work will be silently reclassified.'}</p>
+      <button className="button primary" data-tour="source-adopt" onClick={adopt}><RefreshCw size={15} />{append ? 'Append expanded roadmap' : 'Adopt documented roadmap'}</button>
     </div>}
+    {missionId === 'pattern' && <p className="source-notice"><a className="text-link" data-tour="dsa-library-open" href="#/dsa/1">Browse all 50 DSA sections and problem sets<ArrowRight size={14} /></a></p>}
     {notice && <p className="source-notice" role="status">{notice}</p>}
     {missionId === 'income' && <p className="source-notice"><a className="text-link" href="#/freelance">Open freelance opportunity ledger<ArrowRight size={14} /></a></p>}
     {['pattern', 'system'].includes(missionId) && <p className="source-notice"><a className="text-link" href="#/recall">Review saved work in recall practice<ArrowRight size={14} /></a></p>}
@@ -58,7 +63,7 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
 
 export function OperationSourcesPage({ state, commit, initialSelection = 'pattern' }: { state: AppState; commit: Commit; initialSelection?: MissionId }) {
   const [selection, setSelection] = useState<MissionId>(initialSelection);
-  const mission: Mission = getMissionVersion(selection, '2.0.0');
+  const mission: Mission = getLatestMission(selection);
   return <>
     <PageHeading eyebrow="DOCUMENTED MATERIAL" title="Operation documents" description="Roadmaps extracted from the supplied handoffs and visual references. Your private progress is separate." />
     <div className="source-selector"><label>Mission<select data-tour="source-mission" value={selection} onChange={event => setSelection(event.target.value as MissionId)}>{missions.map(item => <option key={item.id} value={item.id}>{item.name} · {item.operation}</option>)}</select></label><a className="button secondary" href={`#/mission/${selection}`}>Open current tracker<ArrowRight size={15} /></a></div>

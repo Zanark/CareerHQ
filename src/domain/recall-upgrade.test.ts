@@ -8,7 +8,7 @@ describe('source update boundary regressions', () => {
     vi.useFakeTimers();
     const started = new Date('2026-10-04T10:00:00Z');
     vi.setSystemTime(started);
-    let state = createInitialState(false);
+    let state = createInitialState(false, '2.0.0');
     const checkpointId = state.missions.pattern.checkpointId;
     state = recordEvidence(state, { missionId: 'pattern', checkpointId, title: 'Practice example', summary: 'A small example before spaced recall.', kind: 'code', url: '', advance: false, criteriaConfirmed: false });
     const review = { missionId: 'pattern' as const, checkpointId, roadmapVersion: '2.0.0' as const, outcome: 'independent' as const, checks: { explanation: true, diagram: false, exercise: true }, notes: '' };
@@ -25,7 +25,7 @@ describe('source update boundary regressions', () => {
   });
 
   it('rejects imported independent reviews without their required checks', () => {
-    let state = createInitialState(false);
+    let state = createInitialState(false, '2.0.0');
     const checkpointId = state.missions.pattern.checkpointId;
     state = recordEvidence(state, { missionId: 'pattern', checkpointId, title: 'Practice example', summary: 'A small example before spaced recall.', kind: 'code', url: '', advance: false, criteriaConfirmed: false });
     state = recordRecall(state, { missionId: 'pattern', checkpointId, roadmapVersion: '2.0.0', outcome: 'independent', checks: { explanation: true, diagram: false, exercise: true }, notes: '' });

@@ -3,21 +3,45 @@ import { legacyMissions } from './legacyCatalog';
 import { technicalMissions } from './operations/technical';
 import { growthMissions } from './operations/growth';
 import { executionMissions } from './operations/execution';
+import { dsaExpandedMission } from './operations/dsaExpanded';
 
+// The workspace envelope stays at v2; individual missions have independent versions.
 export const LATEST_ROADMAP_VERSION = '2.0.0' as const;
-export const missions: Mission[] = [
+
+function freeze<T>(value: T): T {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.values(value).forEach(freeze);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+export const v2Missions: Mission[] = freeze([
   ...technicalMissions, ...growthMissions, ...executionMissions,
 ].sort((a, b) => ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm', 'income'].indexOf(a.id) -
-  ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm', 'income'].indexOf(b.id));
+  ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm', 'income'].indexOf(b.id)));
+
+export const missions: Mission[] = freeze(v2Missions.map(mission => mission.id === 'pattern' ? dsaExpandedMission : mission));
 
 export function getMissionVersion(id: MissionId, version: RoadmapVersion): Mission {
-  const mission = (version === '1.0.0' ? legacyMissions : missions).find(candidate => candidate.id === id);
+  const mission = [...legacyMissions, ...v2Missions, ...missions]
+    .find(candidate => candidate.id === id && candidate.roadmapVersion === version);
   if (!mission) throw new Error(`No ${version} roadmap exists for mission ${id}`);
   return mission;
 }
 
+export function getLatestMission(id: MissionId): Mission {
+  const mission = missions.find(candidate => candidate.id === id);
+  if (!mission) throw new Error(`No latest roadmap exists for mission ${id}`);
+  return mission;
+}
+
 export function getMission(id: MissionId, state?: AppState): Mission {
-  return getMissionVersion(id, state?.missions[id].roadmapVersion ?? LATEST_ROADMAP_VERSION);
+  return state ? getMissionVersion(id, state.missions[id].roadmapVersion) : getLatestMission(id);
+}
+
+export function hasRoadmapUpdate(id: MissionId, state: AppState): boolean {
+  return getMission(id, state).roadmapVersion !== getLatestMission(id).roadmapVersion;
 }
 
 export function getMissions(state: AppState): Mission[] {
@@ -43,4 +67,31 @@ export function prerequisitesFor(mission: Mission, checkpoint: Checkpoint): stri
   if (checkpoint.prerequisites) return checkpoint.prerequisites;
   const index = mission.checkpoints.findIndex(item => item.id === checkpoint.id);
   return index > 0 ? [mission.checkpoints[index - 1].id] : [];
+}
+
+/** Only the explicitly declared, unchanged DSA v2 prefix can inherit evidence. */
+export function isVerifiedAppend(mission: Mission, previous: Mission): boolean {
+  return mission.id === 'pattern' && previous.id === 'pattern' &&
+    mission.roadmapVersion === '3.0.0' && previous.roadmapVersion === '2.0.0' &&
+    mission.appendFrom === previous.roadmapVersion && !mission.planned && !previous.planned &&
+    previous.checkpoints.length > 0 && mission.checkpoints.length > previous.checkpoints.length &&
+    new Set(mission.checkpoints.map(checkpoint => checkpoint.id)).size === mission.checkpoints.length &&
+    previous.checkpoints.every((checkpoint, index) =>
+      JSON.stringify(mission.checkpoints[index]) === JSON.stringify(checkpoint) &&
+      JSON.stringify(prerequisitesFor(mission, mission.checkpoints[index])) === JSON.stringify(prerequisitesFor(previous, checkpoint))) &&
+    (previous.stages ?? []).every((stage, index) => JSON.stringify(mission.stages?.[index]) === JSON.stringify(stage));
+}
+
+const preservedPatternIds = new Set(
+  isVerifiedAppend(dsaExpandedMission, getMissionVersion('pattern', '2.0.0'))
+    ? getMissionVersion('pattern', '2.0.0').checkpoints.map(checkpoint => checkpoint.id) : [],
+);
+
+export function checkpointEvidenceVersion(id: MissionId, checkpointId: string, version: RoadmapVersion): RoadmapVersion {
+  getCheckpoint(id, checkpointId, version);
+  return id === 'pattern' && version === '3.0.0' && preservedPatternIds.has(checkpointId) ? '2.0.0' : version;
+}
+
+export function checkpointIdentity(id: MissionId, checkpointId: string, version: RoadmapVersion): string {
+  return `${id}:${checkpointEvidenceVersion(id, checkpointId, version)}:${checkpointId}`;
 }

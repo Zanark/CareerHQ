@@ -10,7 +10,7 @@ interface FlowProps { mission: Mission; state: AppState; tutorialTarget?: boolea
 const emptyCompleted: string[] = [];
 
 export function MissionFlowchart(props: FlowProps) {
-  return props.mission.roadmapVersion === '2.0.0'
+  return props.mission.roadmapVersion !== '1.0.0'
     ? <SourceMissionFlowchart key={`${props.mission.id}-${props.mission.roadmapVersion}`} {...props} />
     : <LegacyMissionFlowchart {...props} />;
 }

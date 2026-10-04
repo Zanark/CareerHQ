@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMission, getMissionVersion, getMissions, missions } from './catalog';
+import { getMission, getMissionVersion, getMissions, missions, v2Missions } from './catalog';
 import {
   activateCheckpoint, createInitialState, generatePlan, getSaveState, localDate, parseState,
   recallSummary, recordChange, recordEvidence, recordRecall, STORAGE_KEY, upgradeRoadmap,
@@ -51,10 +51,10 @@ afterEach(() => {
 
 describe('v2 catalog and initial workspace', () => {
   it('provides nine canonical missions - the original eight plus income - with algorithm still planned', () => {
-    expect(missions.map((mission) => mission.id)).toEqual([...missionIds]);
-    expect(missions.filter((mission) => mission.planned).map((mission) => mission.id)).toEqual(['algorithm']);
+    expect(v2Missions.map((mission) => mission.id)).toEqual([...missionIds]);
+    expect(v2Missions.filter((mission) => mission.planned).map((mission) => mission.id)).toEqual(['algorithm']);
     const checkpointIds = new Set<string>();
-    for (const mission of missions.filter((entry) => !entry.planned)) {
+    for (const mission of v2Missions.filter((entry) => !entry.planned)) {
       expect(mission.roadmapVersion).toBe('2.0.0');
       expect(mission.checkpoints.length).toBeGreaterThan(0);
       mission.checkpoints.forEach((checkpoint) => {
@@ -72,8 +72,8 @@ describe('v2 catalog and initial workspace', () => {
     expect(() => getMission('missing' as MissionId)).toThrow('roadmap exists');
   });
 
-  it('starts fresh without inferred progress, readiness, opportunities, or history', () => {
-    const state = createInitialState(false);
+  it('starts an explicit v2 workspace without inferred progress, readiness, opportunities, or history', () => {
+    const state = createInitialState(false, '2.0.0');
     expect(parseState(state)).toEqual(state);
     expect(state.sampleData).toBe(false);
     expect(state.focusMissionId).toBe('pattern');
@@ -85,7 +85,7 @@ describe('v2 catalog and initial workspace', () => {
     expect(state.recalls).toEqual([]);
     expect(state.plans).toEqual({});
     expect(Object.values(state.readiness)).toEqual(readinessKeys.map(() => 'unassessed'));
-    missions.forEach((mission) => {
+    v2Missions.forEach((mission) => {
       const progress = state.missions[mission.id];
       expect(progress.completedCheckpointIds).toEqual([]);
       expect(progress.status).toBe('not-started');
@@ -157,8 +157,8 @@ describe('v2 catalog and initial workspace', () => {
   });
 
   it('keeps next unlock sequential through the final incomplete and completed checkpoint', () => {
-    let state = createInitialState(false);
-    const mission = getMission('pattern');
+    let state = createInitialState(false, '2.0.0');
+    const mission = getMission('pattern', state);
     mission.checkpoints.forEach((_checkpoint, index) => {
       const expected = mission.checkpoints[index + 1]?.title ?? 'Mission complete';
       expect(getSaveState(mission, state).next).toBe(expected);
@@ -172,7 +172,7 @@ describe('v2 catalog and initial workspace', () => {
   });
 
   it('reports a read-only Preview with no total when a mission has no snapshot at its requested version', () => {
-    const state = createInitialState(false);
+    const state = createInitialState(false, '2.0.0');
     const legacyPattern = getMissionVersion('pattern', '1.0.0');
     // state.missions.pattern is on 2.0.0 and there is no 1.0.0 archive, so the 1.0.0
     // mission definition has no matching progress snapshot at all.
@@ -311,7 +311,7 @@ describe('local dates and deterministic daily plans', () => {
   });
 
   it('uses getMissions(state) so a per-mission roadmap version change is reflected in planning', () => {
-    const state = createInitialState(false);
+    const state = createInitialState(false, '2.0.0');
     expect(getMissions(state).map((mission) => mission.roadmapVersion)).toEqual(
       missionIds.map(() => '2.0.0'),
     );
@@ -320,7 +320,7 @@ describe('local dates and deterministic daily plans', () => {
 
 describe('evidence, DAG checkpoint gates, and immutable history', () => {
   it('starts a checkpoint from evidence without claiming completion or mastery', () => {
-    const before = createInitialState(false);
+    const before = createInitialState(false, '2.0.0');
     const firstCheckpointId = before.missions.pattern.checkpointId;
     const state = recordEvidence(before, input(before));
     expect(state.missions.pattern).toMatchObject({
@@ -405,8 +405,8 @@ describe('evidence, DAG checkpoint gates, and immutable history', () => {
   });
 
   it('advances all the way to an evidenced final checkpoint and excludes it from new plans', () => {
-    let state = createInitialState(false);
-    const mission = getMission('pattern');
+    let state = createInitialState(false, '2.0.0');
+    const mission = getMission('pattern', state);
     mission.checkpoints.forEach((checkpoint, index) => {
       expect(state.missions.pattern.checkpointId).toBe(checkpoint.id);
       state = advance(state);
@@ -599,7 +599,7 @@ describe('checkpoint branching, explicit activation, and locked-evidence rules',
 
 describe('recall tracking and spaced-repetition self-assessment', () => {
   it('derives not-started, learning, practiced, needs-review, and retained from evidence and recall history', () => {
-    let state = createInitialState(false);
+    let state = createInitialState(false, '2.0.0');
     const checkpointId = state.missions.pattern.checkpointId;
     expect(recallSummary(state, 'pattern', checkpointId, '2.0.0')).toEqual({ status: 'not-started', nextReviewAt: null });
 
@@ -657,7 +657,7 @@ describe('recall tracking and spaced-repetition self-assessment', () => {
   });
 
   it('supports recall only for pattern and system, gated on prior learning evidence for a referenceable checkpoint', () => {
-    const state = createInitialState(false);
+    const state = createInitialState(false, '2.0.0');
     expect(() => recordRecall(state, {
       missionId: 'escape', roadmapVersion: '2.0.0', checkpointId: state.missions.escape.checkpointId,
       outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'Not supported.',
@@ -667,7 +667,7 @@ describe('recall tracking and spaced-repetition self-assessment', () => {
       outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'No prior evidence yet.',
     })).toThrow('prior learning evidence');
     const withEvidence = recordEvidence(state, input(state));
-    const laterCheckpointId = getMission('pattern').checkpoints[1].id;
+    const laterCheckpointId = getMission('pattern', state).checkpoints[1].id;
     expect(() => recordRecall(withEvidence, {
       missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId: laterCheckpointId,
       outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'Not unlocked yet.',
@@ -675,7 +675,7 @@ describe('recall tracking and spaced-repetition self-assessment', () => {
   });
 
   it('requires the full independent-recall check set per mission (pattern vs. system)', () => {
-    let pattern = createInitialState(false);
+    let pattern = createInitialState(false, '2.0.0');
     pattern = recordEvidence(pattern, input(pattern, 'pattern'));
     const patternCp = pattern.missions.pattern.checkpointId;
     expect(() => recordRecall(pattern, {

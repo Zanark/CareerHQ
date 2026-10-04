@@ -2,8 +2,9 @@
 
 ## What is public
 
-The published static app ships source-aligned roadmap definitions and clearly labeled,
-fictional sample records only. The original PDFs in `docs/OperationDocs` are excluded.
+The published static app ships source-aligned roadmap definitions, public problem-reference
+links, authored source summaries, and clearly labeled fictional sample records only.
+The original PDFs, including the separately supplied expanded DSA document, are excluded.
 Private source documents and personal baseline information must not be copied into the
 site, repository, screenshots, or tests.
 
@@ -15,6 +16,10 @@ privacy rules. “No app upload” is not a promise that web hosting has no acce
 **Keep going** bundles its research summaries locally. It reads saved work only from
 the visible workspace, never sends it to a research site, and makes no background
 requests for citations. Source links open only when clicked, without a referrer.
+
+The DSA practice library also uses bundled references. Browsing sections and filtering
+problems sends no progress to LeetCode. Clicking a problem link opens LeetCode in a new
+tab without a referrer; that destination may have its own login or subscription rules.
 
 ## What stays in this browser
 

@@ -45,6 +45,7 @@ export const chapters: TutorialChapter[] = [
   { id: 'review', title: 'Review & roadmap' },
   { id: 'control', title: 'Mission control' },
   { id: 'sources', title: 'PDFs & roadmap updates' },
+  { id: 'dsa-practice', title: 'DSA practice library' },
   { id: 'full-map', title: 'Full mission roadmap' },
   { id: 'pipeline', title: 'Opportunities' },
   { id: 'freelance', title: 'Freelance research' },
@@ -254,6 +255,26 @@ export const steps: TutorialStep[] = [
     check: ({ state }) => state.missions.fabric.mode === 'background',
   },
   ...sourceSteps,
+  {
+    id: 'dsa-library', chapter: 'dsa-practice', kind: 'explain', route: 'dsa/5', command: 'close-dialogs',
+    targets: ['dsa-library'],
+    title: 'Find the full DSA practice sets',
+    body: 'The expanded PDF is appended after the original HashMap track. All 50 source sections are browsable here. Source set placement and row difficulty are separate; some Foundation rows are Medium. Problems are curated practice, not a required solve-everything checklist.',
+  },
+  {
+    id: 'dsa-library-section', chapter: 'dsa-practice', kind: 'action',
+    targets: ['dsa-section'],
+    title: 'Browse a later topic',
+    body: 'Choose 09. Two Pointers in DSA source section. Browsing ahead does not unlock it or change your current checkpoint. Use the mission roadmap for execution order, not the PDF section numbers.',
+    check: ({ route }) => route === 'dsa/9',
+  },
+  {
+    id: 'dsa-library-filter', chapter: 'dsa-practice', kind: 'action', route: 'dsa/9',
+    targets: ['dsa-problem-filters'],
+    title: 'Inspect a manageable problem set',
+    body: 'Choose Easy in Row difficulty. Open a problem on LeetCode when ready to practice. No solve is recorded by opening a link; genuine work is saved from the current mission checkpoint.',
+    checkUi: root => root.querySelector<HTMLSelectElement>('[aria-label="Filter DSA problems by difficulty"]')?.value === 'Easy',
+  },
   ...fullMapSteps,
   // Pipeline
   {
