@@ -79,7 +79,7 @@ test('overview stays bounded when all configured missions are active', async ({ 
   await page.goto('./');
   await expect(page.locator('.overview-checkpoint')).toHaveCount(3);
   await expect(page.locator('.overview-checkpoint').first()).toContainText('AI');
-  await expect(page.getByRole('link', { name: '4 more active missions' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '5 more active missions' })).toBeVisible();
 });
 
 for (const width of [1440, 390, 320]) {
@@ -165,6 +165,19 @@ for (const width of [1440, 390, 320]) {
           await page.locator('[data-tour="pipeline-table"]').click();
           await expect(page.getByRole('table')).toBeVisible();
           break;
+        case 'review-recall':
+          await page.locator('[data-tour="recall-add"]').first().click();
+          await page.getByRole('dialog', { name: 'Record recall', exact: true }).getByRole('radio', { name: 'Partial', exact: true }).check();
+          await page.locator('[data-tour="recall-save"]').click();
+          break;
+        case 'freelance-add':
+          await page.locator('[data-tour="freelance-add"]').click();
+          await page.locator('[data-tour="freelance-example"]').click();
+          await page.locator('[data-tour="freelance-save"]').click();
+          break;
+        case 'freelance-classify':
+          await page.locator('[data-tour="freelance-verdict"]').first().selectOption('Apply Now');
+          break;
         case 'readiness-coding':
           await page.locator('[data-tour="readiness-coding"]').getByRole('button', { name: 'Building', exact: true }).click();
           break;
@@ -188,6 +201,8 @@ for (const width of [1440, 390, 320]) {
           expect(sample.missions.pattern.completedCheckpointIds).toHaveLength(1);
           expect(sample.evidence).toHaveLength(2);
           expect(sample.opportunities[0].stage).toBe('Recruiter');
+          expect(sample.freelanceOpportunities).toHaveLength(1);
+          expect(sample.recalls).toHaveLength(1);
           expect(sample.objective).toBe('Temporary tutorial goal only.');
           break;
         }

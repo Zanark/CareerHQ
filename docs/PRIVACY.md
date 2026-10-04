@@ -2,10 +2,10 @@
 
 ## What is public
 
-The published static app ships authored starter roadmaps and clearly labeled,
-fictional sample records only. Samples are demonstrations, not someone's personal
-history. Private source documents and personal baseline information must not be
-copied into the site, repository, screenshots, or tests.
+The published static app ships source-aligned roadmap definitions and clearly labeled,
+fictional sample records only. The original PDFs in `docs/OperationDocs` are excluded.
+Private source documents and personal baseline information must not be copied into the
+site, repository, screenshots, or tests.
 
 The application has no login, cloud workspace, AI service, analytics integration,
 or automatic upload. Hosting providers still receive normal page/asset requests.
@@ -17,6 +17,8 @@ privacy rules. “No app upload” is not a promise that web hosting has no acce
 Progress, evidence text and links, plans, history, readiness, and opportunities are
 stored under `careerhq.workspace.v1` in **localStorage**. Evidence is text/links, not
 an uploaded file archive. The focus timer is tab-local.
+The compatible storage key now holds data format v2, including previous-roadmap archives,
+private freelance leads, optional application effort fields, and recall records.
 
 **localStorage is not encrypted or a secure vault.** Saved work is ordinary browser
 data. Anyone with suitable access to the browser,

@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createInitialState, recordEvidence } from '../src/domain/engine';
-import { getMission } from '../src/domain/catalog';
+import { getMissionVersion } from '../src/domain/catalog';
 
 async function expectVerticalFlow(page: Page) {
-  const boxes = await page.locator('.flow-checkpoint').evaluateAll(nodes => nodes.map(node => {
+  const boxes = await page.locator('[data-tour="mission-roadmap"] .flow-checkpoint').evaluateAll(nodes => nodes.map(node => {
     const rect = node.getBoundingClientRect();
     return { x: rect.x, y: rect.y, height: rect.height };
   }));
@@ -12,7 +12,7 @@ async function expectVerticalFlow(page: Page) {
     expect(boxes[index].y).toBeGreaterThanOrEqual(boxes[index - 1].y + boxes[index - 1].height + 15);
     expect(Math.abs(boxes[index].x - boxes[index - 1].x)).toBeLessThan(1);
   }
-  const diagram = page.locator('.mission-flowchart');
+  const diagram = page.locator('[data-tour="mission-roadmap"]');
   await expect(diagram.locator('.diagram-edge')).toHaveCount(9);
   await expect(diagram.locator('[data-connection="decision:practice"]')).toBeVisible();
   await expect(diagram.locator('[data-connection^="practice:"]')).toBeVisible();
@@ -43,11 +43,12 @@ async function expectVerticalFlow(page: Page) {
 for (const width of [1440, 1024, 390, 320]) {
   test(`tree and checkpoint flowchart stay connected and vertical at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(state => localStorage.setItem('careerhq.workspace.v1', JSON.stringify(state)), createInitialState(false, '1.0.0'));
     await page.goto('./#/roadmap');
     await expect(page.getByRole('heading', { name: 'Roadmap', level: 1, exact: true })).toBeVisible();
     const before = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
-    await expect(page.locator('.tree-mission')).toHaveCount(8);
-    await expect(page.locator('.roadmap-tree .diagram-edge')).toHaveCount(11);
+    await expect(page.locator('.tree-mission')).toHaveCount(9);
+    await expect(page.locator('.roadmap-tree .diagram-edge')).toHaveCount(12);
     await expectVerticalFlow(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
     const screenshot = testInfo.outputPath(`roadmap-flowchart-${width}.png`);
@@ -72,6 +73,7 @@ for (const width of [1440, 1024, 390, 320]) {
 }
 
 test('planned missions have no invented graph and filters keep selection valid', async ({ page }) => {
+  await page.addInitScript(state => localStorage.setItem('careerhq.workspace.v1', JSON.stringify(state)), createInitialState(false, '1.0.0'));
   await page.goto('./#/roadmap');
   await page.getByRole('button', { name: 'View Competitive programming flowchart', exact: true }).click();
   await expect(page.locator('.diagram-pending')).toContainText('No checkpoints or prerequisite branches have been invented');
@@ -82,7 +84,7 @@ test('planned missions have no invented graph and filters keep selection valid',
 });
 
 test('an empty focus branch remains usable without stale connectors', async ({ page }) => {
-  const state = createInitialState(false);
+  const state = createInitialState(false, '1.0.0');
   for (const progress of Object.values(state.missions)) {
     if (progress.mode !== 'planned') progress.mode = 'background';
   }
@@ -95,14 +97,14 @@ test('an empty focus branch remains usable without stale connectors', async ({ p
   await expect(page.locator('.roadmap-selected')).toHaveCount(0);
   await expect(page.getByText('No missions are in focus. Clear the filter to see all missions.', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: 'In-focus missions only' }).uncheck();
-  await expect(page.locator('.tree-mission')).toHaveCount(8);
+  await expect(page.locator('.tree-mission')).toHaveCount(9);
   await expectVerticalFlow(page);
   expect(await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'))).toBe(before);
 });
 
 test('completing the final checkpoint removes the decision without breaking connectors', async ({ page }) => {
-  let state = createInitialState(false);
-  for (const checkpoint of getMission('pattern').checkpoints.slice(0, -1)) {
+  let state = createInitialState(false, '1.0.0');
+  for (const checkpoint of getMissionVersion('pattern', '1.0.0').checkpoints.slice(0, -1)) {
     state = recordEvidence(state, {
       missionId: 'pattern', checkpointId: checkpoint.id, title: 'Synthetic completed example',
       summary: 'Test-owned evidence with explicitly confirmed completion criteria.',
@@ -111,7 +113,7 @@ test('completing the final checkpoint removes the decision without breaking conn
   }
   await page.addInitScript(state => localStorage.setItem('careerhq.workspace.v1', JSON.stringify(state)), state);
   await page.goto('./#/mission/pattern');
-  await expect(page.locator('.mission-flowchart .diagram-edge')).toHaveCount(9);
+  await expect(page.locator('[data-tour="mission-roadmap"] .diagram-edge')).toHaveCount(9);
   await page.getByRole('button', { name: 'Record evidence', exact: true }).click();
   const form = page.getByRole('dialog', { name: 'Record progress', exact: true });
   await form.getByLabel('Artifact title').fill('Final synthetic checkpoint');
@@ -119,16 +121,17 @@ test('completing the final checkpoint removes the decision without breaking conn
   await form.getByRole('checkbox', { name: /This checkpoint is complete/ }).check();
   for (const checkbox of await form.locator('fieldset input').all()) await checkbox.check();
   await form.getByRole('button', { name: 'Complete & unlock next', exact: true }).click();
-  await expect(page.locator('.flow-checkpoint.complete')).toHaveCount(5);
-  await expect(page.locator('.flow-decision')).toHaveCount(0);
-  await expect(page.locator('.flow-terminal.complete')).toHaveText('Mission complete');
-  await expect(page.locator('.mission-flowchart .diagram-edge')).toHaveCount(6);
+  await expect(page.locator('[data-tour="mission-roadmap"] .flow-checkpoint.complete')).toHaveCount(5);
+  await expect(page.locator('[data-tour="mission-roadmap"] .flow-decision')).toHaveCount(0);
+  await expect(page.locator('[data-tour="mission-roadmap"] .flow-terminal.complete')).toHaveText('Previous roadmap complete');
+  await expect(page.locator('[data-tour="mission-roadmap"] .diagram-edge')).toHaveCount(6);
 });
 
 test('flowchart printing redraws connectors without browser errors or data changes', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.addInitScript(state => localStorage.setItem('careerhq.workspace.v1', JSON.stringify(state)), createInitialState(false, '1.0.0'));
   await page.goto('./#/roadmap');
   await expectVerticalFlow(page);
   const before = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));

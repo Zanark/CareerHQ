@@ -1,48 +1,38 @@
 import { z } from 'zod';
-import { getMission, missions } from './catalog';
-import { missionIds, opportunityStages, readinessKeys } from './types';
+import {
+  getMission, getMissionVersion, getMissions, getProgressForVersion, LATEST_ROADMAP_VERSION, prerequisitesFor,
+} from './catalog';
+import {
+  dateSchema, idSchema, parseLegacyV1, migrateLegacyToLatest, text, timestampSchema, urlSchema,
+} from './legacyState';
+import { freelanceVerdicts, missionIds, opportunityStages, readinessKeys } from './types';
 import type {
-  AppState, Checkpoint, CheckpointStatus, DailyAction, EvidenceInput,
-  Mission, MissionId, MissionProgress,
+  AppState, Checkpoint, CheckpointStatus, DailyAction, Evidence, EvidenceInput,
+  Mission, MissionId, MissionProgress, RecallEntry, RoadmapVersion,
 } from './types';
 
 export const STORAGE_KEY = 'careerhq.workspace.v1';
-const ROADMAP_VERSION = '1.0.0';
 const MAX_RECORDS = 5000;
 const MAX_PLAN_DAYS = 3660;
+const MAX_COMPLETED = 250;
+const HOUR_MS = 60 * 60 * 1000;
+
 const missionIdSchema = z.enum(missionIds);
-const idSchema = z.string().min(1).max(128).regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/, 'Invalid identifier');
-const text = (max: number, min = 1) => z.string().min(min).max(max)
-  .refine((value) => min === 0 || value.trim().length >= min, 'Text is too short');
-
-function isDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000')) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-const dateSchema = z.string().length(10).refine(isDate, 'Use a valid calendar date: YYYY-MM-DD');
-const timestampSchema = z.string().max(35).datetime({ offset: true });
-const urlSchema = z.string().max(2048).refine((value) => {
-  if (value === '') return true;
-  if (!/^https?:\/\//i.test(value) || /[\s\\\u0000-\u001f\u007f]/.test(value)) return false;
-  try {
-    const url = new URL(value);
-    return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}, 'Use an http:// or https:// URL without credentials, or leave it empty');
+const roadmapVersionSchema = z.enum(['1.0.0', '2.0.0']);
 const kindSchema = z.enum(['code', 'diagram', 'explanation', 'exercise', 'project', 'application', 'interview', 'note']);
 const statusSchema = z.enum(['not-started', 'in-progress', 'completed']);
 const readinessSchema = z.enum(['unassessed', 'building', 'ready']);
+const outcomeSchema = z.enum(['needs-review', 'partial', 'independent']);
+
 const progressSchema = z.object({
+  roadmapVersion: roadmapVersionSchema,
   checkpointId: z.union([idSchema, z.literal('')]),
   status: statusSchema,
   mode: z.enum(['active', 'background', 'planned']),
-  completedCheckpointIds: z.array(idSchema).max(5),
+  completedCheckpointIds: z.array(idSchema).max(MAX_COMPLETED),
   blocker: text(1000, 0),
 }).strict();
+
 const actionSchema = z.object({
   id: idSchema,
   date: dateSchema,
@@ -52,7 +42,9 @@ const actionSchema = z.object({
   minutes: z.number().int().min(1).max(120),
   reason: text(500),
   completed: z.boolean(),
+  roadmapVersion: roadmapVersionSchema.optional(),
 }).strict();
+
 const evidenceSchema = z.object({
   id: idSchema,
   missionId: missionIdSchema,
@@ -64,7 +56,9 @@ const evidenceSchema = z.object({
   visibility: z.literal('local'),
   createdAt: timestampSchema,
   completedCheckpoint: z.boolean(),
+  roadmapVersion: roadmapVersionSchema.optional(),
 }).strict();
+
 const eventSchema = z.object({
   id: idSchema,
   type: text(80),
@@ -72,6 +66,7 @@ const eventSchema = z.object({
   missionId: missionIdSchema.optional(),
   createdAt: timestampSchema,
 }).strict();
+
 const opportunitySchema = z.object({
   id: idSchema,
   company: text(120),
@@ -80,10 +75,44 @@ const opportunitySchema = z.object({
   url: urlSchema,
   notes: text(4000, 0),
   createdAt: timestampSchema,
+  lane: z.enum(['easy-apply', 'ats', 'referral', 'other']).optional(),
+  resumeVariant: text(120, 0).optional(),
+  effortMinutes: z.number().int().min(0).max(1440).optional(),
+  frictionScore: z.number().int().min(0).max(10).optional(),
 }).strict();
+
+const archiveSchema = z.object({
+  missionId: missionIdSchema,
+  archivedAt: timestampSchema,
+  progress: progressSchema,
+}).strict();
+
+const freelanceSchema = z.object({
+  id: idSchema,
+  title: text(160),
+  platform: text(120),
+  url: urlSchema,
+  skills: text(500, 0),
+  budget: text(120, 0),
+  verdict: z.enum(freelanceVerdicts),
+  notes: text(2000, 0),
+  createdAt: timestampSchema,
+}).strict();
+
+const recallSchema = z.object({
+  id: idSchema,
+  missionId: missionIdSchema,
+  roadmapVersion: roadmapVersionSchema,
+  checkpointId: idSchema,
+  outcome: outcomeSchema,
+  checks: z.object({ explanation: z.boolean(), diagram: z.boolean(), exercise: z.boolean() }).strict(),
+  notes: text(2000, 0),
+  createdAt: timestampSchema,
+}).strict();
+
 const stateSchema = z.object({
-  schemaVersion: z.literal(1),
-  roadmapVersion: z.literal(ROADMAP_VERSION),
+  schemaVersion: z.literal(2),
+  roadmapVersion: z.literal(LATEST_ROADMAP_VERSION),
   sampleData: z.boolean(),
   updatedAt: timestampSchema,
   objective: text(500),
@@ -91,28 +120,24 @@ const stateSchema = z.object({
   capacity: z.enum(['gentle', 'steady', 'deep']),
   interviewMode: z.boolean(),
   missions: z.object({
-    pattern: progressSchema,
-    system: progressSchema,
-    escape: progressSchema,
-    fabric: progressSchema,
-    blueprint: progressSchema,
-    credential: progressSchema,
-    neural: progressSchema,
-    algorithm: progressSchema,
+    pattern: progressSchema, system: progressSchema, escape: progressSchema,
+    fabric: progressSchema, blueprint: progressSchema, credential: progressSchema,
+    neural: progressSchema, algorithm: progressSchema, income: progressSchema,
   }).strict(),
   plans: z.record(dateSchema, z.array(actionSchema).max(3))
     .refine((plans) => Object.keys(plans).length <= MAX_PLAN_DAYS, 'Too many saved plan dates'),
   evidence: z.array(evidenceSchema).max(MAX_RECORDS),
   events: z.array(eventSchema).max(MAX_RECORDS),
   readiness: z.object({
-    'Coding patterns': readinessSchema,
-    'System design': readinessSchema,
-    'Resume defense': readinessSchema,
-    'STAR stories': readinessSchema,
-    'Sustained coding': readinessSchema,
+    'Coding patterns': readinessSchema, 'System design': readinessSchema,
+    'Resume defense': readinessSchema, 'STAR stories': readinessSchema, 'Sustained coding': readinessSchema,
   }).strict(),
   opportunities: z.array(opportunitySchema).max(500),
+  archives: z.array(archiveSchema).max(500),
+  freelanceOpportunities: z.array(freelanceSchema).max(MAX_RECORDS),
+  recalls: z.array(recallSchema).max(MAX_RECORDS),
 }).strict();
+
 const evidenceInputSchema = z.object({
   missionId: missionIdSchema,
   checkpointId: idSchema,
@@ -125,6 +150,15 @@ const evidenceInputSchema = z.object({
   actionId: idSchema.optional(),
 }).strict();
 
+const recallInputSchema = z.object({
+  missionId: z.enum(['pattern', 'system']),
+  roadmapVersion: roadmapVersionSchema,
+  checkpointId: idSchema,
+  outcome: outcomeSchema,
+  checks: z.object({ explanation: z.boolean(), diagram: z.boolean(), exercise: z.boolean() }).strict(),
+  notes: z.string().trim().pipe(text(2000, 0)),
+}).strict();
+
 export function localDate(now = new Date()): string {
   if (!Number.isFinite(now.getTime())) throw new Error('Cannot format an invalid date');
   return `${String(now.getFullYear()).padStart(4, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -134,61 +168,115 @@ function ensure(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-function checkpointIndex(missionId: MissionId, checkpointId: string): number {
-  const index = getMission(missionId).checkpoints.findIndex((checkpoint) => checkpoint.id === checkpointId);
-  ensure(index >= 0, `Unknown checkpoint "${checkpointId}" for ${missionId}`);
-  return index;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function parseState(value: unknown): AppState {
-  const result = stateSchema.safeParse(value);
-  if (!result.success) {
-    const issue = result.error.issues[0];
-    throw new Error(`Invalid workspace at ${issue.path.join('.') || 'root'}: ${issue.message}`);
+function findMissionVersion(id: MissionId, version: RoadmapVersion): Mission | undefined {
+  try {
+    return getMissionVersion(id, version);
+  } catch {
+    return undefined;
   }
-  const state: AppState = result.data;
+}
+
+function prerequisitesSatisfied(mission: Mission, checkpoint: Checkpoint, progress: MissionProgress): boolean {
+  return prerequisitesFor(mission, checkpoint).every((id) => progress.completedCheckpointIds.includes(id));
+}
+
+// A checkpoint is a valid thing to hold evidence, a plan action, or a recall against
+// whenever it is already completed, or whenever its prerequisites are already satisfied
+// (which always includes the current checkpoint). Switching which checkpoint is
+// "current" never revokes this for a checkpoint that was previously unlocked.
+function referenceable(mission: Mission, checkpoint: Checkpoint, progress: MissionProgress): boolean {
+  return progress.completedCheckpointIds.includes(checkpoint.id) || prerequisitesSatisfied(mission, checkpoint, progress);
+}
+
+function validateMissionProgress(
+  mission: Mission, progress: MissionProgress, missionId: MissionId, version: RoadmapVersion,
+  completions: Set<string>,
+): void {
+  if (mission.planned) {
+    ensure(progress.mode === 'planned' && progress.checkpointId === '' &&
+      progress.status === 'not-started' && progress.completedCheckpointIds.length === 0 &&
+      progress.blocker === '', `${mission.name} is planned and cannot have progress`);
+    return;
+  }
+  ensure(progress.mode !== 'planned', `${mission.name} has an available roadmap and cannot be planned`);
+  ensure(progress.completedCheckpointIds.length <= mission.checkpoints.length, `Too many completed checkpoints for ${mission.id}`);
+  const completedSet = new Set(progress.completedCheckpointIds);
+  ensure(completedSet.size === progress.completedCheckpointIds.length, `Duplicate completed checkpoint for ${mission.id}`);
+  for (const id of progress.completedCheckpointIds) {
+    const checkpoint = mission.checkpoints.find((candidate) => candidate.id === id);
+    ensure(checkpoint, `Completed checkpoint is unknown for ${mission.id}: ${id}`);
+    ensure(prerequisitesFor(mission, checkpoint).every((prerequisite) => completedSet.has(prerequisite)),
+      `Completed checkpoint has unmet prerequisites for ${mission.id}: ${id}`);
+    ensure(completions.has(`${missionId}:${version}:${id}`), `Completed checkpoint requires completion evidence: ${id}`);
+  }
+  const finished = mission.checkpoints.length > 0 && progress.completedCheckpointIds.length === mission.checkpoints.length;
+  if (finished) {
+    ensure(progress.status === 'completed', `Final completion status is inconsistent for ${mission.id}`);
+    ensure(progress.checkpointId === progress.completedCheckpointIds.at(-1),
+      `Current checkpoint is inconsistent with prerequisites for ${mission.id}`);
+  } else {
+    ensure(progress.status !== 'completed', `Final completion status is inconsistent for ${mission.id}`);
+    const checkpoint = mission.checkpoints.find((candidate) => candidate.id === progress.checkpointId);
+    ensure(checkpoint && !completedSet.has(progress.checkpointId) &&
+      prerequisitesFor(mission, checkpoint).every((prerequisite) => completedSet.has(prerequisite)),
+    `Current checkpoint is inconsistent with prerequisites for ${mission.id}`);
+  }
+}
+
+function validateV2Relations(state: AppState): AppState {
   const ids = new Set<string>();
   const unique = (id: string) => {
     ensure(!ids.has(id), `Duplicate record identifier: ${id}`);
     ids.add(id);
   };
+
   const completions = new Set<string>();
-  const evidenceRefs = new Set<string>();
+  const practicedKeys = new Set<string>();
   for (const evidence of state.evidence) {
     unique(evidence.id);
-    const index = checkpointIndex(evidence.missionId, evidence.checkpointId);
-    const progress = state.missions[evidence.missionId];
-    ensure(index <= progress.completedCheckpointIds.length, `Evidence references a locked checkpoint: ${evidence.checkpointId}`);
-    const reference = `${evidence.missionId}:${evidence.checkpointId}`;
-    evidenceRefs.add(reference);
+    const version = evidence.roadmapVersion ?? '1.0.0';
+    const mission = findMissionVersion(evidence.missionId, version);
+    ensure(mission, `Evidence references an unknown roadmap version: ${evidence.missionId} ${version}`);
+    const checkpoint = mission.checkpoints.find((candidate) => candidate.id === evidence.checkpointId);
+    ensure(checkpoint, `Evidence references an unknown checkpoint: ${evidence.checkpointId}`);
+    const progress = getProgressForVersion(state, evidence.missionId, version);
+    ensure(progress, `Evidence references a mission/version with no matching progress: ${evidence.missionId} ${version}`);
+    ensure(referenceable(mission, checkpoint, progress), `Evidence references a locked checkpoint: ${evidence.checkpointId}`);
+    if (evidence.checkpointId === progress.checkpointId) {
+      ensure(progress.status !== 'not-started', `A checkpoint with evidence must be started: ${evidence.checkpointId}`);
+    }
+    practicedKeys.add(`${evidence.missionId}:${version}:${evidence.checkpointId}`);
     if (evidence.completedCheckpoint) {
+      const key = `${evidence.missionId}:${version}:${evidence.checkpointId}`;
       ensure(progress.completedCheckpointIds.includes(evidence.checkpointId), `Completion evidence has no completed checkpoint: ${evidence.checkpointId}`);
-      ensure(!completions.has(reference), `Duplicate checkpoint completion: ${evidence.checkpointId}`);
-      completions.add(reference);
+      ensure(!completions.has(key), `Duplicate checkpoint completion: ${evidence.checkpointId}`);
+      completions.add(key);
     }
   }
-  for (const mission of missions) {
-    const progress = state.missions[mission.id];
-    if (mission.planned) {
-      ensure(progress.mode === 'planned' && progress.checkpointId === '' &&
-        progress.status === 'not-started' && progress.completedCheckpointIds.length === 0 &&
-        progress.blocker === '', `${mission.name} is planned and cannot have progress`);
-      continue;
-    }
-    ensure(progress.mode !== 'planned', `${mission.name} has an available roadmap and cannot be planned`);
-    const completed = progress.completedCheckpointIds;
-    ensure(completed.length <= mission.checkpoints.length, `Too many completed checkpoints for ${mission.id}`);
-    completed.forEach((id, index) => {
-      ensure(id === mission.checkpoints[index].id, `Broken sequential prerequisite for ${mission.id}: ${id}`);
-      ensure(completions.has(`${mission.id}:${id}`), `Completed checkpoint requires completion evidence: ${id}`);
-    });
-    const finished = completed.length === mission.checkpoints.length;
-    const expected = mission.checkpoints[finished ? completed.length - 1 : completed.length];
-    ensure(progress.checkpointId === expected.id, `Current checkpoint is inconsistent with prerequisites for ${mission.id}`);
-    ensure((progress.status === 'completed') === finished, `Final completion status is inconsistent for ${mission.id}`);
-    ensure(progress.status !== 'not-started' || !evidenceRefs.has(`${mission.id}:${progress.checkpointId}`),
-      `A checkpoint with evidence must be started: ${progress.checkpointId}`);
+
+  for (const missionId of missionIds) {
+    const progress = state.missions[missionId];
+    const mission = findMissionVersion(missionId, progress.roadmapVersion);
+    ensure(mission, `Unknown roadmap version for ${missionId}: ${progress.roadmapVersion}`);
+    validateMissionProgress(mission, progress, missionId, progress.roadmapVersion, completions);
   }
+
+  const archiveKeys = new Set<string>();
+  for (const archive of state.archives) {
+    const key = `${archive.missionId}:${archive.progress.roadmapVersion}`;
+    ensure(!archiveKeys.has(key), `Duplicate archive for ${archive.missionId} ${archive.progress.roadmapVersion}`);
+    archiveKeys.add(key);
+    ensure(archive.progress.roadmapVersion !== state.missions[archive.missionId].roadmapVersion,
+      `Archive duplicates the active roadmap version for ${archive.missionId}`);
+    const mission = findMissionVersion(archive.missionId, archive.progress.roadmapVersion);
+    ensure(mission, `Archive references an unknown roadmap: ${archive.missionId} ${archive.progress.roadmapVersion}`);
+    validateMissionProgress(mission, archive.progress, archive.missionId, archive.progress.roadmapVersion, completions);
+  }
+
   for (const [date, actions] of Object.entries(state.plans)) {
     const dayMissions = new Set<MissionId>();
     ensure(actions.reduce((sum, action) => sum + action.minutes, 0) <= 120, `Plan exceeds 120 minutes on ${date}`);
@@ -197,13 +285,19 @@ export function parseState(value: unknown): AppState {
       ensure(action.date === date, `Action date does not match its plan: ${action.id}`);
       ensure(!dayMissions.has(action.missionId), `Duplicate mission in plan for ${date}: ${action.missionId}`);
       dayMissions.add(action.missionId);
-      const index = checkpointIndex(action.missionId, action.checkpointId);
-      ensure(index <= state.missions[action.missionId].completedCheckpointIds.length,
-        `Plan references a locked checkpoint: ${action.checkpointId}`);
-      ensure(!action.completed || evidenceRefs.has(`${action.missionId}:${action.checkpointId}`),
+      const version = action.roadmapVersion ?? '1.0.0';
+      const mission = findMissionVersion(action.missionId, version);
+      ensure(mission, `Plan references an unknown roadmap version: ${action.missionId} ${version}`);
+      const checkpoint = mission.checkpoints.find((candidate) => candidate.id === action.checkpointId);
+      ensure(checkpoint, `Plan references an unknown checkpoint: ${action.checkpointId}`);
+      const progress = getProgressForVersion(state, action.missionId, version);
+      ensure(progress, `Plan references a mission/version with no matching progress: ${action.missionId} ${version}`);
+      ensure(referenceable(mission, checkpoint, progress), `Plan references a locked checkpoint: ${action.checkpointId}`);
+      ensure(!action.completed || practicedKeys.has(`${action.missionId}:${version}:${action.checkpointId}`),
         `Completed action requires evidence: ${action.id}`);
     }
   }
+
   let previousEventTime = -Infinity;
   for (const event of state.events) {
     unique(event.id);
@@ -211,8 +305,47 @@ export function parseState(value: unknown): AppState {
     ensure(time >= previousEventTime, 'History events must be in chronological order');
     previousEventTime = time;
   }
+
   for (const opportunity of state.opportunities) unique(opportunity.id);
+  for (const freelance of state.freelanceOpportunities) unique(freelance.id);
+
+  for (const recall of state.recalls) {
+    unique(recall.id);
+    ensure(recall.missionId === 'pattern' || recall.missionId === 'system',
+      `Recall is only supported for pattern or system: ${recall.missionId}`);
+    const mission = findMissionVersion(recall.missionId, recall.roadmapVersion);
+    ensure(mission, `Recall references an unknown roadmap version: ${recall.missionId} ${recall.roadmapVersion}`);
+    const checkpoint = mission.checkpoints.find((candidate) => candidate.id === recall.checkpointId);
+    ensure(checkpoint, `Recall references an unknown checkpoint: ${recall.checkpointId}`);
+    const progress = getProgressForVersion(state, recall.missionId, recall.roadmapVersion);
+    ensure(progress, `Recall references a mission/version with no matching progress: ${recall.missionId} ${recall.roadmapVersion}`);
+    ensure(referenceable(mission, checkpoint, progress), `Recall references a locked checkpoint: ${recall.checkpointId}`);
+    ensure(practicedKeys.has(`${recall.missionId}:${recall.roadmapVersion}:${recall.checkpointId}`),
+      `Recall requires prior learning evidence: ${recall.checkpointId}`);
+    if (recall.outcome === 'independent') {
+      ensure(recall.checks.explanation && recall.checks.exercise &&
+        (recall.missionId !== 'system' || recall.checks.diagram),
+      'Independent recall is missing its required self-checks');
+    }
+  }
+
   return state;
+}
+
+function parseV2Schema(value: unknown): AppState {
+  const result = stateSchema.safeParse(value);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new Error(`Invalid workspace at ${issue.path.join('.') || 'root'}: ${issue.message}`);
+  }
+  return result.data;
+}
+
+export function parseState(value: unknown): AppState {
+  if (isRecord(value) && value.schemaVersion === 1) {
+    return validateV2Relations(parseV2Schema(migrateLegacyToLatest(parseLegacyV1(value))));
+  }
+  return validateV2Relations(parseV2Schema(value));
 }
 
 function nextTimestamp(state: AppState): string {
@@ -226,63 +359,82 @@ function nextId(state: AppState, prefix: string): string {
     ...state.evidence.map((entry) => entry.id),
     ...state.events.map((entry) => entry.id),
     ...state.opportunities.map((entry) => entry.id),
+    ...state.freelanceOpportunities.map((entry) => entry.id),
+    ...state.recalls.map((entry) => entry.id),
     ...Object.values(state.plans).flat().map((entry) => entry.id),
   ]);
-  let sequence = state.evidence.length + state.events.length + 1;
+  let sequence = state.evidence.length + state.events.length + state.freelanceOpportunities.length + state.recalls.length + 1;
   while (existing.has(`${prefix}-${sequence}`)) sequence += 1;
   return `${prefix}-${sequence}`;
 }
 
-export function createInitialState(sampleData = true): AppState {
+function sampleSummary(mission: Mission, checkpoint: Checkpoint): string {
+  return `Synthetic practice example for ${mission.name}: ${checkpoint.action} `
+    + 'This is a clearly fictional demonstration, not a personal baseline or a real credential.';
+}
+
+export function createInitialState(sampleData = true, version: RoadmapVersion = LATEST_ROADMAP_VERSION): AppState {
+  const missionProgress = (id: MissionId): MissionProgress => {
+    const effectiveVersion: RoadmapVersion = id === 'income' ? LATEST_ROADMAP_VERSION : version;
+    const mission = getMissionVersion(id, effectiveVersion);
+    return {
+      roadmapVersion: effectiveVersion,
+      checkpointId: mission.planned ? '' : mission.checkpoints[0]?.id ?? '',
+      status: 'not-started',
+      mode: mission.planned ? 'planned' : (['pattern', 'system', 'escape'].includes(id) ? 'active' : 'background'),
+      completedCheckpointIds: [],
+      blocker: '',
+    };
+  };
   let state: AppState = {
-    schemaVersion: 1,
-    roadmapVersion: ROADMAP_VERSION,
+    schemaVersion: 2,
+    roadmapVersion: LATEST_ROADMAP_VERSION,
     sampleData,
     updatedAt: new Date().toISOString(),
     objective: 'Build evidence, one calm step at a time.',
     focusMissionId: 'pattern',
     capacity: 'steady',
     interviewMode: false,
-    missions: Object.fromEntries(missions.map((mission): [MissionId, MissionProgress] => [mission.id, {
-      checkpointId: mission.checkpoints[0]?.id ?? '',
-      status: 'not-started',
-      mode: mission.planned ? 'planned' : ['pattern', 'system', 'escape'].includes(mission.id) ? 'active' : 'background',
-      completedCheckpointIds: [],
-      blocker: '',
-    }])) as Record<MissionId, MissionProgress>,
+    missions: Object.fromEntries(missionIds.map((id) => [id, missionProgress(id)])) as Record<MissionId, MissionProgress>,
     plans: {},
     evidence: [],
     events: [],
     readiness: Object.fromEntries(readinessKeys.map((key) => [key, 'unassessed'])) as AppState['readiness'],
     opportunities: [],
+    archives: [],
+    freelanceOpportunities: [],
+    recalls: [],
   };
-  if (!sampleData) return state;
-  const samples: Array<{ missionId: MissionId; title: string; summary: string; kind: EvidenceInput['kind'] }> = [
-    {
-      missionId: 'pattern', title: 'Fictional sample: pair-sum trace', kind: 'code',
-      summary: 'Synthetic exercise: a lookup map finds indices for [2, 7, 11] and target 9. Check before inserting to avoid reusing one index. [3, 3] tests duplicates; target 99 has no match. Expected time O(n), space O(n).',
-    },
-    {
-      missionId: 'system', title: 'Fictional sample: service scope', kind: 'explanation',
-      summary: 'Imaginary link-saving service: save a URL and fetch a saved link. Assume 1,000 daily users making 20 reads each, roughly 0.23 reads/second on average. A prototype goal is reads under 300 ms; peak load and availability need separate validation.',
-    },
-    {
-      missionId: 'escape', title: 'Fictional sample: role comparison', kind: 'note',
-      summary: 'Two invented software roles at Example Harbor Labs and Example Orchard Systems share API design, testing, and clear communication. The example postings list these as required capabilities; a specific cloud platform is an optional signal.',
-    },
-  ];
-  for (const sample of samples) {
+  if (!sampleData) return parseState(state);
+  for (const id of (['pattern', 'system', 'escape'] as const)) {
+    const mission = getMission(id, state);
+    const checkpoint = mission.checkpoints.find((candidate) => candidate.id === state.missions[id].checkpointId);
+    if (!checkpoint) continue;
     state = recordEvidence(state, {
-      ...sample, checkpointId: state.missions[sample.missionId].checkpointId,
-      url: '', advance: true, criteriaConfirmed: true,
+      missionId: id,
+      checkpointId: state.missions[id].checkpointId,
+      title: `Fictional sample: ${checkpoint.title}`,
+      summary: sampleSummary(mission, checkpoint),
+      kind: 'explanation',
+      url: '',
+      advance: true,
+      criteriaConfirmed: true,
     });
   }
-  state = recordEvidence(state, {
-    missionId: 'pattern', checkpointId: state.missions.pattern.checkpointId,
-    title: 'Fictional sample: window warm-up',
-    summary: 'Synthetic trace in progress: keep the window free of duplicate values. Extend the right edge; move the left edge until the duplicate is removed. Empty-input and shrinking-window tests are still to do.',
-    kind: 'explanation', url: '', advance: false, criteriaConfirmed: false,
-  });
+  const practiceMission = getMission('pattern', state);
+  const practiceCheckpoint = practiceMission.checkpoints.find((candidate) => candidate.id === state.missions.pattern.checkpointId);
+  if (practiceCheckpoint) {
+    state = recordEvidence(state, {
+      missionId: 'pattern',
+      checkpointId: state.missions.pattern.checkpointId,
+      title: `Fictional sample: ${practiceCheckpoint.title} warm-up`,
+      summary: sampleSummary(practiceMission, practiceCheckpoint),
+      kind: 'explanation',
+      url: '',
+      advance: false,
+      criteriaConfirmed: false,
+    });
+  }
   state.readiness['Coding patterns'] = 'building';
   state.readiness['System design'] = 'building';
   state.opportunities = [{
@@ -305,15 +457,38 @@ export function getSaveState(mission: Mission, state: AppState): {
   completed: number;
   total: number;
 } {
-  const progress = state.missions[mission.id];
-  const index = mission.checkpoints.findIndex((candidate) => candidate.id === progress.checkpointId);
-  const checkpoint = mission.checkpoints[index];
+  if (mission.planned) {
+    return {
+      stage: 'Planned', checkpoint: undefined, status: 'not-started',
+      next: 'Awaiting canonical roadmap', completed: 0, total: 0,
+    };
+  }
+  const progress = getProgressForVersion(state, mission.id, mission.roadmapVersion);
+  if (!progress) {
+    return {
+      stage: 'Preview',
+      checkpoint: undefined,
+      status: 'not-started',
+      next: mission.checkpoints[0]?.title ?? mission.completionLabel ?? 'Mission complete',
+      completed: 0,
+      total: mission.checkpoints.length,
+    };
+  }
+  const checkpoint = mission.checkpoints.find((candidate) => candidate.id === progress.checkpointId);
+  let next: string;
+  if (progress.status === 'completed') {
+    next = mission.completionLabel ?? 'Mission complete';
+  } else {
+    const hypothetical = new Set([...progress.completedCheckpointIds, progress.checkpointId]);
+    const upcoming = mission.checkpoints.find((candidate) => !hypothetical.has(candidate.id) &&
+      prerequisitesFor(mission, candidate).every((id) => hypothetical.has(id)));
+    next = upcoming ? upcoming.title : (mission.completionLabel ?? 'Mission complete');
+  }
   return {
-    stage: mission.planned ? 'Planned' : checkpoint?.stage ?? 'Unavailable',
+    stage: checkpoint?.stage ?? 'Unavailable',
     checkpoint,
     status: progress.status,
-    next: mission.planned ? 'Awaiting canonical roadmap' : progress.status === 'completed' ? 'Mission complete'
-      : checkpoint ? mission.checkpoints[index + 1]?.title ?? 'Mission complete' : 'Checkpoint unavailable',
+    next,
     completed: progress.completedCheckpointIds.length,
     total: mission.checkpoints.length,
   };
@@ -323,7 +498,7 @@ export function generatePlan(state: AppState, date = localDate()): DailyAction[]
   dateSchema.parse(date);
   if (Object.hasOwn(state.plans, date)) return state.plans[date];
   const interviewWeight: Partial<Record<MissionId, number>> = { escape: 3, system: 2, pattern: 1 };
-  const candidates = missions.filter((mission) => {
+  const candidates = getMissions(state).filter((mission) => {
     const progress = state.missions[mission.id];
     return !mission.planned && progress.mode === 'active' &&
       progress.status !== 'completed' && !progress.blocker.trim();
@@ -344,12 +519,13 @@ export function generatePlan(state: AppState, date = localDate()): DailyAction[]
       : state.interviewMode && interviewWeight[mission.id] ? 'Prioritized for interview preparation.'
         : 'A small step in an active mission.';
     actions.push({
-      id: `plan-${date}-${mission.id}-${checkpoint.id}-${state.capacity}`,
+      id: `plan-${date}-${mission.id}-${mission.roadmapVersion}-${checkpoint.id}-${state.capacity}`,
       date, missionId: mission.id, checkpointId: checkpoint.id,
       title: state.capacity === 'gentle' ? checkpoint.recoveryAction : checkpoint.action,
       minutes,
       reason: `${reason} ${state.capacity === 'gentle' ? 'Recovery pace; no catch-up required.' : 'Only the current checkpoint; no overdue carryover.'}`,
       completed: false,
+      roadmapVersion: mission.roadmapVersion,
     });
     remaining -= minutes;
   }
@@ -359,9 +535,10 @@ export function generatePlan(state: AppState, date = localDate()): DailyAction[]
 export function recordEvidence(state: AppState, input: EvidenceInput): AppState {
   const next = parseState(state);
   const data = evidenceInputSchema.parse(input);
-  const mission = getMission(data.missionId);
-  const index = checkpointIndex(data.missionId, data.checkpointId);
+  const mission = getMission(data.missionId, next);
   const progress = next.missions[data.missionId];
+  const checkpoint = mission.checkpoints.find((candidate) => candidate.id === data.checkpointId);
+  ensure(checkpoint, `Unknown checkpoint "${data.checkpointId}" for ${data.missionId}`);
   ensure(!mission.planned && progress.mode === 'active', 'Evidence requires an active mission');
   ensure(!progress.blocker.trim(), 'Resolve the mission blocker before recording evidence');
   ensure(progress.status !== 'completed', 'This mission is already complete');
@@ -371,30 +548,43 @@ export function recordEvidence(state: AppState, input: EvidenceInput): AppState 
   if (data.actionId !== undefined) {
     const action = next.plans[today]?.find((candidate) => candidate.id === data.actionId);
     ensure(action && !action.completed && action.missionId === data.missionId &&
-      action.checkpointId === data.checkpointId,
+      action.checkpointId === data.checkpointId && (action.roadmapVersion ?? '1.0.0') === progress.roadmapVersion,
     "This action is no longer available for today's current checkpoint");
   }
   const createdAt = nextTimestamp(next);
-  next.evidence.push({
+  const evidenceEntry: Evidence = {
     id: nextId(next, 'evidence'), missionId: data.missionId, checkpointId: data.checkpointId,
     title: data.title, summary: data.summary, kind: data.kind, url: data.url,
     visibility: 'local', createdAt, completedCheckpoint: data.advance,
-  });
+    roadmapVersion: progress.roadmapVersion,
+  };
+  next.evidence.push(evidenceEntry);
   progress.status = 'in-progress';
   if (data.advance) {
-    progress.completedCheckpointIds.push(data.checkpointId);
-    const following = mission.checkpoints[index + 1];
-    progress.checkpointId = following?.id ?? data.checkpointId;
-    progress.status = following ? 'not-started' : 'completed';
+    const completedIds = [...progress.completedCheckpointIds, data.checkpointId];
+    progress.completedCheckpointIds = completedIds;
+    const remaining = mission.checkpoints.filter((candidate) => !completedIds.includes(candidate.id));
+    if (remaining.length === 0) {
+      progress.checkpointId = data.checkpointId;
+      progress.status = 'completed';
+    } else {
+      const eligible = remaining.find((candidate) => prerequisitesFor(mission, candidate).every((id) => completedIds.includes(id)));
+      ensure(eligible, 'No eligible checkpoint is reachable next: check the roadmap for an unreachable prerequisite');
+      const hasPriorEvidence = next.evidence.some((entry) => entry.missionId === data.missionId &&
+        entry.checkpointId === eligible.id && (entry.roadmapVersion ?? '1.0.0') === progress.roadmapVersion);
+      progress.checkpointId = eligible.id;
+      progress.status = hasPriorEvidence ? 'in-progress' : 'not-started';
+    }
   }
   next.plans[today]?.forEach((action) => {
     if (action.missionId === data.missionId && action.checkpointId === data.checkpointId &&
+      (action.roadmapVersion ?? '1.0.0') === progress.roadmapVersion &&
       (data.advance || action.id === data.actionId)) action.completed = true;
   });
   next.events.push({
     id: nextId(next, 'event'),
     type: data.advance ? 'checkpoint-completed' : 'evidence-recorded',
-    title: data.advance ? `Completed: ${mission.checkpoints[index].title}` : `Evidence: ${data.title}`,
+    title: data.advance ? `Completed: ${checkpoint.title}` : `Evidence: ${data.title}`,
     missionId: data.missionId, createdAt,
   });
   next.updatedAt = createdAt;
@@ -415,4 +605,164 @@ export function recordChange(state: AppState, title: string, missionId?: Mission
   });
   next.updatedAt = createdAt;
   return parseState(next);
+}
+
+/**
+ * Explicitly select a different, already-unlocked, uncompleted checkpoint on the
+ * mission's active roadmap version - a source-defined branch choice, not a forced
+ * completion of whatever was previously current. Never touches other missions,
+ * archives, or completed checkpoints.
+ */
+export function activateCheckpoint(state: AppState, missionId: MissionId, checkpointId: string): AppState {
+  const next = parseState(state);
+  missionIdSchema.parse(missionId);
+  idSchema.parse(checkpointId);
+  const mission = getMission(missionId, next);
+  const progress = next.missions[missionId];
+  ensure(!mission.planned, 'Cannot activate a checkpoint on a planned mission');
+  ensure(progress.status !== 'completed', 'This mission is already complete');
+  const checkpoint = mission.checkpoints.find((candidate) => candidate.id === checkpointId);
+  ensure(checkpoint, `Unknown checkpoint "${checkpointId}" for ${missionId}`);
+  ensure(!progress.completedCheckpointIds.includes(checkpointId), 'This checkpoint is already completed');
+  ensure(prerequisitesSatisfied(mission, checkpoint, progress), 'This checkpoint is locked by its prerequisites');
+  const hasEvidence = next.evidence.some((entry) => entry.missionId === missionId && entry.checkpointId === checkpointId &&
+    (entry.roadmapVersion ?? '1.0.0') === progress.roadmapVersion);
+  progress.checkpointId = checkpointId;
+  progress.status = hasEvidence ? 'in-progress' : 'not-started';
+  const createdAt = nextTimestamp(next);
+  next.events.push({
+    id: nextId(next, 'event'), type: 'checkpoint-activated',
+    title: `Switched focus to: ${checkpoint.title}`, missionId, createdAt,
+  });
+  next.updatedAt = createdAt;
+  return parseState(next);
+}
+
+/**
+ * Adopt the latest canonical roadmap for a mission currently on an older one. The old
+ * progress is archived exactly as-is (including its blocker, for the historical record);
+ * the mission's active progress becomes a clean start on the latest roadmap - no
+ * completions are carried over or granted. Existing evidence, events, plans, and
+ * opportunities are left completely untouched; the UI is responsible for refreshing any
+ * already-generated daily plans if it wants them to reflect the new roadmap.
+ */
+export function upgradeRoadmap(state: AppState, missionId: MissionId): AppState {
+  const next = parseState(state);
+  missionIdSchema.parse(missionId);
+  const progress = next.missions[missionId];
+  ensure(progress.roadmapVersion !== LATEST_ROADMAP_VERSION, 'This roadmap is already on the latest version');
+  ensure(!next.archives.some((archive) => archive.missionId === missionId && archive.progress.roadmapVersion === progress.roadmapVersion),
+    'This roadmap version is already archived');
+  const latest = getMissionVersion(missionId, LATEST_ROADMAP_VERSION);
+  const createdAt = nextTimestamp(next);
+  next.archives.push({ missionId, archivedAt: createdAt, progress: { ...progress } });
+  const newMode = latest.planned ? 'planned' : (progress.mode === 'planned' ? 'background' : progress.mode);
+  next.missions[missionId] = {
+    roadmapVersion: LATEST_ROADMAP_VERSION,
+    checkpointId: latest.planned ? '' : latest.checkpoints[0]?.id ?? '',
+    status: 'not-started',
+    mode: newMode,
+    completedCheckpointIds: [],
+    blocker: '',
+  };
+  next.events.push({
+    id: nextId(next, 'event'), type: 'roadmap-upgraded',
+    title: `Upgraded ${latest.name} to roadmap ${LATEST_ROADMAP_VERSION}`, missionId, createdAt,
+  });
+  next.updatedAt = createdAt;
+  return parseState(next);
+}
+
+/**
+ * A read-only, self-reported spaced-repetition check-in: it can only reference a
+ * checkpoint that already has learning evidence on the matching current or archived
+ * snapshot, and it never mutates checkpoint completion or status.
+ */
+export function recordRecall(state: AppState, input: Omit<RecallEntry, 'id' | 'createdAt'>): AppState {
+  const next = parseState(state);
+  const data = recallInputSchema.parse(input);
+  const mission = getMissionVersion(data.missionId, data.roadmapVersion);
+  const checkpoint = mission.checkpoints.find((candidate) => candidate.id === data.checkpointId);
+  ensure(checkpoint, `Unknown checkpoint "${data.checkpointId}" for ${data.missionId}`);
+  const progress = getProgressForVersion(next, data.missionId, data.roadmapVersion);
+  ensure(progress, `No ${data.roadmapVersion} roadmap progress exists for ${data.missionId}`);
+  ensure(referenceable(mission, checkpoint, progress), 'Recall requires an unlocked or completed checkpoint');
+  const hasPriorLearning = next.evidence.some((entry) => entry.missionId === data.missionId &&
+    entry.checkpointId === data.checkpointId && (entry.roadmapVersion ?? '1.0.0') === data.roadmapVersion);
+  ensure(hasPriorLearning, 'Recall requires prior learning evidence for this checkpoint');
+  if (data.outcome === 'independent') {
+    if (data.missionId === 'pattern') {
+      ensure(data.checks.explanation && data.checks.exercise, 'Independent pattern recall requires explanation and exercise checks');
+    } else {
+      ensure(data.checks.explanation && data.checks.diagram && data.checks.exercise, 'Independent system recall requires all three checks');
+    }
+  }
+  const createdAt = nextTimestamp(next);
+  next.recalls.push({
+    id: nextId(next, 'recall'), missionId: data.missionId, roadmapVersion: data.roadmapVersion,
+    checkpointId: data.checkpointId, outcome: data.outcome, checks: data.checks, notes: data.notes, createdAt,
+  });
+  next.events.push({
+    id: nextId(next, 'event'), type: 'recall-reviewed', title: `Reviewed: ${checkpoint.title}`,
+    missionId: data.missionId, createdAt,
+  });
+  next.updatedAt = createdAt;
+  return parseState(next);
+}
+
+export interface RecallSummary {
+  status: 'not-started' | 'learning' | 'practiced' | 'needs-review' | 'retained';
+  nextReviewAt: string | null;
+  lastReviewedAt?: string;
+}
+
+/**
+ * A derived, self-reported retention status for one checkpoint - not an AI grade. It is
+ * purely a function of this checkpoint's evidence and recall history:
+ *  - no evidence at all: not-started.
+ *  - evidence but no recall yet: learning, due 24h after the first evidence.
+ *  - any recall: practiced, unless the most recent recall needs review.
+ *  - the most recent recall needing review always reports needs-review, even after a
+ *    prior retained result - it downgrades the retention flag without touching
+ *    checkpoint completion.
+ *  - retained requires two independent recalls: the first at least 24h after the first
+ *    evidence, and the second at least 96h after the first evidence AND at least 48h
+ *    after the first independent recall.
+ */
+export function recallSummary(state: AppState, missionId: MissionId, checkpointId: string, version: RoadmapVersion): RecallSummary {
+  const validated = state;
+  const mission = getMissionVersion(missionId, version);
+  ensure(mission.checkpoints.some((candidate) => candidate.id === checkpointId),
+    `Unknown checkpoint "${checkpointId}" for ${missionId} roadmap ${version}`);
+  const evidenceForCheckpoint = validated.evidence
+    .filter((entry) => entry.missionId === missionId && entry.checkpointId === checkpointId && (entry.roadmapVersion ?? '1.0.0') === version)
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  if (evidenceForCheckpoint.length === 0) return { status: 'not-started', nextReviewAt: null };
+  const firstEvidenceAt = Date.parse(evidenceForCheckpoint[0].createdAt);
+
+  const reviews = validated.recalls
+    .filter((entry) => entry.missionId === missionId && entry.checkpointId === checkpointId && entry.roadmapVersion === version)
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  if (reviews.length === 0) {
+    return { status: 'learning', nextReviewAt: new Date(firstEvidenceAt + 24 * HOUR_MS).toISOString() };
+  }
+  const lastReviewedAt = reviews.at(-1)!.createdAt;
+  if (reviews.at(-1)!.outcome === 'needs-review') {
+    return { status: 'needs-review', nextReviewAt: null, lastReviewedAt };
+  }
+  const independentReviews = reviews.filter((entry) => entry.outcome === 'independent' &&
+    Date.parse(entry.createdAt) >= firstEvidenceAt + 24 * HOUR_MS);
+  if (independentReviews.length === 0) {
+    return { status: 'practiced', nextReviewAt: new Date(firstEvidenceAt + 24 * HOUR_MS).toISOString(), lastReviewedAt };
+  }
+  const firstIndependentAt = Date.parse(independentReviews[0].createdAt);
+  const dueForSecond = new Date(Math.max(firstEvidenceAt + 96 * HOUR_MS, firstIndependentAt + 48 * HOUR_MS)).toISOString();
+  if (independentReviews.length === 1) {
+    return { status: 'practiced', nextReviewAt: dueForSecond, lastReviewedAt };
+  }
+  const retained = reviews.at(-1)!.outcome === 'independent' && independentReviews.some(first =>
+    independentReviews.some(second => Date.parse(second.createdAt) >= firstEvidenceAt + 96 * HOUR_MS &&
+      Date.parse(second.createdAt) >= Date.parse(first.createdAt) + 48 * HOUR_MS));
+  if (retained) return { status: 'retained', nextReviewAt: null, lastReviewedAt };
+  return { status: 'practiced', nextReviewAt: dueForSecond, lastReviewedAt };
 }

@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMission, missions } from './catalog';
+import { getMission, getMissionVersion, getMissions, missions } from './catalog';
 import {
-  createInitialState, generatePlan, getSaveState, localDate, parseState,
-  recordChange, recordEvidence, STORAGE_KEY,
+  activateCheckpoint, createInitialState, generatePlan, getSaveState, localDate, parseState,
+  recallSummary, recordChange, recordEvidence, recordRecall, STORAGE_KEY, upgradeRoadmap,
 } from './engine';
 import { missionIds, readinessKeys } from './types';
 import type { AppState, Capacity, EvidenceInput, MissionId } from './types';
+
+const HOUR = 60 * 60 * 1000;
 
 function input(state: AppState, missionId: MissionId = 'pattern', overrides: Partial<EvidenceInput> = {}): EvidenceInput {
   return {
@@ -47,45 +49,27 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('prototype catalog and initial workspace', () => {
-  it('provides seven honest starters and one genuinely planned mission', () => {
+describe('v2 catalog and initial workspace', () => {
+  it('provides nine canonical missions - the original eight plus income - with algorithm still planned', () => {
     expect(missions.map((mission) => mission.id)).toEqual([...missionIds]);
-    expect(missions.map(({ name, operation }) => [name, operation])).toEqual([
-      ['DSA', 'Pattern Forge'],
-      ['System Design', 'System Forge'],
-      ['Career opportunities', 'Escape Velocity'],
-      ['Service Fabric', 'Fabric Core'],
-      ['Software Architecture', 'Blueprint'],
-      ['Certifications', 'Credential Forge'],
-      ['AI Engineering', 'Neural Edge'],
-      ['Competitive programming', 'Algorithm Forge'],
-    ]);
-    expect(missions.map((mission) => mission.color)).toEqual([
-      'sage', 'blue', 'amber', 'rose', 'violet', 'sand', 'teal', 'gray',
-    ]);
+    expect(missions.filter((mission) => mission.planned).map((mission) => mission.id)).toEqual(['algorithm']);
     const checkpointIds = new Set<string>();
     for (const mission of missions.filter((entry) => !entry.planned)) {
-      expect(mission.roadmapVersion).toBe('1.0.0');
-      expect(mission.description).toContain('not a complete canonical curriculum');
-      expect(mission.checkpoints.length).toBeGreaterThanOrEqual(4);
-      expect(mission.checkpoints.length).toBeLessThanOrEqual(5);
-      const stages = new Set(mission.checkpoints.map((checkpoint) => checkpoint.stage));
-      expect(stages.size).toBeGreaterThanOrEqual(2);
-      expect(stages.size).toBeLessThanOrEqual(4);
+      expect(mission.roadmapVersion).toBe('2.0.0');
+      expect(mission.checkpoints.length).toBeGreaterThan(0);
       mission.checkpoints.forEach((checkpoint) => {
         expect(checkpointIds.has(checkpoint.id)).toBe(false);
         checkpointIds.add(checkpoint.id);
-        expect(checkpoint.criteria.length).toBeGreaterThanOrEqual(2);
-        expect(checkpoint.criteria.length).toBeLessThanOrEqual(3);
+        expect(checkpoint.id.startsWith(`${mission.id}-v2-`)).toBe(true);
+        expect(checkpoint.criteria.length).toBeGreaterThanOrEqual(1);
         expect(checkpoint.action.length).toBeGreaterThan(10);
         expect(checkpoint.recoveryAction.length).toBeGreaterThan(10);
+        expect(checkpoint.minutes).toBeGreaterThan(0);
       });
     }
     expect(getMission('algorithm').checkpoints).toEqual([]);
     expect(getMission('algorithm').planned).toBe(true);
-    expect(getMission('credential').description)
-      .toContain('Cloud foundations, cloud administration, cloud development, architecture, AI');
-    expect(() => getMission('missing' as MissionId)).toThrow('Unknown mission');
+    expect(() => getMission('missing' as MissionId)).toThrow('roadmap exists');
   });
 
   it('starts fresh without inferred progress, readiness, opportunities, or history', () => {
@@ -96,12 +80,16 @@ describe('prototype catalog and initial workspace', () => {
     expect(state.evidence).toEqual([]);
     expect(state.events).toEqual([]);
     expect(state.opportunities).toEqual([]);
+    expect(state.archives).toEqual([]);
+    expect(state.freelanceOpportunities).toEqual([]);
+    expect(state.recalls).toEqual([]);
     expect(state.plans).toEqual({});
     expect(Object.values(state.readiness)).toEqual(readinessKeys.map(() => 'unassessed'));
     missions.forEach((mission) => {
       const progress = state.missions[mission.id];
       expect(progress.completedCheckpointIds).toEqual([]);
       expect(progress.status).toBe('not-started');
+      expect(progress.roadmapVersion).toBe('2.0.0');
       expect(progress.checkpointId).toBe(mission.checkpoints[0]?.id ?? '');
     });
     expect(state.missions.algorithm).toMatchObject({ checkpointId: '', mode: 'planned', status: 'not-started' });
@@ -125,7 +113,12 @@ describe('prototype catalog and initial workspace', () => {
       }
     }
     expect(state.missions.credential.completedCheckpointIds).toEqual([]);
+    expect(state.missions.income.completedCheckpointIds).toEqual([]);
     expect(Object.values(state.readiness)).not.toContain('ready');
+    // Escape has exactly one defined checkpoint, so one evidenced advance finishes it: a
+    // genuine terminal edge case, not an array-index overrun.
+    expect(state.missions.escape.status).toBe('completed');
+    expect(state.missions.escape.checkpointId).toBe(getMission('escape').checkpoints[0].id);
   });
 
   it.each([false, true])('has exactly one current checkpoint per available mission (sample=%s)', (sample) => {
@@ -135,7 +128,10 @@ describe('prototype catalog and initial workspace', () => {
       expect(mission.checkpoints.filter((checkpoint) => checkpoint.id === progress.checkpointId))
         .toHaveLength(mission.planned ? 0 : 1);
       if (!mission.planned) {
-        expect(progress.checkpointId).toBe(mission.checkpoints[progress.completedCheckpointIds.length].id);
+        const expectedId = progress.status === 'completed'
+          ? progress.completedCheckpointIds.at(-1)
+          : mission.checkpoints[progress.completedCheckpointIds.length]?.id;
+        expect(progress.checkpointId).toBe(expectedId);
       }
     });
   });
@@ -149,7 +145,7 @@ describe('prototype catalog and initial workspace', () => {
       status: 'not-started',
       next: mission.checkpoints[1].title,
       completed: 0,
-      total: 5,
+      total: mission.checkpoints.length,
     });
     state.missions.pattern.blocker = 'Need a smaller example';
     expect(getSaveState(mission, state).next).toBe(mission.checkpoints[1].title);
@@ -173,6 +169,21 @@ describe('prototype catalog and initial workspace', () => {
     });
     expect(getSaveState(mission, state).status).toBe('completed');
     expect(getSaveState(mission, state).next).toBe('Mission complete');
+  });
+
+  it('reports a read-only Preview with no total when a mission has no snapshot at its requested version', () => {
+    const state = createInitialState(false);
+    const legacyPattern = getMissionVersion('pattern', '1.0.0');
+    // state.missions.pattern is on 2.0.0 and there is no 1.0.0 archive, so the 1.0.0
+    // mission definition has no matching progress snapshot at all.
+    expect(getSaveState(legacyPattern, state)).toEqual({
+      stage: 'Preview',
+      checkpoint: undefined,
+      status: 'not-started',
+      next: legacyPattern.checkpoints[0].title,
+      completed: 0,
+      total: legacyPattern.checkpoints.length,
+    });
   });
 });
 
@@ -212,13 +223,19 @@ describe('local dates and deterministic daily plans', () => {
     }
   });
 
-  it('takes focus first, then interview mode priorities', () => {
+  it('takes focus first, then interview mode priorities, using definition order as the tiebreak', () => {
     const state = createInitialState(false);
     state.focusMissionId = 'neural';
     state.missions.neural.mode = 'active';
-    expect(generatePlan(state).map((action) => action.missionId)).toEqual(['neural', 'pattern', 'escape']);
+    // No interview weight applies to neural; among the remaining equal-priority active
+    // missions (pattern, system, escape), stable definition order plus the 75-minute
+    // steady budget admits pattern and system but not the third-ranked escape.
+    expect(generatePlan(state).map((action) => action.missionId)).toEqual(['neural', 'pattern', 'system']);
     state.interviewMode = true;
-    expect(generatePlan(state).map((action) => action.missionId)).toEqual(['neural', 'escape', 'system']);
+    // Interview weighting now ranks escape (3) above system (2) above pattern (1), but never
+    // above the focus mission itself; system's checkpoint no longer fits the remaining budget
+    // after neural and escape, so pattern (next by weight) is admitted instead.
+    expect(generatePlan(state).map((action) => action.missionId)).toEqual(['neural', 'escape', 'pattern']);
     state.focusMissionId = 'pattern';
     expect(generatePlan(state).map((action) => action.missionId)).toEqual(['pattern', 'escape', 'system']);
   });
@@ -245,6 +262,7 @@ describe('local dates and deterministic daily plans', () => {
 
   it('keeps an existing day as-is despite progress, settings, or blockers', () => {
     let state = planned();
+    const firstCheckpointId = state.missions.pattern.checkpointId;
     state = advance(state);
     const existing = state.plans[localDate()];
     state.capacity = 'gentle';
@@ -253,7 +271,7 @@ describe('local dates and deterministic daily plans', () => {
     state.missions.system.blocker = 'Paused for a question';
     expect(generatePlan(state)).toBe(existing);
     expect(generatePlan(state)[0].completed).toBe(true);
-    expect(generatePlan(state)[0].checkpointId).toBe('pattern-arrays');
+    expect(generatePlan(state)[0].checkpointId).toBe(firstCheckpointId);
     expect(parseState(state)).toEqual(state);
     delete state.plans[localDate()];
     expect(generatePlan(state)).toHaveLength(1);
@@ -281,17 +299,36 @@ describe('local dates and deterministic daily plans', () => {
   it('accepts a real leap day', () => {
     expect(generatePlan(createInitialState(false), '2028-02-29')).toHaveLength(3);
   });
+
+  it('stamps each generated action with the mission roadmap version and a version-qualified stable ID', () => {
+    const state = planned();
+    for (const action of state.plans[localDate()]) {
+      expect(action.roadmapVersion).toBe(state.missions[action.missionId].roadmapVersion);
+      expect(action.id).toContain(action.roadmapVersion);
+      expect(action.id).toContain(action.checkpointId);
+    }
+    expect(generatePlan(state)).toBe(state.plans[localDate()]);
+  });
+
+  it('uses getMissions(state) so a per-mission roadmap version change is reflected in planning', () => {
+    const state = createInitialState(false);
+    expect(getMissions(state).map((mission) => mission.roadmapVersion)).toEqual(
+      missionIds.map(() => '2.0.0'),
+    );
+  });
 });
 
-describe('evidence, checkpoint gates, and immutable history', () => {
+describe('evidence, DAG checkpoint gates, and immutable history', () => {
   it('starts a checkpoint from evidence without claiming completion or mastery', () => {
     const before = createInitialState(false);
+    const firstCheckpointId = before.missions.pattern.checkpointId;
     const state = recordEvidence(before, input(before));
     expect(state.missions.pattern).toMatchObject({
-      status: 'in-progress', checkpointId: 'pattern-arrays', completedCheckpointIds: [],
+      status: 'in-progress', checkpointId: firstCheckpointId, completedCheckpointIds: [],
     });
     expect(state.evidence[0].completedCheckpoint).toBe(false);
     expect(state.evidence[0].visibility).toBe('local');
+    expect(state.evidence[0].roadmapVersion).toBe('2.0.0');
     expect(state.events).toHaveLength(1);
     expect(state.events[0].type).toBe('evidence-recorded');
     expect(state.readiness).toEqual(before.readiness);
@@ -345,9 +382,11 @@ describe('evidence, checkpoint gates, and immutable history', () => {
   it('requires confirmed criteria, then advances precisely one checkpoint', () => {
     const before = planned();
     expect(() => recordEvidence(before, input(before, 'pattern', { advance: true }))).toThrow('Confirm all');
+    const firstCheckpointId = before.missions.pattern.checkpointId;
+    const secondCheckpointId = getMission('pattern').checkpoints[1].id;
     const state = advance(before);
     expect(state.missions.pattern).toMatchObject({
-      checkpointId: 'pattern-window', status: 'not-started', completedCheckpointIds: ['pattern-arrays'],
+      checkpointId: secondCheckpointId, status: 'not-started', completedCheckpointIds: [firstCheckpointId],
     });
     expect(state.evidence[0].completedCheckpoint).toBe(true);
     expect(state.events[0].type).toBe('checkpoint-completed');
@@ -375,12 +414,12 @@ describe('evidence, checkpoint gates, and immutable history', () => {
       expect(parseState(state)).toEqual(state);
     });
     expect(getSaveState(mission, state)).toMatchObject({
-      status: 'completed', next: 'Mission complete', completed: 5, total: 5,
+      status: 'completed', next: 'Mission complete', completed: mission.checkpoints.length, total: mission.checkpoints.length,
     });
     expect(state.missions.pattern.checkpointId).toBe(mission.checkpoints.at(-1)!.id);
     expect(generatePlan(state).some((action) => action.missionId === 'pattern')).toBe(false);
-    expect(state.evidence).toHaveLength(5);
-    expect(state.events).toHaveLength(5);
+    expect(state.evidence).toHaveLength(mission.checkpoints.length);
+    expect(state.events).toHaveLength(mission.checkpoints.length);
     expect(state.readiness['Coding patterns']).toBe('unassessed');
     expect(() => recordEvidence(state, input(state))).toThrow('already complete');
   });
@@ -402,15 +441,18 @@ describe('evidence, checkpoint gates, and immutable history', () => {
 
   it('only records evidence on active, unblocked, current checkpoints', () => {
     const state = createInitialState(false);
+    const otherMissionCheckpointId = getMission('system').checkpoints[0].id;
+    const sameMissionLaterCheckpointId = getMission('pattern').checkpoints[1].id;
     expect(() => recordEvidence(state, input(state, 'fabric'))).toThrow('active mission');
     expect(() => recordEvidence(state, input(state, 'algorithm', { checkpointId: 'algorithm-invented' }))).toThrow('Unknown checkpoint');
-    expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: 'system-scope' }))).toThrow('Unknown checkpoint');
-    expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: 'pattern-window' }))).toThrow('current checkpoint');
+    expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: otherMissionCheckpointId }))).toThrow('Unknown checkpoint');
+    expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: sameMissionLaterCheckpointId }))).toThrow('current checkpoint');
     state.missions.pattern.blocker = 'Clarify an example';
     expect(() => recordEvidence(state, input(state))).toThrow('Resolve the mission blocker');
     state.missions.pattern.blocker = '';
+    const firstCheckpointId = state.missions.pattern.checkpointId;
     const moved = advance(state);
-    expect(() => recordEvidence(moved, input(moved, 'pattern', { checkpointId: 'pattern-arrays' }))).toThrow('current checkpoint');
+    expect(() => recordEvidence(moved, input(moved, 'pattern', { checkpointId: firstCheckpointId }))).toThrow('current checkpoint');
   });
 
   it('rejects absent, wrong-mission, old-day, and old-checkpoint action IDs', () => {
@@ -445,7 +487,7 @@ describe('evidence, checkpoint gates, and immutable history', () => {
 
   it.each([
     'javascript:alert(1)', 'data:text/html,<script>alert(1)</script>', 'file:///secret',
-    '//example.com', 'https:example.com', 'ftp://example.com', 'https://user:password@example.com',
+    '//example.com', 'https:example.com', 'ftp://example.com', '******example.com',
     'https://example.com\\@evil.test', 'https://exa\nmple.com', 'http://',
   ])('rejects unsafe or malformed URLs: %s', (url) => {
     const state = createInitialState(false);
@@ -499,11 +541,207 @@ describe('evidence, checkpoint gates, and immutable history', () => {
   });
 });
 
-describe('strict import validation and relational integrity', () => {
+describe('checkpoint branching, explicit activation, and locked-evidence rules', () => {
+  it('exposes a genuine DAG branch and lets the user explicitly choose between two reachable checkpoints', () => {
+    const mission = getMission('pattern');
+    const [fundamentals, firstPattern, frequency, complement, grouping] = mission.checkpoints;
+    let state = createInitialState(false);
+    state = advance(state); // completes fundamentals
+    state = advance(state); // completes firstPattern
+    state = advance(state); // completes frequency -> both complement and grouping are now unlocked
+    expect(state.missions.pattern.checkpointId).toBe(complement.id); // definition-order default
+    expect(state.missions.pattern.completedCheckpointIds).toEqual([fundamentals.id, firstPattern.id, frequency.id]);
+
+    const switched = activateCheckpoint(state, 'pattern', grouping.id);
+    expect(switched.missions.pattern.checkpointId).toBe(grouping.id);
+    expect(switched.missions.pattern.status).toBe('not-started');
+    expect(switched.missions.pattern.completedCheckpointIds).toEqual(state.missions.pattern.completedCheckpointIds);
+    expect(switched.events.at(-1)).toMatchObject({ type: 'checkpoint-activated', missionId: 'pattern' });
+
+    const switchedBack = activateCheckpoint(switched, 'pattern', complement.id);
+    expect(switchedBack.missions.pattern.checkpointId).toBe(complement.id);
+    expect(() => parseState(switchedBack)).not.toThrow();
+  });
+
+  it('rejects activating a locked, already-completed, unknown, or planned-mission checkpoint', () => {
+    const mission = getMission('pattern');
+    const [fundamentals, , , , grouping] = mission.checkpoints;
+    let state = createInitialState(false);
+    expect(() => activateCheckpoint(state, 'pattern', grouping.id)).toThrow('locked');
+    state = advance(state);
+    expect(() => activateCheckpoint(state, 'pattern', fundamentals.id)).toThrow('already completed');
+    expect(() => activateCheckpoint(state, 'pattern', 'invented-checkpoint')).toThrow('Unknown checkpoint');
+    expect(() => activateCheckpoint(state, 'algorithm', 'anything')).toThrow('planned mission');
+  });
+
+  it('lets prior practice evidence remain valid after the active checkpoint is switched elsewhere', () => {
+    const mission = getMission('pattern');
+    const [, , , complement, grouping] = mission.checkpoints;
+    let state = createInitialState(false);
+    state = advance(state);
+    state = advance(state);
+    state = advance(state); // current checkpoint is now complement
+    state = recordEvidence(state, input(state, 'pattern', { checkpointId: complement.id, advance: false }));
+    state = activateCheckpoint(state, 'pattern', grouping.id);
+    expect(() => parseState(state)).not.toThrow();
+    expect(state.evidence.some((entry) => entry.checkpointId === complement.id)).toBe(true);
+    // recordEvidence itself still only targets the current checkpoint - the old evidence is
+    // preserved and valid, but new evidence cannot be written against a non-current checkpoint.
+    expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: complement.id })))
+      .toThrow('current checkpoint');
+  });
+
+  it('rejects upgrading a mission that is already on the latest roadmap version', () => {
+    const state = createInitialState(false);
+    expect(() => upgradeRoadmap(state, 'pattern')).toThrow('already on the latest version');
+  });
+});
+
+describe('recall tracking and spaced-repetition self-assessment', () => {
+  it('derives not-started, learning, practiced, needs-review, and retained from evidence and recall history', () => {
+    let state = createInitialState(false);
+    const checkpointId = state.missions.pattern.checkpointId;
+    expect(recallSummary(state, 'pattern', checkpointId, '2.0.0')).toEqual({ status: 'not-started', nextReviewAt: null });
+
+    state = recordEvidence(state, input(state, 'pattern', { checkpointId }));
+    const firstEvidenceAt = Date.parse(state.evidence[0].createdAt);
+    let summary = recallSummary(state, 'pattern', checkpointId, '2.0.0');
+    expect(summary.status).toBe('learning');
+    expect(summary.nextReviewAt).toBe(new Date(firstEvidenceAt + 24 * HOUR).toISOString());
+
+    vi.setSystemTime(new Date(firstEvidenceAt + 30 * HOUR));
+    state = recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId, outcome: 'partial',
+      checks: { explanation: true, diagram: false, exercise: false }, notes: 'Mostly recalled it.',
+    });
+    summary = recallSummary(state, 'pattern', checkpointId, '2.0.0');
+    expect(summary.status).toBe('practiced');
+    expect(state.missions.pattern.completedCheckpointIds).toEqual([]);
+    expect(state.missions.pattern.checkpointId).toBe(checkpointId);
+
+    vi.setSystemTime(new Date(firstEvidenceAt + 40 * HOUR));
+    state = recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId, outcome: 'needs-review',
+      checks: { explanation: false, diagram: false, exercise: false }, notes: 'Lost the thread halfway through.',
+    });
+    expect(recallSummary(state, 'pattern', checkpointId, '2.0.0')).toMatchObject({ status: 'needs-review', nextReviewAt: null });
+
+    const firstIndependentAt = firstEvidenceAt + 50 * HOUR;
+    vi.setSystemTime(new Date(firstIndependentAt));
+    state = recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId, outcome: 'independent',
+      checks: { explanation: true, diagram: false, exercise: true }, notes: 'Explained and re-derived without notes.',
+    });
+    summary = recallSummary(state, 'pattern', checkpointId, '2.0.0');
+    expect(summary.status).toBe('practiced');
+    const dueForSecond = new Date(Math.max(firstEvidenceAt + 96 * HOUR, firstIndependentAt + 48 * HOUR)).toISOString();
+    expect(summary.nextReviewAt).toBe(dueForSecond);
+
+    vi.setSystemTime(new Date(firstIndependentAt + 48 * HOUR + HOUR));
+    state = recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId, outcome: 'independent',
+      checks: { explanation: true, diagram: false, exercise: true }, notes: 'Second independent pass, cold.',
+    });
+    expect(recallSummary(state, 'pattern', checkpointId, '2.0.0')).toMatchObject({ status: 'retained', nextReviewAt: null });
+    // Checkpoint completion is never touched by any of this read-only self-assessment.
+    expect(state.missions.pattern.completedCheckpointIds).toEqual([]);
+    expect(state.missions.pattern.checkpointId).toBe(checkpointId);
+
+    vi.setSystemTime(new Date(firstEvidenceAt + 400 * HOUR));
+    state = recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId, outcome: 'needs-review',
+      checks: { explanation: false, diagram: false, exercise: false }, notes: 'Forgot the complement trick.',
+    });
+    expect(recallSummary(state, 'pattern', checkpointId, '2.0.0')).toMatchObject({ status: 'needs-review', nextReviewAt: null });
+    expect(state.missions.pattern.completedCheckpointIds).toEqual([]);
+  });
+
+  it('supports recall only for pattern and system, gated on prior learning evidence for a referenceable checkpoint', () => {
+    const state = createInitialState(false);
+    expect(() => recordRecall(state, {
+      missionId: 'escape', roadmapVersion: '2.0.0', checkpointId: state.missions.escape.checkpointId,
+      outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'Not supported.',
+    } as unknown as Parameters<typeof recordRecall>[1])).toThrow();
+    expect(() => recordRecall(state, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId: state.missions.pattern.checkpointId,
+      outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'No prior evidence yet.',
+    })).toThrow('prior learning evidence');
+    const withEvidence = recordEvidence(state, input(state));
+    const laterCheckpointId = getMission('pattern').checkpoints[1].id;
+    expect(() => recordRecall(withEvidence, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId: laterCheckpointId,
+      outcome: 'partial', checks: { explanation: true, diagram: true, exercise: true }, notes: 'Not unlocked yet.',
+    })).toThrow();
+  });
+
+  it('requires the full independent-recall check set per mission (pattern vs. system)', () => {
+    let pattern = createInitialState(false);
+    pattern = recordEvidence(pattern, input(pattern, 'pattern'));
+    const patternCp = pattern.missions.pattern.checkpointId;
+    expect(() => recordRecall(pattern, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId: patternCp, outcome: 'independent',
+      checks: { explanation: true, diagram: false, exercise: false }, notes: 'Missing exercise.',
+    })).toThrow('explanation and exercise');
+    expect(() => recordRecall(pattern, {
+      missionId: 'pattern', roadmapVersion: '2.0.0', checkpointId: patternCp, outcome: 'independent',
+      checks: { explanation: true, diagram: false, exercise: true }, notes: 'Complete.',
+    })).not.toThrow();
+
+    let system = createInitialState(false);
+    system = recordEvidence(system, input(system, 'system'));
+    const systemCp = system.missions.system.checkpointId;
+    expect(() => recordRecall(system, {
+      missionId: 'system', roadmapVersion: '2.0.0', checkpointId: systemCp, outcome: 'independent',
+      checks: { explanation: true, diagram: false, exercise: true }, notes: 'Missing diagram.',
+    })).toThrow('all three checks');
+    expect(() => recordRecall(system, {
+      missionId: 'system', roadmapVersion: '2.0.0', checkpointId: systemCp, outcome: 'independent',
+      checks: { explanation: true, diagram: true, exercise: true }, notes: 'Complete.',
+    })).not.toThrow();
+  });
+});
+
+describe('private freelance ledger and extended optional fields', () => {
+  it('validates freelance ledger rows: bounded strings, http(s) links, and the verdict enum', () => {
+    const state = createInitialState(false);
+    const row = {
+      id: 'freelance-1', title: 'Build a small API integration', platform: 'Upwork',
+      url: 'https://www.upwork.com/jobs/example', skills: 'C#, REST APIs', budget: '$500-800',
+      verdict: 'Apply Now' as const, notes: 'Looks like a strong fit.', createdAt: state.updatedAt,
+    };
+    expect(() => parseState({ ...state, freelanceOpportunities: [row] })).not.toThrow();
+    const invalid = [
+      { verdict: 'Maybe' }, { url: 'javascript:alert(1)' }, { title: '' }, { title: 't'.repeat(161) },
+      { skills: 's'.repeat(501) }, { budget: 'b'.repeat(121) }, { notes: 'n'.repeat(2001) }, { extra: true },
+    ];
+    invalid.forEach((change) => {
+      expect(() => parseState({ ...state, freelanceOpportunities: [{ ...row, ...change }] })).toThrow();
+    });
+  });
+
+  it('validates optional job lane, resumeVariant, effortMinutes, and frictionScore fields on an opportunity', () => {
+    const state = createInitialState();
+    const opportunity = {
+      ...state.opportunities[0], lane: 'referral' as const, resumeVariant: 'Backend-focused',
+      effortMinutes: 45, frictionScore: 3,
+    };
+    expect(() => parseState({ ...state, opportunities: [opportunity] })).not.toThrow();
+    expect(() => parseState({ ...state, opportunities: [{ ...opportunity, effortMinutes: 1440 }] })).not.toThrow();
+    const invalid = [
+      { lane: 'unknown' }, { effortMinutes: -1 }, { effortMinutes: 1.5 }, { effortMinutes: 1441 },
+      { frictionScore: -1 }, { frictionScore: 11 }, { resumeVariant: 'r'.repeat(121) },
+    ];
+    invalid.forEach((change) => {
+      expect(() => parseState({ ...state, opportunities: [{ ...opportunity, ...change }] })).toThrow();
+    });
+  });
+});
+
+describe('strict v2 import validation and relational integrity', () => {
   it.each([
-    ['future schema', (state: AppState) => ({ ...state, schemaVersion: 2 })],
+    ['unsupported future schema', (state: AppState) => ({ ...state, schemaVersion: 3 })],
     ['old roadmap', (state: AppState) => ({ ...state, roadmapVersion: '0.9.0' })],
-    ['future roadmap', (state: AppState) => ({ ...state, roadmapVersion: '2.0.0' })],
+    ['unsupported future roadmap', (state: AppState) => ({ ...state, roadmapVersion: '3.0.0' })],
     ['unknown root key', (state: AppState) => ({ ...state, injected: true })],
     ['missing mission', (state: AppState) => ({ ...state, missions: { ...state.missions, pattern: undefined } })],
     ['extra mission', (state: AppState) => ({ ...state, missions: { ...state.missions, invented: state.missions.pattern } })],
@@ -524,20 +762,43 @@ describe('strict import validation and relational integrity', () => {
     expect(() => parseState(value)).toThrow('Invalid workspace');
   });
 
-  it('rejects skipped, reordered, duplicated, or unevidenced checkpoint completion', () => {
-    const skipped = createInitialState(false);
-    skipped.missions.pattern.checkpointId = 'pattern-window';
-    expect(() => parseState(skipped)).toThrow('prerequisites');
-    const noProof = createInitialState(false);
-    noProof.missions.pattern.completedCheckpointIds = ['pattern-arrays'];
-    noProof.missions.pattern.checkpointId = 'pattern-window';
-    expect(() => parseState(noProof)).toThrow('requires completion evidence');
-    const reordered = advance(advance(createInitialState(false)));
-    reordered.missions.pattern.completedCheckpointIds.reverse();
-    expect(() => parseState(reordered)).toThrow('sequential');
+  it('rejects a current checkpoint set ahead of its own unmet prerequisites', () => {
+    const mission = getMission('pattern');
+    const state = createInitialState(false);
+    state.missions.pattern.checkpointId = mission.checkpoints[1].id;
+    expect(() => parseState(state)).toThrow('prerequisites');
+  });
+
+  it('rejects a completed checkpoint whose own DAG prerequisites were never completed', () => {
+    const mission = getMission('pattern');
+    const complement = mission.checkpoints[3]; // requires the frequency checkpoint, index 2
+    const state = createInitialState(false);
+    state.missions.pattern.completedCheckpointIds = [complement.id];
+    state.missions.pattern.checkpointId = complement.id;
+    state.missions.pattern.status = 'in-progress';
+    expect(() => parseState(state)).toThrow('unmet prerequisites');
+  });
+
+  it('rejects a duplicated completed-checkpoint id and an unevidenced completion', () => {
+    const mission = getMission('pattern');
     const duplicated = advance(createInitialState(false));
-    duplicated.missions.pattern.completedCheckpointIds.push('pattern-arrays');
-    expect(() => parseState(duplicated)).toThrow('sequential');
+    duplicated.missions.pattern.completedCheckpointIds.push(duplicated.missions.pattern.completedCheckpointIds[0]);
+    expect(() => parseState(duplicated)).toThrow('Duplicate completed checkpoint');
+
+    const noProof = createInitialState(false);
+    noProof.missions.pattern.completedCheckpointIds = [mission.checkpoints[0].id];
+    noProof.missions.pattern.checkpointId = mission.checkpoints[1].id;
+    expect(() => parseState(noProof)).toThrow('requires completion evidence');
+  });
+
+  it('raises the completed-checkpoint id schema cap to 250, never the legacy five', () => {
+    const state = createInitialState(false);
+    state.missions.pattern.completedCheckpointIds = Array.from({ length: 250 }, (_, i) => `x-${i}`);
+    // 250 distinct ids pass the schema's own array-size limit; only this mission's much
+    // smaller real checkpoint count makes it relationally invalid here.
+    expect(() => parseState(state)).toThrow('Too many completed checkpoints');
+    state.missions.pattern.completedCheckpointIds = Array.from({ length: 251 }, (_, i) => `x-${i}`);
+    expect(() => parseState(state)).toThrow('Invalid workspace');
   });
 
   it('rejects inconsistent final status and bogus checkpoint statuses', () => {
@@ -566,11 +827,12 @@ describe('strict import validation and relational integrity', () => {
 
   it('rejects unsafe URLs, public visibility, unknown references, and false completion artifacts', () => {
     const base = recordEvidence(createInitialState(false), input(createInitialState(false)));
+    const laterCheckpointId = getMission('pattern').checkpoints[1].id;
     const alterations = [
       { url: 'javascript:alert(1)' },
       { visibility: 'public' },
       { checkpointId: 'missing' },
-      { checkpointId: 'pattern-window' },
+      { checkpointId: laterCheckpointId },
       { missionId: 'system' },
       { completedCheckpoint: true },
       { extra: true },
@@ -599,10 +861,11 @@ describe('strict import validation and relational integrity', () => {
     const state = planned();
     const date = localDate();
     const base = state.plans[date];
+    const laterCheckpointId = getMission('pattern').checkpoints[1].id;
     const invalidPlans = [
       [...base, { ...base[0], id: 'fourth' }],
       [{ ...base[0], date: '2026-10-03' }],
-      [{ ...base[0], checkpointId: 'pattern-window' }],
+      [{ ...base[0], checkpointId: laterCheckpointId }],
       [{ ...base[0], checkpointId: 'missing' }],
       [{ ...base[0], missionId: 'algorithm', checkpointId: 'invented' }],
       [{ ...base[0], completed: true }],

@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ command }) => ({
   base: '/CareerHQ/',
+  build: {
+    rollupOptions: {
+      output: { manualChunks: id => id.includes('node_modules') ? 'vendor' : undefined },
+    },
+  },
   plugins: [
     react(),
     {

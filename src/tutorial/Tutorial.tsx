@@ -31,6 +31,14 @@ function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): 
     const role = dialog.querySelector<HTMLInputElement>('[name="role"]')?.value.trim();
     if (company && role) return dialog.querySelector('[data-tour="opportunity-submit"]');
   }
+  if (dialog && targets.includes('freelance-example')) {
+    const title = dialog.querySelector<HTMLInputElement>('[name="title"]')?.value.trim();
+    const platform = dialog.querySelector<HTMLInputElement>('[name="platform"]')?.value.trim();
+    if (title && platform) return dialog.querySelector('[data-tour="freelance-save"]');
+  }
+  if (dialog && targets.includes('recall-outcome') && dialog.querySelector<HTMLInputElement>('input[name="outcome"]:checked')?.parentElement?.textContent?.trim() === 'Partial') {
+    return dialog.querySelector('[data-tour="recall-save"]');
+  }
   for (const name of targets) {
     const scoped = dialog?.querySelector<HTMLElement>(`[data-tour="${name}"]`);
     if (scoped) return scoped;

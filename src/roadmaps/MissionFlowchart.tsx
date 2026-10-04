@@ -3,10 +3,22 @@ import { Check, Flag, LockKeyhole, RotateCcw } from 'lucide-react';
 import type { AppState, Mission } from '../domain/types';
 import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
+import { getProgressForVersion } from '../domain/catalog';
+import { SourceMissionFlowchart } from './SourceMissionFlowchart';
 
-export function MissionFlowchart({ mission, state }: { mission: Mission; state: AppState }) {
-  const progress = state.missions[mission.id];
-  const activeIndex = progress.status === 'completed' ? -1 : mission.checkpoints.findIndex(checkpoint => checkpoint.id === progress.checkpointId);
+interface FlowProps { mission: Mission; state: AppState; tutorialTarget?: boolean }
+const emptyCompleted: string[] = [];
+
+export function MissionFlowchart(props: FlowProps) {
+  return props.mission.roadmapVersion === '2.0.0'
+    ? <SourceMissionFlowchart key={`${props.mission.id}-${props.mission.roadmapVersion}`} {...props} />
+    : <LegacyMissionFlowchart {...props} />;
+}
+
+function LegacyMissionFlowchart({ mission, state, tutorialTarget = true }: FlowProps) {
+  const progress = getProgressForVersion(state, mission.id, mission.roadmapVersion);
+  const completed = progress?.completedCheckpointIds ?? emptyCompleted;
+  const activeIndex = !progress || progress.status === 'completed' ? -1 : mission.checkpoints.findIndex(checkpoint => checkpoint.id === progress.checkpointId);
   const titleId = useId();
   const descriptionId = useId();
   const edges = useMemo(() => {
@@ -22,20 +34,20 @@ export function MissionFlowchart({ mission, state }: { mission: Mission; state: 
           { from: 'practice', to: checkpoint.id, kind: 'return' },
         );
       } else {
-        result.push({ from: checkpoint.id, to: next, tone: progress.completedCheckpointIds.includes(checkpoint.id) ? 'complete' : 'normal' });
+        result.push({ from: checkpoint.id, to: next, tone: completed.includes(checkpoint.id) ? 'complete' : 'normal' });
       }
     });
     return result;
-  }, [mission, activeIndex, progress.completedCheckpointIds]);
+  }, [mission, activeIndex, completed]);
 
   if (mission.planned) return <p className="diagram-pending">Roadmap pending. No checkpoints or prerequisite branches have been invented.</p>;
 
-  return <figure className="mission-flowchart" aria-labelledby={titleId} aria-describedby={descriptionId} data-tour="mission-roadmap">
+  return <figure className="mission-flowchart" aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
     <figcaption><h3 id={titleId}>{mission.name} checkpoint flowchart</h3><p id={descriptionId}>Follow the arrows downward. Evidence and confirmed criteria unlock the next milestone; otherwise, practice and return.</p></figcaption>
     <Diagram edges={edges} className="flow-canvas">
       <div className="flow-terminal" data-diagram-node="start">Start mission</div>
       {mission.checkpoints.map((checkpoint, index) => {
-        const complete = progress.completedCheckpointIds.includes(checkpoint.id);
+        const complete = completed.includes(checkpoint.id);
         const current = index === activeIndex;
         return <Fragment key={checkpoint.id}>
           <article data-diagram-node={checkpoint.id} data-checkpoint={checkpoint.id} className={`flow-node flow-checkpoint ${complete ? 'complete' : current ? 'current' : 'locked'}`}>
@@ -48,7 +60,7 @@ export function MissionFlowchart({ mission, state }: { mission: Mission; state: 
           </div>}
         </Fragment>;
       })}
-      <div className={`flow-terminal ${progress.status === 'completed' ? 'complete' : ''}`} data-diagram-node="finish">Mission complete</div>
+      <div className={`flow-terminal ${progress?.status === 'completed' ? 'complete' : ''}`} data-diagram-node="finish">Previous roadmap complete</div>
     </Diagram>
     <p className="flow-note">Recording progress requires an active, unblocked mission. Only Record evidence changes your progress; this diagram does not grade or complete work.</p>
   </figure>;

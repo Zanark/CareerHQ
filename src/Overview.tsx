@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Clock3, Download, HardDrive, Plus } from 'lucide-react';
-import { getMission, missions } from './domain/catalog';
+import { getMissionVersion, getMissions, recordRoadmapVersion } from './domain/catalog';
 import { getSaveState } from './domain/engine';
 import type { AppState, DailyAction, MissionId } from './domain/types';
 import { MissionIcon, Progress, SectionTitle, statusLabels } from './components';
@@ -13,27 +13,30 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
   onExport: () => void;
 }) {
   const actions = state.plans[date] ?? [];
+  const missions = getMissions(state);
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
   const visibleMissions = [...active].sort((left, right) =>
     Number(right.id === state.focusMissionId) - Number(left.id === state.focusMissionId)).slice(0, 3);
-  const completed = Object.values(state.missions).reduce((sum, mission) => sum + mission.completedCheckpointIds.length, 0);
+  const completed = Object.values(state.missions).reduce((sum, mission) => sum + mission.completedCheckpointIds.length, 0) +
+    state.archives.reduce((sum, archive) => sum + archive.progress.completedCheckpointIds.length, 0);
   return <div className="overview-page">
+    {!practice && missions.some(mission => mission.roadmapVersion === '1.0.0') && <div className="source-available"><span>Documented roadmaps are available. Your previous saved positions are preserved.</span><a href="#/sources">Review updates<ArrowRight size={13} /></a></div>}
     <div className="overview-heading">
       <div><h1>Overview</h1><time dateTime={date}>{new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</time></div>
       <button className="button primary" onClick={() => onEvidence()}><Plus size={16} />Log progress</button>
     </div>
     <div className="overview-summary" data-tour="overview-summary">
       <a href="#/plan"><strong>{actions.filter(action => action.completed).length}<span>/{actions.length}</span></strong><span>Actions done today</span></a>
-      <a href="#/missions"><strong>{completed}</strong><span>Checkpoints completed</span></a>
+      <a href="#/missions" title="Includes preserved prior-roadmap completions"><strong>{completed}</strong><span>Checkpoints completed</span></a>
       <a href="#/evidence"><strong>{state.evidence.length}</strong><span>Saved work</span></a>
     </div>
     <section data-tour="overview-today">
       <SectionTitle title="Today's plan"><a className="text-link" href="#/plan">Daily plan<ArrowRight size={14} /></a></SectionTitle>
       <div className="overview-list">
         {actions.map(action => {
-          const mission = getMission(action.missionId);
+          const mission = getMissionVersion(action.missionId, recordRoadmapVersion(action));
           const progress = state.missions[action.missionId];
-          const unavailable = !!progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed';
+          const unavailable = !!progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
           return <article className={`overview-action ${action.completed ? 'is-complete' : ''}`} key={action.id}>
             <MissionIcon mission={mission} size={18} />
             <div className="overview-row-content"><span>{mission.name}</span><h3>{action.title}</h3></div>

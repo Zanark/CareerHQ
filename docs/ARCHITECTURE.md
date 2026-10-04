@@ -8,10 +8,10 @@ plan as proof of capability.
 
 | Layer | Responsibility |
 | --- | --- |
-| `src/domain/catalog.ts` — `missions` | Public mission configuration: stable IDs, starter checkpoints, criteria, and capability connections. |
+| `src/domain/catalog.ts`, `operations/*`, `legacyCatalog.ts` | Versioned public definitions: documented v2 roadmaps plus frozen v1 references. `getMissions(state)` selects the active version per mission. |
 | `src/domain/types.ts` — `AppState` | Versioned runtime shape: progress, plans, evidence, history, readiness, opportunities. |
 | `src/domain/engine.ts` — `parseState` | Schema and cross-reference validation before accepting persisted or imported state. |
-| `src/domain/engine.ts` — `generatePlan`, `recordEvidence` | Capacity-bounded planning and evidence-gated sequential completion. |
+| `src/domain/engine.ts` — `generatePlan`, `recordEvidence` | Capacity-bounded planning and evidence-gated, prerequisite-aware completion. |
 | `src/useWorkspace.ts` — `useWorkspace` | Browser load/save, storage errors, date rollover, stale-tab detection, explicit replacement. |
 | `src/usePracticeWorkspace.ts` | Separate in-memory tutorial data using the same schema and domain operations, without storage writes. |
 | `src/tutorial/*` | Guided steps, state-derived completion gates, real-control highlighting and dialog-aware coaching. |
@@ -21,9 +21,12 @@ plan as proof of capability.
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
 
 There is no backend, authentication layer, remote database, agent execution service,
-or model call. Seven missions contain compact starter roadmaps; the eighth remains
-planned. A dependency link expresses a related capability, not a cross-mission lock.
-Checkpoint order within a mission is the actual prerequisite.
+or model call. Nine missions are represented; eight have documented tracking units and
+competitive coding remains a planning forecast. A cross-mission link expresses a related
+capability, not a lock.
+Prerequisites within a mission control availability. Unspecified relationships follow the
+documented order; explicit source branches can expose more than one available checkpoint,
+but the progress record still holds exactly one current checkpoint.
 
 The roadmap tree branches by the existing focus/background/planned settings, not invented
 curriculum dependencies. Selecting a node only changes which flowchart is displayed.
@@ -34,9 +37,10 @@ that small workflow; the website has no Mermaid runtime or external rendering de
 ## Runtime flow
 
 1. `loadWorkspace` reads `careerhq.workspace.v1` from localStorage. Missing data creates
-   an empty workspace; existing data is preserved and unreadable data produces recovery UI.
+   an empty v2 workspace; v1 data is strictly validated and safely normalized while its original
+   roadmap positions remain active. Unreadable data produces recovery UI.
 2. `parseState` checks the schema and roadmap version, identifiers, record limits,
-   dates, URLs, sequential progress, and evidence/plan references.
+   dates, URLs, prerequisites, and active/archived evidence and plan references.
 3. `generatePlan` derives today's bounded actions from active, unblocked missions.
    Existing plans are retained; a new local calendar day gets its own plan, not a backlog.
 4. User commands pass through `commit`/`replace`. A stale storage snapshot blocks

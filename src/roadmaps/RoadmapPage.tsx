@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUpRight, FileDown, GitBranch } from 'lucide-react';
-import { getMission, missions } from '../domain/catalog';
+import { getMission, getMissions } from '../domain/catalog';
 import { getSaveState } from '../domain/engine';
 import type { AppState, MissionId, MissionMode } from '../domain/types';
 import { MissionIcon, PageHeading } from '../components';
@@ -14,7 +14,7 @@ export function RoadmapPage({ state }: { state: AppState }) {
   const [onlyActive, setOnlyActive] = useState(false);
   const [selection, setSelection] = useState<MissionId>(state.focusMissionId);
   const detail = useRef<HTMLElement>(null);
-  const visible = useMemo(() => missions.filter(mission => !onlyActive || state.missions[mission.id].mode === 'active'), [onlyActive, state.missions]);
+  const visible = useMemo(() => getMissions(state).filter(mission => !onlyActive || state.missions[mission.id].mode === 'active'), [onlyActive, state]);
   const groups = useMemo(() => (['active', 'background', 'planned'] as const).map(mode => ({
     mode, missions: visible.filter(mission => state.missions[mission.id].mode === mode),
   })).filter(group => group.missions.length), [visible, state.missions]);

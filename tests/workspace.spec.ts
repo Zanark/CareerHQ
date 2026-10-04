@@ -566,6 +566,7 @@ test('large valid workspace exports compact bytes and imports its actual backup'
     id: `synthetic-large-proof-${index}`,
     missionId: 'pattern',
     checkpointId: large.missions.pattern.checkpointId,
+    roadmapVersion: large.missions.pattern.roadmapVersion,
     title: `Synthetic practice artifact ${index}`,
     summary,
     kind: 'note',

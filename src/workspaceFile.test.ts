@@ -10,6 +10,7 @@ function nearLimitWorkspace() {
     id: 'artifact-0000',
     missionId: 'pattern',
     checkpointId: state.missions.pattern.checkpointId,
+    roadmapVersion: state.missions.pattern.roadmapVersion,
     title: 'Synthetic large backup',
     summary: 'x'.repeat(3900),
     kind: 'note',

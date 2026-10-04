@@ -5,11 +5,11 @@ Built with React, TypeScript, and Vite; data stays in your browser.
 
 [Website](https://zanark.github.io/CareerHQ/) ·
 [Architecture](docs/ARCHITECTURE.md) · [Themes](docs/THEMES.md) · [Privacy](docs/PRIVACY.md) ·
-[Agent contract](docs/AGENT_CONTRACT.md)
+[Agent contract](docs/AGENT_CONTRACT.md) · [Operation sources](docs/OPERATION-SOURCES.md)
 
 ## What this prototype does
 
-- Keeps one current checkpoint per mission, with sequential unlocks.
+- Keeps one current checkpoint per mission, with source-defined prerequisites.
 - Uses a branching mission tree and top-down checkpoint flowcharts, with connected nodes,
   an evidence/criteria decision, and a practice loop. Includes responsive and printable views.
 - Separates **practice recorded** from **checkpoint completed**. Completion requires
@@ -19,25 +19,30 @@ Built with React, TypeScript, and Vite; data stays in your browser.
 - Provides evidence search/filtering, event history, a tab-local focus timer,
   an opportunity pipeline, and self-assessed interview readiness.
 - Saves browser-local state and supports private JSON backup/export and replacement import.
+- Tracks freelance research and spaced recall separately from checkpoint completion.
+- Preserves previous roadmap versions and requires confirmation before adopting new definitions.
 - Provides an interactive **Tutorial** using a separate, temporary practice workspace.
   Try real controls without changing your progress, theme preference, or existing focus session.
 - Uses **DeepSeaFoam** dark and **Harbor Daylight** light palettes. The header switch
   animates sunrise/sunset, remembers your choice, and respects reduced motion.
 
-Seven missions have compact **prototype starter roadmaps**, not complete curricula:
+The supplied operation documents define nine missions. Tracking granularity is explicit:
 
-| Mission | Focus |
+| Mission | Documented tracking |
 | --- | --- |
-| Pattern Forge | DSA |
-| System Forge | System design |
-| Escape Velocity | Career opportunities |
-| Fabric Core | Service Fabric |
-| Blueprint | Software architecture |
-| Credential Forge | Certifications |
-| Neural Edge | AI engineering |
-| Algorithm Forge | Competitive programming — **planned**, no checkpoints yet |
+| Pattern Forge | 5 HashMap checkpoints; later techniques remain reference material |
+| System Forge | 28 topic-group milestones across 7 stages |
+| Escape Velocity | 1 ongoing workflow; application and rehabilitation workstreams are parallel |
+| Fabric Core | 32 numbered checkpoints across 5 stages |
+| Blueprint | 5 phase-level milestones; no invented fine-grained numbering |
+| Credential Forge | 6 main milestones, with optional credentials kept outside hard gates |
+| Neural Edge | 7 phase-level milestones and a 9-project reference ladder |
+| Algorithm Forge | Planning forecast; detailed checkpoints remain **pending** |
+| Side Income | 3-step starting search sprint and a private freelance ledger |
 
-This is a scoped, working prototype, **not the complete 101-page blueprint**.
+These are source-aligned tracking definitions, not complete courses or imported personal achievements.
+The original PDFs and private progress/biographical sections are not published. See the source notes
+for conflicts, granularity choices and unverified certification availability.
 There is no actual AI agent, cloud workspace, authentication, or multi-device sync.
 The AI-engineering mission is a learning roadmap, not a connected AI service.
 
@@ -66,9 +71,14 @@ Larger writes fail without replacing the previous saved workspace.
 
 There are **no user profiles, accounts, streak counters, or automatic cloud sync**.
 Progress uses localStorage for the current browser and site origin (scheme, domain,
-and port), not a server account. Refreshing or installing a normal UI update at that
-same origin retains compatible data. This UI revision keeps data format v1 unchanged.
-Future schema or roadmap changes require explicit migrations, not silent resets.
+and port), not a server account. Refreshing retains compatible data. This revision safely
+converts v1 storage to data format v2 while keeping its previous roadmap positions, evidence,
+plans and history. The storage key remains compatible with existing installations.
+
+Adopting a documented roadmap is a separate, confirmed action on its mission or Operation
+documents page. It archives the previous position and starts the new definition without
+inventing completion credit. Saved work remains visible by its original version. Future
+schema or roadmap changes require explicit migrations, not silent resets.
 
 To move devices or browsers, export a backup, transfer it privately, and import it
 on the destination. Moving from the local preview to GitHub Pages also requires this:

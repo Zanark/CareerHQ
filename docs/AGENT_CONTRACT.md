@@ -22,7 +22,7 @@ that an agent currently reads, grades, or updates the workspace.
   Saving practice evidence and completing a checkpoint are separate commands.
 - Require an artifact title, meaningful summary, and explicit confirmation of all
   completion criteria. Describe this as **self-attested**, not independently verified.
-- Respect the current checkpoint and sequential unlocks. Do not invent progress for
+- Respect the single current checkpoint and source-defined prerequisites. Do not invent progress for
   planned missions or turn capability connections into undocumented prerequisites.
 - Preserve existing evidence and the append-only event history during normal updates.
   Do not rewrite records to make outcomes appear better. The local audit is not

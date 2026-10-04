@@ -1,5 +1,6 @@
-export const missionIds = ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm'] as const;
+export const missionIds = ['pattern', 'system', 'escape', 'fabric', 'blueprint', 'credential', 'neural', 'algorithm', 'income'] as const;
 export type MissionId = typeof missionIds[number];
+export type RoadmapVersion = '1.0.0' | '2.0.0';
 export type Capacity = 'gentle' | 'steady' | 'deep';
 export type MissionMode = 'active' | 'background' | 'planned';
 export type CheckpointStatus = 'not-started' | 'in-progress' | 'completed';
@@ -17,6 +18,33 @@ export interface Checkpoint {
   recoveryAction: string;
   minutes: number;
   criteria: string[];
+  sourceId?: string;
+  topics?: string[];
+  prerequisites?: string[];
+  source?: SourceReference;
+  granularity?: 'checkpoint' | 'topic-group' | 'phase' | 'workflow' | 'sprint';
+}
+
+export interface SourceReference {
+  document: string;
+  section: string;
+  page?: number;
+}
+
+export interface RoadmapStage {
+  id: string;
+  title: string;
+  summary: string;
+  topics: string[];
+  checkpointIds: string[];
+  optional?: boolean;
+  source: SourceReference;
+}
+
+export interface ReferenceGroup {
+  title: string;
+  kind: 'optional' | 'future' | 'parallel' | 'projects' | 'forecast';
+  items: { title: string; detail: string }[];
 }
 
 export interface Mission {
@@ -28,13 +56,21 @@ export interface Mission {
   color: string;
   icon: string;
   owner: string;
-  roadmapVersion: string;
+  roadmapVersion: RoadmapVersion;
   planned: boolean;
   dependencies: MissionId[];
   checkpoints: Checkpoint[];
+  stages?: RoadmapStage[];
+  sources?: SourceReference[];
+  sourceNotes?: string[];
+  referenceGroups?: ReferenceGroup[];
+  resources?: { label: string; url: string }[];
+  coverage?: 'documented' | 'phase-level' | 'partial' | 'sprint' | 'forecast';
+  completionLabel?: string;
 }
 
 export interface MissionProgress {
+  roadmapVersion: RoadmapVersion;
   checkpointId: string;
   status: CheckpointStatus;
   mode: MissionMode;
@@ -51,6 +87,7 @@ export interface DailyAction {
   minutes: number;
   reason: string;
   completed: boolean;
+  roadmapVersion?: RoadmapVersion;
 }
 
 export interface Evidence {
@@ -64,6 +101,7 @@ export interface Evidence {
   visibility: 'local';
   createdAt: string;
   completedCheckpoint: boolean;
+  roadmapVersion?: RoadmapVersion;
 }
 
 export interface HistoryEvent {
@@ -82,11 +120,45 @@ export interface Opportunity {
   url: string;
   notes: string;
   createdAt: string;
+  lane?: 'easy-apply' | 'ats' | 'referral' | 'other';
+  resumeVariant?: string;
+  effortMinutes?: number;
+  frictionScore?: number;
+}
+
+export interface RoadmapArchive {
+  missionId: MissionId;
+  archivedAt: string;
+  progress: MissionProgress;
+}
+
+export const freelanceVerdicts = ['Unreviewed', 'Apply Now', '1-Week Ramp', '1-Month Ramp', 'Ignore'] as const;
+export interface FreelanceOpportunity {
+  id: string;
+  title: string;
+  platform: string;
+  url: string;
+  skills: string;
+  budget: string;
+  verdict: typeof freelanceVerdicts[number];
+  notes: string;
+  createdAt: string;
+}
+
+export interface RecallEntry {
+  id: string;
+  missionId: MissionId;
+  roadmapVersion: RoadmapVersion;
+  checkpointId: string;
+  outcome: 'needs-review' | 'partial' | 'independent';
+  checks: { explanation: boolean; diagram: boolean; exercise: boolean };
+  notes: string;
+  createdAt: string;
 }
 
 export interface AppState {
-  schemaVersion: 1;
-  roadmapVersion: string;
+  schemaVersion: 2;
+  roadmapVersion: '2.0.0';
   sampleData: boolean;
   updatedAt: string;
   objective: string;
@@ -99,6 +171,9 @@ export interface AppState {
   events: HistoryEvent[];
   readiness: Record<typeof readinessKeys[number], Readiness>;
   opportunities: Opportunity[];
+  archives: RoadmapArchive[];
+  freelanceOpportunities: FreelanceOpportunity[];
+  recalls: RecallEntry[];
 }
 
 export interface EvidenceInput {

@@ -41,6 +41,7 @@ export const chapters: TutorialChapter[] = [
   { id: 'review', title: 'Review & roadmap' },
   { id: 'control', title: 'Mission control' },
   { id: 'pipeline', title: 'Opportunities' },
+  { id: 'freelance', title: 'Freelance research' },
   { id: 'readiness', title: 'Readiness & interview mode' },
   { id: 'settings', title: 'Settings & backup' },
   { id: 'persistence', title: 'How data is stored' },
@@ -169,6 +170,13 @@ export const steps: TutorialStep[] = [
     body: 'This separate page records actions, checkpoint completions, and setting changes in order. Records survive normal app updates; tutorial records are discarded on exit.',
   },
   {
+    id: 'review-recall', chapter: 'review', kind: 'action', route: 'recall',
+    targets: ['recall-outcome', 'recall-add'],
+    title: 'Practice a recall check',
+    body: 'Click Record recall, choose Partial, then Save recall. Reviews track memory separately; they do not undo or grant checkpoint completion. Independent recall requires its self-checks and spaced reviews before Retained.',
+    check: ({ state }) => state.recalls.some(review => review.outcome === 'partial'),
+  },
+  {
     id: 'review-master-roadmap', chapter: 'review', kind: 'explain', route: 'roadmap',
     targets: ['master-roadmap'],
     title: 'The master roadmap',
@@ -230,6 +238,26 @@ export const steps: TutorialStep[] = [
     title: 'Board and table views',
     body: 'Click Table for a compact list, or Board to group roles by stage. Both views edit the same opportunities; a stage change is recorded in History.',
   },
+  {
+    id: 'freelance-add', chapter: 'freelance', kind: 'action', route: 'freelance',
+    targets: ['freelance-example', 'freelance-add', 'freelance-save'],
+    title: 'Research a freelance opportunity',
+    body: 'Click Add opportunity, Fill example, then Save opportunity. This ledger records demand before applications; a saved lead is not completed career work.',
+    check: ({ state }) => state.freelanceOpportunities.length > 0,
+  },
+  {
+    id: 'freelance-classify', chapter: 'freelance', kind: 'action',
+    targets: ['freelance-verdict'],
+    title: 'Classify a lead',
+    body: 'Choose Apply Now for the tutorial lead. Real verdicts are your judgment: Apply Now, a short ramp, a longer ramp, or Ignore. No application is sent automatically.',
+    check: ({ state }) => state.freelanceOpportunities.some(item => item.verdict === 'Apply Now'),
+  },
+  {
+    id: 'freelance-brief', chapter: 'freelance', kind: 'explain',
+    targets: ['freelance-brief'],
+    title: 'Prepare a review brief',
+    body: 'The source sprint collects ten opportunities, then reviews five. Once five rows are selected, Copy brief prepares text for your own coach conversation. Nothing is sent to an AI service.',
+  },
   // Readiness & interview mode
   {
     id: 'readiness-coding', chapter: 'readiness', kind: 'action', route: 'readiness', command: 'close-dialogs',
@@ -253,7 +281,13 @@ export const steps: TutorialStep[] = [
     body: 'This optional text is a reminder for yourself. It does not change how missions or plans behave.',
   },
   {
-    id: 'settings-export', chapter: 'settings', kind: 'action',
+    id: 'source-upgrades', chapter: 'settings', kind: 'explain', route: 'sources',
+    targets: ['operation-source'],
+    title: 'Roadmap documents and upgrades',
+    body: 'Operation documents show source stages, optional plans, and limitations. Existing older roadmaps keep their saved position until you confirm adoption. Adoption archives the previous progress and grants no new completion. This practice workspace already uses the latest definitions.',
+  },
+  {
+    id: 'settings-export', chapter: 'settings', kind: 'action', route: 'settings',
     targets: ['backup-export'],
     title: 'Export an example backup',
     body: 'Click Export example to download a clearly labeled tutorial JSON file. This is not a backup of your real progress.',

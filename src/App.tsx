@@ -3,10 +3,10 @@ import {
   ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check,
   ChevronRight, CircleCheck, Clock3, Compass, FileCheck2, Flag, FolderOpen,
   GitBranch, History, House, Info, LayoutGrid, ListChecks, LockKeyhole, Menu, CircleHelp,
-  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X,
+  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X, BrainCircuit, FileText,
 } from 'lucide-react';
-import { missions, getMission } from './domain/catalog';
-import { createInitialState, generatePlan, getSaveState, localDate, recordChange, recordEvidence } from './domain/engine';
+import { getMissions, getMission, getMissionVersion, recordRoadmapVersion, prerequisitesFor } from './domain/catalog';
+import { createInitialState, generatePlan, getSaveState, localDate, recordChange, recordEvidence, activateCheckpoint } from './domain/engine';
 import type { AppState, Capacity, DailyAction, Evidence, Mission, MissionId } from './domain/types';
 import { Badge, Empty, kindLabels, MissionIcon, PageHeading, Progress, SectionTitle, Star, statusLabels } from './components';
 import { EvidenceDialog, OpportunityDialog } from './dialogs';
@@ -21,6 +21,8 @@ import type { WorkspaceModel } from './useWorkspace';
 import { Tutorial } from './tutorial/Tutorial';
 import { RoadmapPage } from './roadmaps/RoadmapPage';
 import { MissionFlowchart } from './roadmaps/MissionFlowchart';
+import { SourcePanel, OperationSourcesPage } from './SourcePanel';
+import { FreelancePage, RecallPage } from './OperationTools';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -30,10 +32,12 @@ const mainNav = [
   { id: 'plan', label: 'Daily plan', icon: ListChecks },
   { id: 'evidence', label: 'Saved work', icon: FolderOpen },
   { id: 'history', label: 'History', icon: History },
+  { id: 'recall', label: 'Recall practice', icon: BrainCircuit },
 ];
 const extraNav = [
   { id: 'pipeline', label: 'Opportunities', icon: BriefcaseBusiness },
   { id: 'readiness', label: 'Interview readiness', icon: Target },
+  { id: 'freelance', label: 'Freelance ledger', icon: BriefcaseBusiness },
 ];
 const capacities: { id: Capacity; label: string; description: string }[] = [
   { id: 'gentle', label: 'Gentle', description: 'Up to 15 minutes; one action.' },
@@ -81,6 +85,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   onStartTutorial: () => void; onExitTutorial: () => void;
 }) {
   const { commit, date } = workspace;
+  const missions = getMissions(state);
   const [route, setRoute] = useState(routeNow);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -95,7 +100,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const selected = missions.find(mission => mission.id === route.split('/')[1]);
   const todayPlan = state.plans[date] ?? [];
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
-  const title = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data' }, { id: 'guide', label: 'Help & glossary' }].find(item => item.id === page)?.label ?? selected?.name ?? 'Not found';
+  const title = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data' }, { id: 'guide', label: 'Help & glossary' }, { id: 'sources', label: 'Operation documents' }].find(item => item.id === page)?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
     setOpportunityDialog(false);
@@ -185,6 +190,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
       <span className="nav-label second">CAREER</span>
       <nav>{extraNav.map(navButton)}</nav>
       <div className="sidebar-bottom">
+        <a href="#/sources" className={`nav-item ${page === 'sources' ? 'selected' : ''}`}><FileText size={18} /><span>Operation documents</span></a>
         <button className="nav-item" onClick={onStartTutorial}><BookOpen size={18} /><span>{practice ? 'Restart tutorial' : 'Tutorial'}</span></button>
         <a href="#/guide" className={`nav-item ${page === 'guide' ? 'selected' : ''}`}><CircleHelp size={18} /><span>Help & glossary</span></a>
         <a href="#/settings" className={`nav-item ${page === 'settings' ? 'selected' : ''}`}><Settings2 size={18} /><span>Settings & data</span></a>
@@ -222,9 +228,12 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'history' && <HistoryPage state={state} />}
         {page === 'pipeline' && <PipelinePage state={state} onAdd={() => setOpportunityDialog(true)} commit={commit} notify={setToast} />}
         {page === 'readiness' && <ReadinessPage state={state} commit={commit} />}
+        {page === 'freelance' && <FreelancePage state={state} commit={commit} practice={practice} />}
+        {page === 'recall' && <RecallPage state={state} commit={commit} />}
+        {page === 'sources' && <OperationSourcesPage state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
-        {(!['hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
+        {(!['hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
         <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
       </main>
     </div>
@@ -242,15 +251,23 @@ function CapacityControl({ value, onChange }: { value: Capacity; onChange: (capa
 function MissionCard({ mission, state, onResume }: { mission: Mission; state: AppState; onResume: (id: MissionId) => void }) {
   const save = getSaveState(mission, state);
   const progress = state.missions[mission.id];
-  return <article className={`mission-card ${mission.color}`}><div className="mission-card-top"><MissionIcon mission={mission} /><Badge tone={progress.mode === 'active' ? 'green' : ''}>{mission.planned ? 'Planned' : progress.status === 'completed' ? 'Completed' : progress.mode === 'active' ? 'In focus' : 'Background'}</Badge></div><span className="mission-subtitle">{mission.operation}</span><h3>{mission.name}</h3><p className="checkpoint-title">{save.checkpoint?.title ?? 'Roadmap not yet defined'}</p><div className="mission-progress-label"><span>{save.stage}</span><span>{save.completed}/{save.total}</span></div><Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} /><div className="mission-card-bottom"><span>{progress.blocker ? 'Blocked - needs attention' : mission.planned ? 'Roadmap pending' : `Next: ${save.next}`}</span><button onClick={() => onResume(mission.id)} className="icon-button" aria-label={`Open ${mission.name}`}><ArrowUpRight size={18} /></button></div></article>;
+  return <article className={`mission-card ${mission.color}`}>
+    <div className="mission-card-top"><MissionIcon mission={mission} /><Badge tone={progress.mode === 'active' ? 'green' : ''}>{mission.planned ? 'Planned' : progress.status === 'completed' ? 'Completed' : progress.mode === 'active' ? 'In focus' : 'Background'}</Badge></div>
+    <span className="mission-subtitle">{mission.operation}</span><h3>{mission.name}</h3>
+    <p className="source-version-label">{mission.roadmapVersion === '1.0.0' ? 'Previous roadmap · update available' : `Operation docs · ${mission.coverage ?? 'documented'}`}</p>
+    <p className="checkpoint-title">{save.checkpoint?.title ?? (mission.coverage === 'forecast' ? 'Planning timeline available' : 'Roadmap not yet defined')}</p>
+    <div className="mission-progress-label"><span>{save.stage}</span><span>{save.completed}/{save.total}</span></div>
+    <Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} />
+    <div className="mission-card-bottom"><span>{progress.blocker ? 'Blocked - needs attention' : mission.planned ? 'Detailed checkpoints pending' : `Next: ${save.next}`}</span><button onClick={() => onResume(mission.id)} className="icon-button" aria-label={`Open ${mission.name}`}><ArrowUpRight size={18} /></button></div>
+  </article>;
 }
 
 function PlanList({ actions, state, onEvidence, onResume }: { actions: DailyAction[]; state: AppState; onEvidence: (action: DailyAction) => void; onResume: (id: MissionId) => void }) {
   if (!actions.length) return <section className="panel"><Empty title="Room for a fresh start.">There are no available actions at this capacity. Activate an unblocked mission, choose a larger capacity, or refresh the plan after changing focus.</Empty><a href="#/missions" className="button secondary">Explore your missions<ArrowRight size={16} /></a></section>;
   return <div className="plan-list" data-tour="plan-actions">{actions.map((action, index) => {
-    const mission = getMission(action.missionId);
+    const mission = getMissionVersion(action.missionId, recordRoadmapVersion(action));
     const progress = state.missions[action.missionId];
-    const unavailable = progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed';
+    const unavailable = progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
     return <article key={action.id} className={`plan-item ${action.completed ? 'done' : ''}`}><span className="plan-number">{action.completed ? <Check size={17} /> : `0${index + 1}`}</span><div className="plan-content"><div className="plan-meta"><span className={`mission-tag ${mission.color}`}>{mission.name}</span><span><Clock3 size={12} />{action.minutes} min</span></div><h3>{action.title}</h3><p>{action.reason}</p>{!action.completed && !!unavailable && <p className="attention-text">This mission changed. Open it to inspect the current checkpoint.</p>}<div className="plan-item-footer">{action.completed ? <span className="done-label"><CircleCheck size={14} />Evidence recorded</span> : <><button className="text-link" data-tour={`plan-open-${mission.id}`} onClick={() => onResume(action.missionId)}>Open checkpoint<ArrowUpRight size={14} /></button><button className="complete-button" disabled={!!unavailable} onClick={() => onEvidence(action)}><Plus size={13} />Log progress</button></>}</div></div></article>;
   })}</div>;
 }
@@ -282,29 +299,46 @@ function FocusTimer({ session }: { session: ReturnType<typeof useFocusSession> }
 }
 
 function Blockers({ state }: { state: AppState }) {
+  const missions = getMissions(state);
   const blocked = missions.filter(mission => state.missions[mission.id].blocker);
   return <section className="blockers-card"><span className="eyebrow"><Flag size={13} />ON YOUR RADAR</span>{blocked.length ? blocked.map(mission => <a href={`#/mission/${mission.id}`} key={mission.id}><strong>{mission.operation}</strong><p>{state.missions[mission.id].blocker}</p><span>Work through this<ArrowUpRight size={13} /></span></a>) : <><h3>No blockers in the way.</h3><p>When something slows you down, name it in your mission. You don’t have to hold it all in your head.</p></>}</section>;
 }
 
 function MissionsPage({ state, onResume }: { state: AppState; onResume: (id: MissionId) => void }) {
+  const missions = getMissions(state);
   const [filter, setFilter] = useState('all');
   const filtered = missions.filter(mission => filter === 'all' || state.missions[mission.id].mode === filter);
-  return <><PageHeading eyebrow="LEARNING AREAS" title="Missions" description="Each area has one current checkpoint. Background missions retain their progress." /><div className="filter-row" data-tour="mission-list"><div className="tabs">{[['all', 'All missions'], ['active', 'In focus'], ['background', 'Background'], ['planned', 'Planned']].map(([key, label]) => <button key={key} onClick={() => setFilter(key)} className={filter === key ? 'active' : ''} aria-pressed={filter === key}>{label}<span>{key === 'all' ? missions.length : missions.filter(m => state.missions[m.id].mode === key).length}</span></button>)}</div><span className="muted small">Starter roadmaps · v{state.roadmapVersion}</span></div><div className="mission-grid all-missions">{filtered.map(mission => <MissionCard key={mission.id} mission={mission} state={state} onResume={onResume} />)}</div><div className="quiet-note"><Info size={17} /><p>Only active, unblocked missions enter a daily plan. These are starter roadmaps, not full courses.</p></div></>;
+  return <>
+    <PageHeading eyebrow="LEARNING AREAS" title="Missions" description="Each area has one current checkpoint. Background missions retain their progress." />
+    <div className="filter-row" data-tour="mission-list">
+      <div className="tabs">{[['all', 'All missions'], ['active', 'In focus'], ['background', 'Background'], ['planned', 'Planned']].map(([key, label]) => <button key={key} onClick={() => setFilter(key)} className={filter === key ? 'active' : ''} aria-pressed={filter === key}>{label}<span>{key === 'all' ? missions.length : missions.filter(m => state.missions[m.id].mode === key).length}</span></button>)}</div>
+      <span className="muted small">Operation catalog · v{state.roadmapVersion}</span>
+    </div>
+    <div className="mission-grid all-missions">{filtered.map(mission => <MissionCard key={mission.id} mission={mission} state={state} onResume={onResume} />)}</div>
+    <div className="quiet-note"><Info size={17} /><p>Only active, unblocked missions enter a daily plan. Tracking granularity and source limitations are documented on each mission.</p></div>
+  </>;
 }
 
 function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: { mission: Mission; state: AppState; commit: Commit; onEvidence: () => void; onResume: (id: MissionId) => void; notify: (text: string) => void }) {
   const save = getSaveState(mission, state);
   const progress = state.missions[mission.id];
   const [blocker, setBlocker] = useState(progress.blocker);
+  const alternatives = mission.checkpoints.filter(checkpoint => checkpoint.id !== progress.checkpointId &&
+    !progress.completedCheckpointIds.includes(checkpoint.id) &&
+    prerequisitesFor(mission, checkpoint).every(id => progress.completedCheckpointIds.includes(id)));
   useEffect(() => setBlocker(progress.blocker), [mission.id, progress.blocker]);
   function update(title: string, transform: (current: AppState) => AppState) {
     if (commit(current => recordChange(transform(current), title, mission.id))) notify(title);
   }
   return <><a className="back-link" href="#/missions">← All missions</a><PageHeading eyebrow={mission.operation} title={mission.name} description={mission.purpose}>{!mission.planned && <button className="button secondary" data-tour="mission-mode" onClick={() => update(progress.mode === 'active' ? 'Mission moved to background' : 'Mission brought into focus', current => ({ ...current, missions: { ...current.missions, [mission.id]: { ...current.missions[mission.id], mode: progress.mode === 'active' ? 'background' : 'active' } } }))}>{progress.mode === 'active' ? <Pause size={15} /> : <Play size={15} />}{progress.mode === 'active' ? 'Move to background' : 'Bring into focus'}</button>}</PageHeading>
-    {mission.planned ? <section className="panel"><Empty title="An ambition with room to grow.">Competitive programming has its own mission. A canonical roadmap hasn’t been defined, so there are no invented checkpoints or progress here.</Empty></section> : <>
+    <SourcePanel missionId={mission.id} state={state} commit={commit} />
+    {mission.planned ? <MissionFlowchart mission={mission} state={state} /> : <>
       <section className={`save-state-card ${mission.color}`} data-tour="save-state"><div className="save-state-header"><span className="eyebrow"><Flag size={14} />CURRENT CHECKPOINT</span><Badge tone="green">{statusLabels[save.status]}</Badge></div><div className="save-state-main"><MissionIcon mission={mission} size={27} /><div><span>{save.stage}</span><h2>{save.checkpoint?.title}</h2></div><span className="save-count">{save.completed}<small> / {save.total} complete</small></span></div><Progress value={save.completed / save.total * 100} label="Mission checkpoint progress" /><div className="save-state-bottom"><span><LockKeyhole size={14} /><strong>Next unlock:</strong> {save.next}</span><button className="text-link" data-tour="mission-primary" onClick={() => update('Primary mission updated', current => ({ ...current, focusMissionId: mission.id }))}>{state.focusMissionId === mission.id ? 'Your primary mission' : 'Make primary mission'}<Target size={14} /></button></div></section>
-      <div className="dashboard-grid mission-detail"><div><section className="panel next-action"><span className="eyebrow">NEXT ACTION</span><h2>{save.status === 'completed' ? 'Mission completed' : save.checkpoint?.action}</h2><p>{save.status === 'completed' ? 'Your saved work and history are retained.' : mission.purpose}</p>{save.status !== 'completed' && <><div className="criteria-list"><h4>Completion criteria</h4>{save.checkpoint?.criteria.map(criterion => <div key={criterion}><span className="tiny-circle" />{criterion}</div>)}</div><div className="button-row"><button className="button primary" data-tour="record-evidence" onClick={onEvidence} disabled={progress.mode !== 'active' || !!progress.blocker}><Plus size={16} />Record evidence</button>{progress.status === 'not-started' && <button className="button secondary" onClick={() => onResume(mission.id)} disabled={progress.mode !== 'active' || !!progress.blocker}>Begin checkpoint<Play size={14} /></button>}<span className="muted small"><Clock3 size={13} />About {save.checkpoint?.minutes} min</span></div>{progress.mode !== 'active' && <p className="attention-text">Bring this mission into focus to start or record new evidence.</p>}</>}</section>
-        <SectionTitle title="Checkpoint flowchart" /><MissionFlowchart mission={mission} state={state} />
+      <div className="dashboard-grid mission-detail"><div><section className="panel next-action"><span className="eyebrow">NEXT ACTION</span>      <h2>{save.status === 'completed' ? (mission.completionLabel ?? 'Mission completed') : save.checkpoint?.action}</h2><p>{save.status === 'completed' ? 'Your saved work and history are retained.' : mission.purpose}</p>{save.status !== 'completed' && <><div className="criteria-list"><h4>Completion criteria</h4>{save.checkpoint?.criteria.map(criterion => <div key={criterion}><span className="tiny-circle" />{criterion}</div>)}</div><div className="button-row"><button className="button primary" data-tour="record-evidence" onClick={onEvidence} disabled={progress.mode !== 'active' || !!progress.blocker}><Plus size={16} />Record evidence</button>{progress.status === 'not-started' && <button className="button secondary" onClick={() => onResume(mission.id)} disabled={progress.mode !== 'active' || !!progress.blocker}>Begin checkpoint<Play size={14} /></button>}<span className="muted small"><Clock3 size={13} />About {save.checkpoint?.minutes} min</span></div>{progress.mode !== 'active' && <p className="attention-text">Bring this mission into focus to start or record new evidence.</p>}</>}</section>
+        {alternatives.length > 0 && <section className="panel available-checkpoints"><h4>Other available checkpoints</h4><p className="muted small">Choose one current checkpoint. This does not complete the previous one.</p><div className="button-row">{alternatives.map(checkpoint => <button key={checkpoint.id} className="button secondary" onClick={() => {
+          if (commit(current => activateCheckpoint(current, mission.id, checkpoint.id))) notify('Current checkpoint changed. Existing evidence is preserved.');
+        }}>Make current: {checkpoint.title}</button>)}</div></section>}
+        <SectionTitle title={`Checkpoint flowchart · v${mission.roadmapVersion}`} /><MissionFlowchart mission={mission} state={state} />
       </div><div className="right-rail">
         <section className="panel"><SectionTitle title="Blocker" />
           <form className="stack-form" data-tour="blocker-form" onSubmit={event => {
@@ -325,6 +359,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: {
 }
 
 function EvidencePage({ state, selectedId, onAdd }: { state: AppState; selectedId?: string; onAdd: () => void }) {
+  const missions = getMissions(state);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('all');
@@ -342,7 +377,12 @@ function EvidencePage({ state, selectedId, onAdd }: { state: AppState; selectedI
 }
 
 function EvidenceCard({ item, highlighted }: { item: Evidence; highlighted: boolean }) {
-  const mission = getMission(item.missionId);
+  const mission = getMissionVersion(item.missionId, recordRoadmapVersion(item));
   const checkpoint = mission.checkpoints.find(cp => cp.id === item.checkpointId);
-  return <article id={`proof-${item.id}`} className={`evidence-card ${highlighted ? 'highlighted' : ''}`}><div className="evidence-card-top"><span className={`mission-tag ${mission.color}`}>{mission.operation}</span><span className="local-label"><LockKeyhole size={12} />Local</span></div><div className={`artifact-illustration ${mission.color}`}><FileCheck2 size={34} strokeWidth={1.2} /><span>{kindLabels[item.kind]}</span></div><h3>{item.title}</h3><p>{item.summary}</p><div className="artifact-checkpoint"><Flag size={12} />{checkpoint?.title}</div><div className="evidence-card-footer"><span>{formatDate(item.createdAt)}{item.completedCheckpoint && <span className="proof-complete"><CircleCheck size={12} />Checkpoint proof</span>}</span>{item.url && <a className="text-link" href={item.url} target="_blank" rel="noopener noreferrer">Open artifact<ArrowUpRight size={14} /></a>}</div></article>;
+  return <article id={`proof-${item.id}`} className={`evidence-card ${highlighted ? 'highlighted' : ''}`}>
+    <div className="evidence-card-top"><span className={`mission-tag ${mission.color}`}>{mission.operation}</span><span className="local-label"><LockKeyhole size={12} />Local · v{recordRoadmapVersion(item)}</span></div>
+    <div className={`artifact-illustration ${mission.color}`}><FileCheck2 size={34} strokeWidth={1.2} /><span>{kindLabels[item.kind]}</span></div>
+    <h3>{item.title}</h3><p>{item.summary}</p><div className="artifact-checkpoint"><Flag size={12} />{checkpoint?.title}</div>
+    <div className="evidence-card-footer"><span>{formatDate(item.createdAt)}{item.completedCheckpoint && <span className="proof-complete"><CircleCheck size={12} />Checkpoint proof</span>}</span>{item.url && <a className="text-link" href={item.url} target="_blank" rel="noopener noreferrer">Open artifact<ArrowUpRight size={14} /></a>}</div>
+  </article>;
 }

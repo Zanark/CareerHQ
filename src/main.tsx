@@ -6,5 +6,6 @@ import './theme-toggle.css';
 import './overview.css';
 import './tutorial/tutorial.css';
 import './roadmaps/roadmaps.css';
+import './source-panels.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
