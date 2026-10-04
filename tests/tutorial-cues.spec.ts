@@ -12,9 +12,9 @@ async function cueMatches(page: Page, target: Locator) {
   await expect.poll(async () => {
     const ring = await page.locator('.tutorial-target-ring').boundingBox();
     const button = await target.boundingBox();
-    return !!ring && !!button && Math.abs(ring.x - button.x) < 2 &&
-      Math.abs(ring.y - button.y) < 2 && Math.abs(ring.width - button.width) < 2 &&
-      Math.abs(ring.height - button.height) < 2;
+    return !!ring && !!button && Math.abs(ring.x - (button.x - 6)) < 2 &&
+      Math.abs(ring.y - (button.y - 6)) < 2 && Math.abs(ring.width - (button.width + 12)) < 2 &&
+      Math.abs(ring.height - (button.height + 12)) < 2;
   }).toBe(true);
   const hit = await target.evaluate(element => {
     const bounds = element.getBoundingClientRect();
@@ -114,3 +114,41 @@ test('the ring follows scrolling and resizing without persistent observers after
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator('.tutorial-cues')).toHaveCount(0);
 });
+
+for (const width of [1440, 390]) {
+  test(`section borders leave space around heading text without resizing content at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(() => localStorage.setItem('careerhq.theme.v1', 'light'));
+    await start(page);
+    const coach = page.locator('.tutorial-panel');
+    const before = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
+    await coach.getByRole('combobox', { name: 'Tutorial chapter' }).selectOption('overview');
+    const section = page.locator('[data-tour="overview-missions"]');
+    const original = await section.boundingBox();
+    await coach.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(coach).toHaveAttribute('data-step', 'overview-missions');
+    await expect(page.locator('.tutorial-target-ring')).toBeVisible();
+    await expect.poll(async () => {
+      const ring = await page.locator('.tutorial-target-ring').boundingBox();
+      const target = await section.boundingBox();
+      const heading = await section.getByRole('heading', { name: 'Current checkpoints', exact: true }).boundingBox();
+      return !!ring && !!target && !!heading &&
+        Math.abs(ring.x - (target.x - 12)) < 2 && Math.abs(ring.y - (target.y - 12)) < 2 &&
+        heading.x - ring.x >= 10 && heading.y - ring.y >= 10 &&
+        Math.abs(target.width - original!.width) < 1 && Math.abs(target.height - original!.height) < 1;
+    }).toBe(true);
+    expect(await section.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('none');
+    const padding = await coach.evaluate(element => ({
+      inline: parseFloat(getComputedStyle(element).paddingLeft),
+      top: parseFloat(getComputedStyle(element).paddingTop),
+      border: parseFloat(getComputedStyle(element).borderLeftWidth),
+    }));
+    expect(padding.inline).toBeGreaterThanOrEqual(16);
+    expect(padding.top).toBeGreaterThanOrEqual(18);
+    expect(padding.border).toBe(2);
+    await testInfo.attach(`padded-overview-highlight-${width}`, { body: await page.screenshot(), contentType: 'image/png' });
+    await coach.getByRole('button', { name: 'Exit tutorial', exact: true }).click();
+    expect(await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'))).toBe(before);
+    await expect(page.locator('.tutorial-cues, .tutorial-highlight')).toHaveCount(0);
+  });
+}

@@ -41,8 +41,8 @@ export function SectionTitle({ eyebrow, title, children }: { eyebrow?: string; t
   return <div className="section-title"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h2>{title}</h2></div>{children}</div>;
 }
 
-export function PageHeading({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children?: ReactNode }) {
-  return <div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{children}</div>;
+export function PageHeading({ eyebrow, title, description, children, titleAction }: { eyebrow: string; title: string; description: string; children?: ReactNode; titleAction?: ReactNode }) {
+  return <div className="page-heading"><div><span className="eyebrow">{eyebrow}</span>{titleAction ? <div className="page-title-row"><h1>{title}</h1>{titleAction}</div> : <h1>{title}</h1>}<p>{description}</p></div>{children}</div>;
 }
 
 export function Empty({ title, children, icon = 'sparkles' }: { title: string; children: ReactNode; icon?: string }) {
@@ -54,15 +54,20 @@ export function Progress({ value, label }: { value: number; label: string }) {
   return <div className="progress-track" role="progressbar" aria-label={label} aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}><div style={{ '--progress': `${value}%` } as CSSProperties} /></div>;
 }
 
-export function Modal({ title, subtitle, children, onClose, wide = false }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+export function Modal({ title, subtitle, children, onClose, wide = false, className = '', eyebrow = 'YOUR WORK, MADE VISIBLE', restoreFocus = false }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string; eyebrow?: string; restoreFocus?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
+    const opener = document.activeElement;
+    const route = location.hash;
     dialog?.showModal();
-    return () => { dialog?.close(); };
-  }, []);
-  return <dialog ref={ref} className={`modal ${wide ? 'wide' : ''}`} aria-labelledby="dialog-title" onCancel={event => { event.preventDefault(); onClose(); }}>
-    <div className="modal-header"><div><span className="eyebrow">YOUR WORK, MADE VISIBLE</span><h2 id="dialog-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></div>
+    return () => {
+      dialog?.close();
+      if (restoreFocus && location.hash === route && opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [restoreFocus]);
+  return <dialog ref={ref} className={`modal ${wide ? 'wide' : ''} ${className}`} aria-labelledby="dialog-title" onCancel={event => { event.preventDefault(); onClose(); }}>
+    <div className="modal-header"><div><span className="eyebrow">{eyebrow}</span><h2 id="dialog-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></div>
     {children}
   </dialog>;
 }

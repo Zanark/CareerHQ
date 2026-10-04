@@ -6,6 +6,8 @@ interface HandBox { left: number; top: number; direction: 'up' | 'down' | 'left'
 interface CueLayout { box: CueBox; hand: HandBox | null }
 const HAND_SIZE = 48;
 const GAP = 12;
+const SECTION_PADDING = 12;
+const CONTROL_PADDING = 6;
 
 function overlaps(a: { left: number; top: number; width: number; height: number }, b: DOMRect) {
   return a.left < b.right && a.left + a.width > b.left && a.top < b.bottom && a.top + a.height > b.top;
@@ -24,29 +26,39 @@ export function TutorialCue({ target, panel, anchorRect }: {
         return;
       }
       const rect = target.getBoundingClientRect();
-      let left = Math.max(3, rect.left);
-      let top = Math.max(3, rect.top);
-      let right = Math.min(innerWidth - 3, rect.right);
-      let bottom = Math.min(innerHeight - 3, rect.bottom);
+      let clipLeft = 3;
+      let clipTop = 3;
+      let clipRight = innerWidth - 3;
+      let clipBottom = innerHeight - 3;
       for (let parent = target.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
         const style = getComputedStyle(parent);
         const bounds = parent.getBoundingClientRect();
         if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
-          left = Math.max(left, bounds.left);
-          right = Math.min(right, bounds.right);
+          clipLeft = Math.max(clipLeft, bounds.left);
+          clipRight = Math.min(clipRight, bounds.right);
         }
         if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
-          top = Math.max(top, bounds.top);
-          bottom = Math.min(bottom, bounds.bottom);
+          clipTop = Math.max(clipTop, bounds.top);
+          clipBottom = Math.min(clipBottom, bounds.bottom);
         }
       }
-      if (right - left < 2 || bottom - top < 2 || getComputedStyle(target).visibility === 'hidden') {
+      const style = getComputedStyle(target);
+      if (Math.min(rect.right, clipRight) - Math.max(rect.left, clipLeft) < 2 ||
+          Math.min(rect.bottom, clipBottom) - Math.max(rect.top, clipTop) < 2 || style.visibility === 'hidden') {
         setLayout(null);
         return;
       }
-      const box = { left, top, width: right - left, height: bottom - top, radius: getComputedStyle(target).borderRadius || '6px' };
-      let hand: HandBox | null = null;
       const clickable = target.matches('button:not(:disabled),[role="button"],a[href],input[type="submit"]:not(:disabled)');
+      const padding = clickable || target.matches('input,select,textarea') ? CONTROL_PADDING : SECTION_PADDING;
+      const left = Math.max(clipLeft, rect.left - padding);
+      const top = Math.max(clipTop, rect.top - padding);
+      const right = Math.min(clipRight, rect.right + padding);
+      const bottom = Math.min(clipBottom, rect.bottom + padding);
+      const box = {
+        left, top, width: right - left, height: bottom - top,
+        radius: `${Math.max(6, parseFloat(style.borderTopLeftRadius)) + padding}px`,
+      };
+      let hand: HandBox | null = null;
       if (clickable) {
         const candidates: HandBox[] = [
           { left: left + box.width / 2 - HAND_SIZE / 2, top: bottom + GAP, direction: 'up' },

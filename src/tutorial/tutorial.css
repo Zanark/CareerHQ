@@ -3,25 +3,22 @@
    class applied directly to the real target element. */
 
 .tutorial-highlight {
-  outline: 3px solid var(--dsf-accent) !important;
-  outline-offset: 3px;
-  border-radius: 6px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dsf-accent) 22%, transparent);
-  scroll-margin: 96px;
+  scroll-margin: 112px;
 }
 
 .tutorial-panel {
+  --tutorial-panel-padding-top: 20px;
   position: fixed;
   z-index: 2147483000;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   background: var(--dsf-paper);
   color: var(--dsf-text);
-  border: 1px solid var(--dsf-border);
-  border-radius: 12px;
+  border: 2px solid var(--dsf-border);
+  border-radius: 14px;
   box-shadow: 0 12px 36px var(--dsf-shadow);
-  padding: 14px 16px 12px;
+  padding: var(--tutorial-panel-padding-top) 22px 18px;
   overflow: auto;
   pointer-events: auto;
 }
@@ -33,12 +30,15 @@
 }
 
 .tutorial-panel-mobile {
+  --tutorial-panel-padding-top: 18px;
   position: fixed;
   left: 10px;
   right: 10px;
   bottom: 10px;
   width: auto !important;
   border-radius: 14px;
+  padding-inline: 16px;
+  padding-bottom: 16px;
 }
 
 .tutorial-collapsed {
@@ -219,7 +219,7 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding-top: 4px;
+  padding-top: 12px;
   border-top: 1px solid var(--dsf-separator);
 }
 
@@ -260,7 +260,7 @@
   z-index: 2147483001;
   border: 2px solid var(--dsf-accent);
   outline: 1px solid var(--dsf-paper);
-  outline-offset: -4px;
+  outline-offset: 2px;
 }
 .tutorial-glow-halo {
   position: absolute;

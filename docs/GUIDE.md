@@ -64,6 +64,20 @@ The built-in data describes what to work on; it does not claim you have already 
    completion credit. If both versions are v2, no adoption is needed.
 5. Select **Open current tracker** to work on that mission.
 
+On a mission page, **Full roadmap** beside its name opens every stage together.
+It starts at **Fit all**: an overview of the entire active-version map, not a stage filter.
+The actual current checkpoint has a bright, gently pulsing **You are here** highlight.
+Use **Current checkpoint** for a readable close-up, **+ / -** or **100%** to change zoom,
+and drag, scroll or swipe to explore. Select a node for its action and completion criteria;
+this only inspects it and never changes the current checkpoint. **Escape** or **Close dialog**
+returns to the mission. Reduced-motion settings keep the highlight static.
+During tutorial practice, a compact **Back to tutorial** bar temporarily replaces the
+coach so it cannot cover the full map. Closing the map returns to the same tutorial step.
+
+Optional and forecast stages remain visible without invented progress. A completed track
+has no current-step glow. Existing v1 workspaces still show their actual v1 roadmap here;
+adopting the documented version remains the separate confirmed action described above.
+
 You do **not** need to upload the PDFs or import a JSON file to obtain these roadmaps.
 They are already part of the website. **Reload sample is not a PDF import**: it replaces
 the current workspace with fictional examples. A new browser starts without assumed
@@ -74,6 +88,8 @@ progress; an existing workspace is preserved.
 Click **Tutorial** in the header or sidebar. Follow the glowing target and pointing
 hand, perform the indicated action, then select **Next**. Back, Skip and Exit are
 available throughout. Exit returns to your real workspace; practice changes are discarded.
+Highlight borders sit outside the content with breathing room around headings and controls.
+The coach also uses padded, bordered panels; the overlay never changes the target's layout.
 
 The tutorial covers actual controls using temporary data. Its files are named
 `careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the

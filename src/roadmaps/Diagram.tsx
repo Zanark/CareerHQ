@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 export interface DiagramEdge {
   from: string;
   to: string;
-  kind?: 'down' | 'branch' | 'return' | 'root' | 'member';
+  kind?: 'down' | 'branch' | 'return' | 'root' | 'member' | 'cross-stage';
+  via?: string;
   label?: string;
   tone?: 'normal' | 'current' | 'complete';
 }
@@ -35,6 +36,13 @@ export function connectDiagram(edges: DiagramEdge[], boxes: Record<string, Box>,
       path = `M ${x1} ${y1} H ${midX} V ${y2} H ${b.x}`;
       labelX = midX;
       labelY = y1 - 10;
+    } else if (edge.kind === 'cross-stage') {
+      const group = edge.via ? boxes[edge.via] : a;
+      if (!group) throw new Error(`Missing diagram group: ${edge.via}`);
+      const forwards = b.x > a.x;
+      const rail = forwards ? group.x + group.width + 12 : group.x - 12;
+      const start = forwards ? a.x + a.width : a.x;
+      path = `M ${start} ${a.y + a.height / 2} H ${rail} V ${b.y - 20} H ${to.x} V ${to.y}`;
     } else if (edge.kind === 'return') {
       const rail = width - 7;
       const y1 = a.y + a.height / 2;
@@ -61,15 +69,21 @@ export function Diagram({ edges, children, className = '' }: { edges: DiagramEdg
       if (!root.isConnected) return;
       const area = root.getBoundingClientRect();
       if (!area.width || !area.height) return;
+      // Keep connector geometry in CSS pixels when a whole roadmap is zoomed.
+      const scaleX = area.width / root.offsetWidth;
+      const scaleY = area.height / root.offsetHeight;
       const boxes: Record<string, Box> = Object.create(null);
       root.querySelectorAll<HTMLElement>('[data-diagram-node]').forEach(node => {
         const rect = node.getBoundingClientRect();
-        boxes[node.dataset.diagramNode!] = { x: rect.x - area.x, y: rect.y - area.y, width: rect.width, height: rect.height };
+        boxes[node.dataset.diagramNode!] = {
+          x: (rect.x - area.x) / scaleX, y: (rect.y - area.y) / scaleY,
+          width: rect.width / scaleX, height: rect.height / scaleY,
+        };
       });
-      const missing = edges.find(edge => !boxes[edge.from] || !boxes[edge.to]);
+      const missing = edges.find(edge => !boxes[edge.from] || !boxes[edge.to] || (edge.via && !boxes[edge.via]));
       const next: Layout = {
-        width: area.width, height: area.height,
-        paths: missing ? [] : connectDiagram(edges, boxes, area.width),
+        width: root.offsetWidth, height: root.offsetHeight,
+        paths: missing ? [] : connectDiagram(edges, boxes, root.offsetWidth),
         error: missing ? 'Diagram connections could not be drawn. The labeled milestones remain available below.' : '',
       };
       setLayout(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);

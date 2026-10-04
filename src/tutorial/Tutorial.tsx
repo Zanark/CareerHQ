@@ -7,7 +7,7 @@ import type { TutorialStep } from './steps';
 import { TutorialCue } from './TutorialCue';
 
 const MOBILE_WIDTH = 640;
-const PANEL_MARGIN = 12;
+const PANEL_MARGIN = 24;
 
 function findOpenDialog(): HTMLElement | null {
   return document.querySelector<HTMLElement>('dialog[open]');
@@ -288,6 +288,13 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const placement = computePlacement(mobile ? null : targetRect, panelSize, mobile);
   const host = dialogHost ?? document.body;
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
+
+  if (dialogHost?.classList.contains('full-roadmap-modal')) return createPortal(
+    <div ref={panelRef} data-step={step.id} className="tutorial-panel tutorial-map-guide" role="region" aria-label="Tutorial roadmap practice">
+      <span>Practice only. Tutorial paused.</span>
+      <button type="button" className="button secondary" onClick={() => onCommand('close-dialogs')}>Back to tutorial</button>
+      <button type="button" className="icon-button" aria-label="Exit tutorial" onClick={onExit}><X size={18} /></button>
+    </div>, dialogHost);
 
   const panel = (
     <>

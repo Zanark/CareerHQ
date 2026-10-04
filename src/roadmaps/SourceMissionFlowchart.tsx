@@ -1,10 +1,11 @@
 import { useId, useMemo, useState } from 'react';
 import { Check, Flag, LockKeyhole, RotateCcw } from 'lucide-react';
 import { getProgressForVersion, prerequisitesFor } from '../domain/catalog';
-import type { AppState, Checkpoint, Mission } from '../domain/types';
+import type { AppState, Mission } from '../domain/types';
 import { Badge } from '../components';
 import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
+import { checkpointLevels } from './roadmapGraph';
 
 const completionEdges: DiagramEdge[] = [
   { from: 'rule-current', to: 'rule-decision' },
@@ -12,29 +13,6 @@ const completionEdges: DiagramEdge[] = [
   { from: 'rule-decision', to: 'rule-practice', kind: 'branch', label: 'Not yet' },
   { from: 'rule-practice', to: 'rule-current', kind: 'return' },
 ];
-
-function stageLevels(mission: Mission, checkpoints: Checkpoint[]): Checkpoint[][] {
-  const included = new Set(checkpoints.map(checkpoint => checkpoint.id));
-  const depths = new Map<string, number>();
-  const visiting = new Set<string>();
-  const depth = (checkpoint: Checkpoint): number => {
-    const known = depths.get(checkpoint.id);
-    if (known !== undefined) return known;
-    if (visiting.has(checkpoint.id)) throw new Error(`Cyclic source roadmap: ${checkpoint.id}`);
-    visiting.add(checkpoint.id);
-    const parents = prerequisitesFor(mission, checkpoint).filter(id => included.has(id));
-    const value = parents.length ? Math.max(...parents.map(id => depth(checkpoints.find(item => item.id === id)!))) + 1 : 0;
-    visiting.delete(checkpoint.id);
-    depths.set(checkpoint.id, value);
-    return value;
-  };
-  const result: Checkpoint[][] = [];
-  checkpoints.forEach(checkpoint => {
-    const index = depth(checkpoint);
-    (result[index] ??= []).push(checkpoint);
-  });
-  return result;
-}
 
 export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }: { mission: Mission; state: AppState; tutorialTarget?: boolean }) {
   const progress = getProgressForVersion(state, mission.id, mission.roadmapVersion);
@@ -46,7 +24,7 @@ export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }
   const descriptionId = useId();
   const completed = useMemo(() => new Set(progress?.completedCheckpointIds ?? []), [progress]);
   const checkpoints = useMemo(() => mission.checkpoints.filter(checkpoint => selected?.checkpointIds.includes(checkpoint.id)), [mission, selected]);
-  const levels = useMemo(() => stageLevels(mission, checkpoints), [mission, checkpoints]);
+  const levels = useMemo(() => checkpointLevels(mission, checkpoints), [mission, checkpoints]);
   const edges = useMemo<DiagramEdge[]>(() => {
     const ids = new Set(checkpoints.map(checkpoint => checkpoint.id));
     const hasChildren = new Set<string>();

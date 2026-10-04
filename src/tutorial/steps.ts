@@ -124,6 +124,12 @@ export const steps: TutorialStep[] = [
     body: 'Follow the connected nodes downward. The diamond explains the actual rule: evidence and confirmed criteria advance you; otherwise you practice again. The diagram itself does not change progress.',
   },
   {
+    id: 'mission-full-roadmap', chapter: 'mission', kind: 'explain',
+    targets: ['full-roadmap-open'],
+    title: 'See every stage together',
+    body: 'Full roadmap opens every stage in one fitted view. Your current checkpoint glows. Use Current checkpoint for a readable close-up, or zoom and scroll. Select any node to inspect it without changing progress. Close the roadmap before continuing this tutorial.',
+  },
+  {
     id: 'mission-list', chapter: 'mission', kind: 'explain', route: 'missions',
     targets: ['mission-list'],
     title: 'Find all learning areas',

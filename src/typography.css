@@ -18,11 +18,11 @@
 .section-title > .text-link { flex-shrink: 0; }
 .tutorial-head {
   position: sticky;
-  top: -14px;
+  top: calc(-1 * var(--tutorial-panel-padding-top, 14px));
   z-index: 2;
   background: var(--dsf-paper);
-  margin-top: -14px;
-  padding-top: 14px;
+  margin-top: calc(-1 * var(--tutorial-panel-padding-top, 14px));
+  padding-top: var(--tutorial-panel-padding-top, 14px);
   padding-bottom: 6px;
 }
 .flow-terminal { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }

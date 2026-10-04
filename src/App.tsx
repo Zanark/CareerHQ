@@ -3,7 +3,7 @@ import {
   ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check,
   ChevronRight, CircleCheck, Clock3, Compass, FileCheck2, Flag, FolderOpen,
   GitBranch, History, House, Info, LayoutGrid, ListChecks, LockKeyhole, Menu, CircleHelp,
-  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X, BrainCircuit, FileText,
+  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X, BrainCircuit, FileText, Maximize2,
 } from 'lucide-react';
 import { getMissions, getMission, getMissionVersion, recordRoadmapVersion, prerequisitesFor } from './domain/catalog';
 import { createInitialState, generatePlan, getSaveState, localDate, recordChange, recordEvidence, activateCheckpoint } from './domain/engine';
@@ -21,6 +21,7 @@ import type { WorkspaceModel } from './useWorkspace';
 import { Tutorial } from './tutorial/Tutorial';
 import { RoadmapPage } from './roadmaps/RoadmapPage';
 import { MissionFlowchart } from './roadmaps/MissionFlowchart';
+import { FullMissionRoadmap } from './roadmaps/FullMissionRoadmap';
 import { SourcePanel, OperationSourcesPage } from './SourcePanel';
 import { FreelancePage, RecallPage } from './OperationTools';
 
@@ -92,6 +93,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const [toast, setToast] = useState('');
   const [evidenceDialog, setEvidenceDialog] = useState<{ missionId: MissionId; action?: DailyAction } | null>(null);
   const [opportunityDialog, setOpportunityDialog] = useState(false);
+  const [fullRoadmapOpen, setFullRoadmapOpen] = useState(false);
+  const closeFullRoadmap = useCallback(() => setFullRoadmapOpen(false), []);
   const [exportCount, setExportCount] = useState(0);
   const [importCount, setImportCount] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -104,18 +107,20 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
     setOpportunityDialog(false);
+    setFullRoadmapOpen(false);
     setMenuOpen(false);
     setQuery('');
     navigate(target);
   }, []);
   const commandTutorial = useCallback((command: 'open-evidence' | 'open-opportunity' | 'close-dialogs') => {
+    setFullRoadmapOpen(false);
     if (command === 'open-evidence') { setOpportunityDialog(false); setEvidenceDialog({ missionId: 'pattern' }); }
     else if (command === 'open-opportunity') { setEvidenceDialog(null); setOpportunityDialog(true); }
     else { setEvidenceDialog(null); setOpportunityDialog(false); }
   }, []);
 
   useEffect(() => {
-    const onHash = () => { setRoute(routeNow()); setMenuOpen(false); setQuery(''); window.scrollTo(0, 0); };
+    const onHash = () => { setRoute(routeNow()); setMenuOpen(false); setQuery(''); setFullRoadmapOpen(false); window.scrollTo(0, 0); };
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); searchRef.current?.focus(); }
       if (event.key === 'Escape') { setMenuOpen(false); setQuery(''); }
@@ -212,7 +217,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
         {page === 'hq' && <Overview state={state} date={date} practice={practice} onEvidence={openEvidence} onResume={resume} onExport={exportBackup} />}
         {page === 'missions' && <MissionsPage state={state} onResume={resume} />}
-        {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} />}
+        {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} onFullRoadmap={() => setFullRoadmapOpen(true)} />}
         {page === 'roadmap' && <RoadmapPage state={state} />}
         {page === 'plan' && <>
           <PageHeading eyebrow="TODAY" title="Daily plan" description="Up to three actions, chosen from your active missions."><button className="button secondary" data-tour="print-plan" onClick={() => window.print()}><ArrowDownToLine size={16} />Print plan</button></PageHeading>
@@ -240,6 +245,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     {toast && <div className="toast" role="status"><Check size={17} />{toast}<button aria-label="Dismiss notification" className="icon-button" onClick={() => setToast('')}><X size={14} /></button></div>}
     {evidenceDialog && <EvidenceDialog state={state} initialMission={evidenceDialog.missionId} action={evidenceDialog.action} practice={practice} onClose={() => setEvidenceDialog(null)} onSave={input => { const ok = commit(current => recordEvidence(current, input)); if (ok) setToast(input.advance ? 'Checkpoint completed. Next checkpoint unlocked.' : practice ? 'Practice example saved in the tutorial only.' : 'Progress saved.'); return ok; }} />}
     {opportunityDialog && <OpportunityDialog practice={practice} onClose={() => setOpportunityDialog(false)} onSave={opportunity => change('Opportunity added', current => ({ ...current, opportunities: [...current.opportunities, opportunity] }), 'escape')} />}
+    {fullRoadmapOpen && page === 'mission' && selected && <FullMissionRoadmap key={`${selected.id}-${selected.roadmapVersion}`} mission={selected} state={state} onClose={closeFullRoadmap} />}
     {practice && <Tutorial state={state} route={route} signals={{ evidenceOpen: !!evidenceDialog, opportunityOpen: opportunityDialog, focusRunning: focusSession.running, exportCount, importCount, searchQuery: query, theme: appearance.theme }} onNavigate={navigateTutorial} onCommand={commandTutorial} onExit={onExitTutorial} onRestart={onStartTutorial} />}
   </div>;
 }
@@ -319,7 +325,7 @@ function MissionsPage({ state, onResume }: { state: AppState; onResume: (id: Mis
   </>;
 }
 
-function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: { mission: Mission; state: AppState; commit: Commit; onEvidence: () => void; onResume: (id: MissionId) => void; notify: (text: string) => void }) {
+function MissionPage({ mission, state, commit, onEvidence, onResume, notify, onFullRoadmap }: { mission: Mission; state: AppState; commit: Commit; onEvidence: () => void; onResume: (id: MissionId) => void; notify: (text: string) => void; onFullRoadmap: () => void }) {
   const save = getSaveState(mission, state);
   const progress = state.missions[mission.id];
   const [blocker, setBlocker] = useState(progress.blocker);
@@ -330,7 +336,8 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify }: {
   function update(title: string, transform: (current: AppState) => AppState) {
     if (commit(current => recordChange(transform(current), title, mission.id))) notify(title);
   }
-  return <><a className="back-link" href="#/missions">← All missions</a><PageHeading eyebrow={mission.operation} title={mission.name} description={mission.purpose}>{!mission.planned && <button className="button secondary" data-tour="mission-mode" onClick={() => update(progress.mode === 'active' ? 'Mission moved to background' : 'Mission brought into focus', current => ({ ...current, missions: { ...current.missions, [mission.id]: { ...current.missions[mission.id], mode: progress.mode === 'active' ? 'background' : 'active' } } }))}>{progress.mode === 'active' ? <Pause size={15} /> : <Play size={15} />}{progress.mode === 'active' ? 'Move to background' : 'Bring into focus'}</button>}</PageHeading>
+  return <><a className="back-link" href="#/missions">← All missions</a><PageHeading eyebrow={mission.operation} title={mission.name} description={mission.purpose}
+    titleAction={<button className="button secondary" data-tour="full-roadmap-open" onClick={onFullRoadmap}><Maximize2 size={17} />Full roadmap</button>}>{!mission.planned && <button className="button secondary" data-tour="mission-mode" onClick={() => update(progress.mode === 'active' ? 'Mission moved to background' : 'Mission brought into focus', current => ({ ...current, missions: { ...current.missions, [mission.id]: { ...current.missions[mission.id], mode: progress.mode === 'active' ? 'background' : 'active' } } }))}>{progress.mode === 'active' ? <Pause size={15} /> : <Play size={15} />}{progress.mode === 'active' ? 'Move to background' : 'Bring into focus'}</button>}</PageHeading>
     <SourcePanel missionId={mission.id} state={state} commit={commit} />
     {mission.planned ? <MissionFlowchart mission={mission} state={state} /> : <>
       <section className={`save-state-card ${mission.color}`} data-tour="save-state"><div className="save-state-header"><span className="eyebrow"><Flag size={14} />CURRENT CHECKPOINT</span><Badge tone="green">{statusLabels[save.status]}</Badge></div><div className="save-state-main"><MissionIcon mission={mission} size={27} /><div><span>{save.stage}</span><h2>{save.checkpoint?.title}</h2></div><span className="save-count">{save.completed}<small> / {save.total} complete</small></span></div><Progress value={save.completed / save.total * 100} label="Mission checkpoint progress" /><div className="save-state-bottom"><span><LockKeyhole size={14} /><strong>Next unlock:</strong> {save.next}</span><button className="text-link" data-tour="mission-primary" onClick={() => update('Primary mission updated', current => ({ ...current, focusMissionId: mission.id }))}>{state.focusMissionId === mission.id ? 'Your primary mission' : 'Make primary mission'}<Target size={14} /></button></div></section>

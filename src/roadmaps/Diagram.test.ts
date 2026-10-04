@@ -39,4 +39,12 @@ describe('diagram connections', () => {
     expect(() => connectDiagram([{ from: 'toString', to: 'a' }], boxes, 400)).toThrow('Missing diagram node');
     expect(connectDiagram([], boxes, 400)).toEqual([]);
   });
+
+  it('routes cross-stage prerequisites beside the complete source column', () => {
+    const grouped = { ...boxes, stage: { x: 10, y: 80, width: 200, height: 300 } };
+    const [edge] = connectDiagram([{ from: 'a', to: 'b', kind: 'cross-stage', via: 'stage' }], grouped, 400);
+    expect(edge.path).toBe('M 120 140 H 222 V 100 H 290 V 120');
+    expect(edge.arrow).toBe(true);
+    expect(() => connectDiagram([{ from: 'a', to: 'b', kind: 'cross-stage', via: 'missing' }], grouped, 400)).toThrow('Missing diagram group');
+  });
 });
