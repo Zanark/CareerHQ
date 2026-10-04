@@ -6,10 +6,11 @@ import { getSaveState, localDate } from './domain/engine';
 import type { AppState, DailyAction, EvidenceInput, EvidenceKind, MissionId, Opportunity } from './domain/types';
 import { kindLabels, Modal } from './components';
 
-export function EvidenceDialog({ state, initialMission, action, onSave, onClose }: {
+export function EvidenceDialog({ state, initialMission, action, practice = false, onSave, onClose }: {
   state: AppState;
   initialMission: MissionId;
   action?: DailyAction;
+  practice?: boolean;
   onSave: (input: EvidenceInput) => boolean;
   onClose: () => void;
 }) {
@@ -17,6 +18,9 @@ export function EvidenceDialog({ state, initialMission, action, onSave, onClose 
   const [advance, setAdvance] = useState(false);
   const [confirmed, setConfirmed] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [artifactTitle, setArtifactTitle] = useState('');
+  const [summary, setSummary] = useState('');
+  const [kind, setKind] = useState<EvidenceKind>('explanation');
   const mission = getMission(missionId);
   const save = getSaveState(mission, state);
   const eligible = missions.filter(item => !item.planned && state.missions[item.id].mode === 'active' && state.missions[item.id].status !== 'completed' && !state.missions[item.id].blocker);
@@ -39,27 +43,34 @@ export function EvidenceDialog({ state, initialMission, action, onSave, onClose 
     else setError('The evidence could not be saved. Check the workspace warning and try again.');
   }
 
-  return <Modal title="Keep the proof." subtitle="A small artifact today. Something you can return to tomorrow." onClose={onClose}>
-    <form onSubmit={submit} className="stack-form">
+  return <Modal title="Record progress" subtitle="Save what you practiced. Complete a checkpoint only when its criteria are met." onClose={onClose}>
+    <form onSubmit={submit} className="stack-form" data-tour="evidence-form">
+      {practice && <button type="button" className="button secondary practice-example" data-tour="evidence-example" onClick={() => {
+        setArtifactTitle('Tutorial lookup-map practice');
+        setSummary('Practice example: traced a lookup map, tested duplicates and no-match inputs, and explained linear time and space.');
+        setKind('code');
+      }}>Fill example</button>}
       <label>Mission<select value={missionId} disabled={!!action} onChange={event => { setMission(event.target.value as MissionId); setConfirmed([]); setAdvance(false); }}>
-        {eligible.map(item => <option key={item.id} value={item.id}>{item.operation}</option>)}
+        {eligible.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       <div className="form-context"><span className="eyebrow">CURRENT CHECKPOINT</span><strong>{save.checkpoint?.title ?? 'No checkpoint available'}</strong></div>
       {action && action.date !== localDate() && <p className="form-context small">A new day has started. Your draft is safe: it will be saved as checkpoint evidence, without changing yesterday’s plan.</p>}
-      <div className="form-row"><label>What did you make?<select name="kind" defaultValue="explanation">{Object.entries(kindLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Artifact title<input name="title" placeholder="e.g. Cache-aside, from memory" required minLength={3} maxLength={120} /></label></div>
-      <label>A little context<textarea name="summary" placeholder="What did you practice, produce, or discover? What can you now explain?" required minLength={10} maxLength={2000} rows={3} /></label>
+      <div className="form-row"><label>What did you make?<select name="kind" value={kind} onChange={event => setKind(event.target.value as EvidenceKind)}>{Object.entries(kindLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Artifact title<input name="title" value={artifactTitle} onChange={event => setArtifactTitle(event.target.value)} placeholder="e.g. Cache-aside explanation" required minLength={3} maxLength={120} /></label></div>
+      <label>What did you practice?<textarea name="summary" value={summary} onChange={event => setSummary(event.target.value)} placeholder="Briefly describe the work and what you can demonstrate." required minLength={10} maxLength={2000} rows={3} /></label>
       <label>Link to your work <span className="optional">(optional)</span><input type="url" name="url" placeholder="https://..." maxLength={2000} /></label>
-      <label className="checkbox-label completion-choice"><input type="checkbox" checked={advance} onChange={event => setAdvance(event.target.checked)} /><span><strong>This checkpoint is complete</strong><small>Only advance when you can demonstrate every criterion below. Otherwise, just save your progress.</small></span></label>
-      {advance && <fieldset className="criteria"><legend>My completion evidence meets these criteria</legend>{save.checkpoint?.criteria.map(criterion => <label className="checkbox-label" key={criterion}><input type="checkbox" checked={confirmed.includes(criterion)} onChange={event => setConfirmed(current => event.target.checked ? [...current, criterion] : current.filter(item => item !== criterion))} /><span>{criterion}</span></label>)}<p>Self-confirmed, not evaluated by AI. Next: {save.next}</p></fieldset>}
-      <p className="privacy-note"><LockKeyhole size={14} /> Stays in this browser. No upload, even in sample mode.</p>
+      <label className="checkbox-label completion-choice"><input data-tour="checkpoint-complete" type="checkbox" checked={advance} onChange={event => setAdvance(event.target.checked)} /><span><strong>This checkpoint is complete</strong><small>Only advance when you can demonstrate every criterion below. Otherwise, just save your progress.</small></span></label>
+      {advance && <fieldset className="criteria" data-tour="evidence-criteria"><legend>My completion evidence meets these criteria</legend>{save.checkpoint?.criteria.map(criterion => <label className="checkbox-label" key={criterion}><input type="checkbox" checked={confirmed.includes(criterion)} onChange={event => setConfirmed(current => event.target.checked ? [...current, criterion] : current.filter(item => item !== criterion))} /><span>{criterion}</span></label>)}<p>Self-confirmed, not evaluated by AI. Next: {save.next}</p></fieldset>}
+      <p className="privacy-note"><LockKeyhole size={14} />{practice ? 'Practice only. Discarded when you exit the tutorial.' : 'Stored in this browser. Not uploaded or synced.'}</p>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="modal-footer"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary" disabled={!save.checkpoint || !eligible.some(item => item.id === missionId) || (advance && confirmed.length !== save.checkpoint.criteria.length)}>{advance ? 'Complete & unlock next' : 'Save evidence'}<Check size={16} /></button></div>
+      <div className="modal-footer"><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary" data-tour="evidence-submit" disabled={!save.checkpoint || !eligible.some(item => item.id === missionId) || (advance && confirmed.length !== save.checkpoint.criteria.length)}>{advance ? 'Complete & unlock next' : 'Save evidence'}<Check size={16} /></button></div>
     </form>
   </Modal>;
 }
 
-export function OpportunityDialog({ onSave, onClose }: { onSave: (opportunity: Opportunity) => boolean; onClose: () => void }) {
+export function OpportunityDialog({ onSave, onClose, practice = false }: { onSave: (opportunity: Opportunity) => boolean; onClose: () => void; practice?: boolean }) {
   const [error, setError] = useState('');
+  const [company, setCompany] = useState('');
+  const [role, setRole] = useState('');
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -72,13 +83,14 @@ export function OpportunityDialog({ onSave, onClose }: { onSave: (opportunity: O
     if (onSave(opportunity)) onClose();
     else setError('Could not save this opportunity. Use an http or https link and check the workspace warning.');
   }
-  return <Modal title="Open a new door." subtitle="Keep the next step close. Leave the sensitive details out." onClose={onClose}><form className="stack-form" onSubmit={submit}>
-    <label>Company<input name="company" required maxLength={100} placeholder="Company name" /></label>
-    <label>Role<input name="role" required maxLength={150} placeholder="e.g. Platform Engineer" /></label>
+  return <Modal title="Add opportunity" subtitle="Track a role and its next step." onClose={onClose}><form className="stack-form" onSubmit={submit} data-tour="opportunity-form">
+    {practice && <button type="button" className="button secondary practice-example" data-tour="opportunity-example" onClick={() => { setCompany('Example Systems (tutorial)'); setRole('Platform Engineer (practice)'); }}>Fill example</button>}
+    <label>Company<input name="company" value={company} onChange={event => setCompany(event.target.value)} required maxLength={100} placeholder="Company name" /></label>
+    <label>Role<input name="role" value={role} onChange={event => setRole(event.target.value)} required maxLength={150} placeholder="e.g. Platform Engineer" /></label>
     <label>Job listing <span className="optional">(optional)</span><input name="url" type="url" placeholder="https://..." maxLength={2000} /></label>
     <label>Next step <span className="optional">(optional)</span><textarea name="notes" rows={3} maxLength={1000} placeholder="One small thing to move this forward" /></label>
-    <p className="privacy-note"><LockKeyhole size={14} /> Local only. Never add passwords or confidential information.</p>
+    <p className="privacy-note"><LockKeyhole size={14} />{practice ? 'Practice only. Discarded when you exit the tutorial.' : 'Local only. Never add passwords or confidential information.'}</p>
     {error && <p role="alert" className="form-error">{error}</p>}
-    <div className="modal-footer"><button className="button secondary" type="button" onClick={onClose}>Cancel</button><button className="button primary">Add opportunity<ArrowRight size={16} /></button></div>
+    <div className="modal-footer"><button className="button secondary" type="button" onClick={onClose}>Cancel</button><button className="button primary" data-tour="opportunity-submit">Add opportunity<ArrowRight size={16} /></button></div>
   </form></Modal>;
 }

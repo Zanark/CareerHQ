@@ -1,8 +1,9 @@
 import { test as base, expect, type Page, type TestInfo } from '@playwright/test';
 import type { AppState } from '../src/domain/types';
+import { createInitialState } from '../src/domain/engine';
 
 const storageKey = 'careerhq.workspace.v1';
-const sampleMessage = /You’re exploring a sample workspace/;
+const sampleMessage = /Includes example data/;
 
 const test = base.extend<{ browserHealth: void }>({
   browserHealth: [async ({ context, baseURL }, use) => {
@@ -45,8 +46,10 @@ async function navigate(page: Page, name: string | RegExp) {
   if (await menu.isVisible() && await menu.getAttribute('aria-expanded') !== 'true') {
     await menu.click();
   }
-  await page.getByRole('complementary', { name: 'Main navigation' })
-    .getByRole('link', { name }).click();
+  const link = page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name });
+  await link.click();
+  await expect(link).toHaveClass(/\bselected\b/);
+  if (await menu.isVisible()) await expect(menu).toHaveAttribute('aria-expanded', 'false');
 }
 
 async function confirmNext(page: Page, action: () => Promise<unknown>, accept = true) {
@@ -68,15 +71,15 @@ async function freshWorkspace(page: Page) {
 }
 
 async function openPatternForge(page: Page) {
-  await navigate(page, /^My missions/);
-  await page.getByRole('button', { name: 'Open Pattern Forge', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Pattern Forge', exact: true, level: 1 })).toBeVisible();
+  await navigate(page, /^Missions/);
+  await page.getByRole('button', { name: 'Open DSA', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'DSA', exact: true, level: 1 })).toBeVisible();
 }
 
 async function fillEvidence(page: Page, title: string, summary = 'I traced an example and explained the result in my own words.') {
-  const dialog = page.getByRole('dialog', { name: 'Keep the proof.' });
+  const dialog = page.getByRole('dialog', { name: 'Record progress' });
   await dialog.getByLabel('Artifact title').fill(title);
-  await dialog.getByLabel('A little context').fill(summary);
+  await dialog.getByLabel('What did you practice?').fill(summary);
   return dialog;
 }
 
@@ -92,22 +95,24 @@ async function noOverflow(page: Page) {
   ), { message: 'No horizontal document overflow' }).toBeLessThanOrEqual(0);
 }
 
-test('sample workspace, accessible navigation, and hash deep-link reload', async ({ page }, testInfo) => {
+test('empty workspace, accessible navigation, and hash deep-link reload', async ({ page }, testInfo) => {
   await page.goto('./');
-  await expect(page.getByRole('heading', { level: 1, name: 'A little progress. A clearer direction.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
   await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', /^\/CareerHQ\/assets\/.+\.js$/);
   await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
     'content', /(?:^|;)\s*script-src 'self'\s*(?:;|$)/,
   );
-  await expect(page.getByText(sampleMessage)).toBeVisible();
+  await expect(page.getByText(sampleMessage)).toHaveCount(0);
+  expect((await stored(page)).sampleData).toBe(false);
+  expect((await stored(page)).evidence).toEqual([]);
   await noOverflow(page);
   await screenshot(page, testInfo, 'hq-desktop');
 
   const pages = [
-    [/^My missions/, 'Your missions, connected.'],
-    ['Master roadmap', 'Separate paths. Shared direction.'],
-    ['Daily plan', 'Make today manageable.'],
-    ['Evidence vault', 'Work you can point to.'],
+    [/^Missions/, 'Missions'],
+    ['Roadmap', 'Roadmap'],
+    ['Daily plan', 'Daily plan'],
+    ['Saved work', 'Saved work'],
   ] as const;
   for (const [link, title] of pages) {
     await navigate(page, link);
@@ -116,7 +121,7 @@ test('sample workspace, accessible navigation, and hash deep-link reload', async
   await openPatternForge(page);
   await expect(page).toHaveURL(/\/CareerHQ\/#\/mission\/pattern$/);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Pattern Forge', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'DSA', exact: true })).toBeVisible();
   await screenshot(page, testInfo, 'mission-desktop');
 });
 
@@ -127,8 +132,8 @@ for (const width of [390, 320]) {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await noOverflow(page);
     await screenshot(page, testInfo, `hq-${width}`);
-    for (const link of [/^My missions/, 'Master roadmap', 'Daily plan', 'Evidence vault', 'History',
-      'Opportunity pipeline', 'Interview readiness', 'Settings & data']) {
+    for (const link of [/^Missions/, 'Roadmap', 'Daily plan', 'Saved work', 'History',
+      'Opportunities', 'Interview readiness', 'Settings & data']) {
       await navigate(page, link);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await noOverflow(page);
@@ -137,9 +142,9 @@ for (const width of [390, 320]) {
     await openPatternForge(page);
     await noOverflow(page);
     await page.getByRole('button', { name: 'Record evidence', exact: true }).click();
-    await expect(page.getByRole('dialog', { name: 'Keep the proof.' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Record progress' })).toBeVisible();
     await noOverflow(page);
-    const dialogBox = await page.getByRole('dialog', { name: 'Keep the proof.' }).boundingBox();
+    const dialogBox = await page.getByRole('dialog', { name: 'Record progress' }).boundingBox();
     expect(dialogBox).not.toBeNull();
     expect(dialogBox!.x).toBeGreaterThanOrEqual(0);
     expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(width);
@@ -153,6 +158,9 @@ for (const width of [390, 320]) {
 }
 
 test('reset needs confirmation, removes samples, and survives reload', async ({ page }) => {
+  await page.addInitScript(({ key, state }) => {
+    if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(state));
+  }, { key: storageKey, state: createInitialState(true) });
   await page.goto('./');
   await navigate(page, 'Settings & data');
   const before = await rawStored(page);
@@ -174,17 +182,17 @@ test('required evidence records action progress without claiming mastery', async
   await freshWorkspace(page);
   await navigate(page, 'Daily plan');
   const before = await stored(page);
-  const action = page.getByRole('article').filter({ has: page.getByText('Pattern Forge', { exact: true }) });
+  const action = page.getByRole('article').filter({ has: page.getByText('DSA', { exact: true }) });
   await action.getByRole('button', { name: 'Log progress', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Keep the proof.' });
+  const dialog = page.getByRole('dialog', { name: 'Record progress' });
   await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
   expect(await dialog.getByLabel('Artifact title').evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
   expect((await stored(page)).evidence).toHaveLength(0);
   await dialog.getByLabel('Artifact title').fill('A test-owned practice trace');
   await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
-  expect(await dialog.getByLabel('A little context').evaluate((input: HTMLTextAreaElement) => input.validity.valueMissing)).toBe(true);
+  expect(await dialog.getByLabel('What did you practice?').evaluate((input: HTMLTextAreaElement) => input.validity.valueMissing)).toBe(true);
   expect((await stored(page)).evidence).toHaveLength(0);
-  await dialog.getByLabel('A little context').fill('I traced a small example and recorded the boundary cases, without claiming completion.');
+  await dialog.getByLabel('What did you practice?').fill('I traced a small example and recorded the boundary cases, without claiming completion.');
   await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(action.getByText('Evidence recorded', { exact: true })).toBeVisible();
@@ -225,24 +233,24 @@ test('checkpoint unlock requires all criteria and retains evidence across reload
   await page.reload();
   expect((await stored(page)).missions.pattern).toEqual(after.missions.pattern);
   await expect(page.getByRole('progressbar', { name: 'Mission checkpoint progress' })).not.toHaveAttribute('aria-valuenow', '0');
-  await navigate(page, 'Evidence vault');
+  await navigate(page, 'Saved work');
   await expect(page.getByRole('heading', { name: 'A test-owned checkpoint demonstration', exact: true })).toBeVisible();
   await expect(page.getByText('Checkpoint proof', { exact: true })).toBeVisible();
 });
 
 test('mission and evidence filters use real browser-owned records', async ({ page }) => {
   await freshWorkspace(page);
-  await navigate(page, /^My missions/);
+  await navigate(page, /^Missions/);
   await page.getByRole('button', { name: /^Planned/ }).click();
-  await expect(page.getByRole('button', { name: 'Open Algorithm Forge', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open Pattern Forge', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Open Competitive/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open DSA', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: /^All missions/ }).click();
-  await page.getByRole('button', { name: 'Open Pattern Forge', exact: true }).click();
+  await page.getByRole('button', { name: 'Open DSA', exact: true }).click();
   await page.getByRole('button', { name: 'Record evidence', exact: true }).click();
   const dialog = await fillEvidence(page, 'Filterable practice artifact');
   await dialog.getByLabel('What did you make?').selectOption('code');
   await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
-  await navigate(page, 'Evidence vault');
+  await navigate(page, 'Saved work');
   const artifact = page.getByRole('heading', { name: 'Filterable practice artifact', exact: true });
   await expect(artifact).toBeVisible();
   await page.getByRole('combobox', { name: 'Filter evidence by mission' }).selectOption('system');
@@ -253,7 +261,7 @@ test('mission and evidence filters use real browser-owned records', async ({ pag
   await page.getByRole('combobox', { name: 'Filter evidence by type' }).selectOption('code');
   await expect(artifact).toBeVisible();
   await page.getByRole('textbox', { name: 'Search evidence', exact: true }).fill('not-a-matching-artifact');
-  await expect(page.getByRole('heading', { name: 'No proof matches those filters.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No work matches those filters.' })).toBeVisible();
   await page.getByRole('textbox', { name: 'Search evidence', exact: true }).fill('Filterable');
   await expect(artifact).toBeVisible();
 });
@@ -280,9 +288,9 @@ test('gentle capacity rebuilds an untouched plan to at most one short action', a
 test('opportunities can be created and moved between stages without changing mastery', async ({ page }) => {
   await freshWorkspace(page);
   const before = await stored(page);
-  await navigate(page, 'Opportunity pipeline');
+  await navigate(page, 'Opportunities');
   await page.getByRole('button', { name: 'Add opportunity', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Open a new door.' });
+  const dialog = page.getByRole('dialog', { name: 'Add opportunity', exact: true });
   await dialog.getByLabel('Company', { exact: true }).fill('Example Test Workshop');
   await dialog.getByLabel('Role', { exact: true }).fill('Fictional Platform Engineer');
   await dialog.getByLabel('Job listing').fill('https://example.com/synthetic-role');
@@ -443,7 +451,7 @@ test('another tab cannot silently overwrite a newer workspace', async ({ page, c
   await navigate(page, 'Daily plan');
   const other = await context.newPage();
   await other.goto('./#/plan');
-  await expect(other.getByRole('heading', { name: 'Make today manageable.' })).toBeVisible();
+  await expect(other.getByRole('heading', { name: 'Daily plan', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Gentle', exact: true }).click();
   const latest = await rawStored(page);
   await expect(other.getByRole('alert').filter({ hasText: /changed in another tab/ })).toBeVisible();
@@ -477,7 +485,7 @@ test('focus timer can pause, resume, and reset without recording mastery', async
 
 test('running focus timer survives mission and daily-plan navigation', async ({ page }) => {
   await freshWorkspace(page);
-  await navigate(page, 'HQ overview');
+  await navigate(page, 'Daily plan');
   await page.getByRole('button', { name: 'Steady', exact: true }).click();
   await page.clock.install();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
@@ -512,7 +520,7 @@ test('a midnight rollover preserves an open evidence draft without completing ye
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   });
   const documentStarted = await page.evaluate(() => performance.timeOrigin);
-  const action = page.getByRole('article').filter({ has: page.getByText('Pattern Forge', { exact: true }) });
+  const action = page.getByRole('article').filter({ has: page.getByText('DSA', { exact: true }) });
   await action.getByRole('button', { name: 'Log progress', exact: true }).click();
   const title = 'Synthetic practice draft spanning midnight';
   const summary = 'I traced the boundary cases before midnight and kept this explanation open to finish it safely.';
@@ -527,7 +535,7 @@ test('a midnight rollover preserves an open evidence draft without completing ye
   const newPlan = (await stored(page)).plans[currentDate];
   await expect(dialog.getByText(/A new day has started\. Your draft is safe/)).toBeVisible();
   await expect(dialog.getByLabel('Artifact title')).toHaveValue(title);
-  await expect(dialog.getByLabel('A little context')).toHaveValue(summary);
+  await expect(dialog.getByLabel('What did you practice?')).toHaveValue(summary);
   await dialog.getByRole('button', { name: 'Save evidence', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const after = await stored(page);
@@ -590,14 +598,14 @@ test('large valid workspace exports compact bytes and imports its actual backup'
     contentType: 'application/json',
   });
 
-  await navigate(page, 'HQ overview');
+  await navigate(page, 'Overview');
   await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: storageKey, raw: compact });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'A little progress. A clearer direction.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   expect((await stored(page)).evidence).toHaveLength(count);
   const persisted = await rawStored(page);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download workspace backup', exact: true }).click();
+  await page.getByRole('button', { name: 'Export backup', exact: true }).click();
   const download = await downloadPromise;
   const stream = await download.createReadStream();
   expect(stream).not.toBeNull();

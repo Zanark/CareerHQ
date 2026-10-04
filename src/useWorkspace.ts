@@ -3,6 +3,17 @@ import { createInitialState, generatePlan, localDate, parseState, STORAGE_KEY } 
 import type { AppState } from './domain/types';
 import { serializeWorkspace } from './workspaceFile';
 
+export interface WorkspaceModel {
+  state: AppState | null;
+  date: string;
+  error: string;
+  setError: (message: string) => void;
+  conflict: boolean;
+  commit: (transform: (state: AppState) => AppState) => boolean;
+  replace: (state: AppState) => boolean;
+  recoveryRaw: string | null;
+}
+
 function message(error: unknown) {
   return error instanceof Error ? error.message : 'An unexpected storage error occurred.';
 }
@@ -11,7 +22,7 @@ function loadWorkspace() {
   let raw: string | null = null;
   try {
     raw = localStorage.getItem(STORAGE_KEY);
-    const state = raw ? parseState(JSON.parse(raw)) : createInitialState();
+    const state = raw ? parseState(JSON.parse(raw)) : createInitialState(false);
     const date = localDate();
     if (!state.plans[date]) state.plans[date] = generatePlan(state, date);
     const serialized = serializeWorkspace(state);
@@ -31,7 +42,7 @@ export function downloadFile(content: string, filename: string, type = 'applicat
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function useWorkspace() {
+export function useWorkspace(pausePlanning = false): WorkspaceModel {
   const [initial] = useState(loadWorkspace);
   const [state, setState] = useState<AppState | null>(initial.state);
   const stateRef = useRef(state);
@@ -82,13 +93,13 @@ export function useWorkspace() {
   }
 
   useEffect(() => {
-    if (stateRef.current && !stateRef.current.plans[date]) {
+    if (!pausePlanning && stateRef.current && !stateRef.current.plans[date]) {
       commit(current => ({
         ...current,
         plans: { ...current.plans, [date]: generatePlan(current, date) },
       }));
     }
-  }, [date, state]); // A new day or imported workspace gets a plan, never yesterday's backlog.
+  }, [date, state, pausePlanning]); // Practice never writes a plan into the real workspace.
 
   return { state, date, error, setError, conflict, commit, replace, recoveryRaw: initial.raw };
 }

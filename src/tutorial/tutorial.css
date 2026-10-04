@@ -1,0 +1,257 @@
+/* Tutorial coach panel. Portaled into the open native <dialog> when one exists, otherwise into
+   document.body. Styles are scoped under tutorial- prefixed classes plus one global highlight
+   class applied directly to the real target element. */
+
+.tutorial-highlight {
+  outline: 3px solid var(--dsf-accent) !important;
+  outline-offset: 3px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--dsf-accent) 18%, transparent);
+  scroll-margin: 96px;
+}
+
+.tutorial-panel {
+  position: fixed;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--dsf-paper);
+  color: var(--dsf-text);
+  border: 1px solid var(--dsf-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px var(--dsf-shadow);
+  padding: 14px 16px 12px;
+  overflow: auto;
+  pointer-events: auto;
+}
+
+.tutorial-panel-floating {
+  transition: top 160ms ease, left 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-panel-floating { transition: none; }
+}
+
+.tutorial-panel-mobile {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: auto !important;
+  border-radius: 14px;
+}
+
+.tutorial-collapsed {
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.tutorial-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tutorial-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tutorial-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dsf-muted);
+}
+
+.tutorial-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dsf-heading);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.tutorial-head-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tutorial-progress-track {
+  height: 4px;
+  width: 100%;
+  background: var(--dsf-separator);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tutorial-progress-fill {
+  height: 100%;
+  background: var(--dsf-accent);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tutorial-progress-fill { transition: width 200ms ease; }
+}
+
+.tutorial-chapter-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--dsf-muted);
+}
+.tutorial-chapter-nav select { flex: 1; min-width: 0; font-size: 11px; padding: 7px 9px; }
+:root.tutorial-running { scroll-padding-bottom: var(--tutorial-clearance, 24px); }
+.tutorial-running .modal { scroll-padding-bottom: var(--tutorial-clearance, 24px); }
+@media (max-width: 640px) {
+  .tutorial-running [data-workspace="practice"] main { padding-bottom: var(--tutorial-clearance, 280px); }
+  .tutorial-running .modal { padding-bottom: calc(28px + var(--tutorial-clearance, 280px)); }
+}
+.tutorial-practice-banner { display: flex; gap: 12px; align-items: center; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--dsf-accent); border-radius: 7px; background: var(--dsf-paper); font-size: 11px; }
+.tutorial-practice-banner > span { color: var(--dsf-muted); flex: 1; }
+.tutorial-practice-banner > button { color: var(--dsf-accent); text-decoration: underline; font-size: 11px; }
+@media (max-width: 480px) {
+  .tutorial-practice-banner { flex-wrap: wrap; gap: 7px; }
+  .tutorial-practice-banner > span { flex-basis: 100%; order: 2; }
+  .tutorial-practice-banner > button { margin-left: auto; }
+}
+
+.tutorial-chapter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--dsf-accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.tutorial-chapter-list {
+  position: absolute;
+  z-index: 1;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  list-style: none;
+  padding: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--dsf-paper);
+  border: 1px solid var(--dsf-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--dsf-shadow);
+  min-width: 200px;
+}
+
+.tutorial-chapter-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--dsf-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tutorial-chapter-item:hover {
+  background: var(--dsf-hover);
+}
+
+.tutorial-chapter-active {
+  color: var(--dsf-accent);
+  font-weight: 700;
+}
+
+.tutorial-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsf-text);
+  margin: 0;
+}
+
+.tutorial-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsf-accent);
+  margin: 0;
+}
+
+.tutorial-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--dsf-warning-wash);
+  border: 1px solid var(--dsf-warning);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.tutorial-missing p { margin: 0; }
+
+.tutorial-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-actions .button {
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.tutorial-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--dsf-separator);
+}
+
+.tutorial-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--dsf-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.tutorial-link-button:hover {
+  color: var(--dsf-accent);
+}
+
+.tutorial-panel button:focus-visible,
+.tutorial-panel [tabindex]:focus-visible {
+  outline: 2px solid var(--dsf-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 400px) {
+  .tutorial-panel-floating {
+    left: 10px !important;
+    right: 10px;
+    width: auto !important;
+  }
+}

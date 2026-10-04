@@ -13,6 +13,7 @@ yellow sun has a warm sunset-colored outline. Night retains the deep-water sky.
 
 The local preference uses `careerhq.theme.v1`, separately from career workspace
 data. Workspace export, import and reset do not include or change appearance.
+Theme switches during the tutorial are temporary and do not overwrite that preference.
 If preference storage is unavailable, switching still works for the current tab
 and the interface explains that it could not save the choice.
 

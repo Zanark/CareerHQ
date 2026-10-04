@@ -1,9 +1,7 @@
 # CareerHQ
 
-**A little progress. A clearer direction.**
-
-A local-first career workspace: connected missions, manageable daily actions, and
-evidence you can return to. Built with React, TypeScript, and Vite.
+Track current checkpoints, daily actions, and saved work.
+Built with React, TypeScript, and Vite; data stays in your browser.
 
 [Website](https://zanark.github.io/CareerHQ/) ·
 [Architecture](docs/ARCHITECTURE.md) · [Themes](docs/THEMES.md) · [Privacy](docs/PRIVACY.md) ·
@@ -19,6 +17,8 @@ evidence you can return to. Built with React, TypeScript, and Vite.
 - Provides evidence search/filtering, event history, a tab-local focus timer,
   an opportunity pipeline, and self-assessed interview readiness.
 - Saves browser-local state and supports private JSON backup/export and replacement import.
+- Provides an interactive **Tutorial** using a separate, temporary practice workspace.
+  Try real controls without changing your progress, theme preference, or existing focus session.
 - Uses **DeepSeaFoam** dark and **Harbor Daylight** light palettes. The header switch
   animates sunrise/sunset, remembers your choice, and respects reduced motion.
 
@@ -41,22 +41,37 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 
 ## Start using it
 
-1. The first visit opens a clearly labeled **illustrative sample workspace**.
-   Its evidence and progress are fictional, not your history.
-2. Open **Settings & data → Start a fresh workspace** to begin without samples.
-   This replaces local state after confirmation. **Export first** if you want to keep it.
-3. Choose a mission and capacity, then record a small piece of evidence.
+1. A new browser starts with **no assumed progress**. Existing workspaces, including
+   earlier sample workspaces, are preserved rather than reset during an update.
+2. Click **Tutorial** in the header or sidebar for the click-by-click practice walkthrough.
+   Exit or finish to return to your real data and previous page. Practice exports are
+   named `careerhq-tutorial-example-*`, not real backups.
+3. Use Overview for daily actions and current checkpoints. Open a mission or Daily plan
+   for its details, timer, capacity, and completion criteria.
 4. Only select **This checkpoint is complete** when your artifact demonstrates
    every listed criterion. Saving ordinary progress does not unlock the next checkpoint.
 5. Download private backups regularly. Importing a valid backup **replaces**, rather
    than merges, the current workspace after confirmation.
 
-**Local is not encrypted.** The “Evidence vault” is a UI name, not a secure vault.
+**Local is not encrypted.** Saved work is not a secure vault.
 Other JavaScript on the same GitHub Pages origin can read the same localStorage.
 Do not enter credentials, confidential material, or sensitive personal information.
 Keep exported backups private. Read [Privacy](docs/PRIVACY.md) before entering real data.
 Saving and exporting share a 5 MiB compact UTF-8 limit so accepted workspaces remain importable.
 Larger writes fail without replacing the previous saved workspace.
+
+## Persistence and changing machines
+
+There are **no user profiles, accounts, streak counters, or automatic cloud sync**.
+Progress uses localStorage for the current browser and site origin (scheme, domain,
+and port), not a server account. Refreshing or installing a normal UI update at that
+same origin retains compatible data. This UI revision keeps data format v1 unchanged.
+Future schema or roadmap changes require explicit migrations, not silent resets.
+
+To move devices or browsers, export a backup, transfer it privately, and import it
+on the destination. Moving from the local preview to GitHub Pages also requires this:
+they are different origins. Clearing site data or deleting a browser profile can
+remove local progress. Export regularly; import replaces the destination after confirmation.
 
 ## Develop and verify
 

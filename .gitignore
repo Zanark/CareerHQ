@@ -16,4 +16,5 @@ playwright-report/
 # Private source material and personal exports never belong in the public site
 *.pdf
 careerhq-backup-*.json
+careerhq-tutorial-example-*.json
 private/

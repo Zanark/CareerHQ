@@ -1,5 +1,6 @@
 import { test as base, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { THEME_MOTION_MS } from '../src/useTheme';
+import { createInitialState } from '../src/domain/engine';
 
 type Theme = 'dark' | 'light';
 const themeKey = 'careerhq.theme.v1';
@@ -96,10 +97,10 @@ async function noOverflow(page: Page) {
 test('default dark and switched light use canonical colors without altering workspace data', async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: 'A little progress. A clearer direction.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   const before = await workspace(page);
   await assertTheme(page, 'dark');
-  const mission = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Pattern Forge', exact: true }) });
+  const mission = page.locator('.overview-list').first();
   await expect(mission).toHaveCSS('background-color', palette.dark.card);
   await capture(page, testInfo, 'canonical-hq-dark');
   await selectTheme(page, 'light');
@@ -143,27 +144,30 @@ test('external prepaint script restores saved light before the main module hydra
 
 for (const theme of ['dark', 'light'] as const) {
   test(`${theme} colors and preference survive mission, evidence, settings, and dialog routes`, async ({ page }, testInfo) => {
+    await page.addInitScript(({ key, state }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(state));
+    }, { key: workspaceKey, state: createInitialState(true) });
     await page.goto('./');
     await selectTheme(page, theme);
     const before = await workspace(page);
     const documentStarted = await page.evaluate(() => performance.timeOrigin);
 
-    await navigate(page, 'Master roadmap');
-    await page.getByRole('link', { name: /DSA\s+Pattern Forge/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Pattern Forge', exact: true })).toBeVisible();
+    await navigate(page, 'Roadmap');
+    await page.getByRole('link', { name: /Pattern Forge\s+DSA/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'DSA', exact: true })).toBeVisible();
     await assertTheme(page, theme);
-    const blockerCard = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Clear the path.', exact: true }) });
+    const blockerCard = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Blocker', exact: true }) });
     await expect(blockerCard).toHaveCSS('background-color', palette[theme].card);
     await capture(page, testInfo, `mission-${theme}`);
 
-    await navigate(page, 'Evidence vault');
+    await navigate(page, 'Saved work');
     await assertTheme(page, theme);
     const cards = page.getByRole('article');
     expect(await cards.count()).toBeGreaterThan(0);
     for (const card of await cards.all()) await expect(card).toHaveCSS('background-color', palette[theme].card);
     await capture(page, testInfo, `evidence-${theme}`);
     await page.getByRole('button', { name: 'Add evidence', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Keep the proof.' });
+    const dialog = page.getByRole('dialog', { name: 'Record progress' });
     await expect(dialog).toHaveCSS('background-color', palette[theme].card);
     await capture(page, testInfo, `evidence-dialog-${theme}`, false);
     await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
@@ -392,8 +396,8 @@ for (const width of [320, 390]) {
     await page.goto('./');
     for (const theme of ['dark', 'light'] as const) {
       await selectTheme(page, theme);
-      for (const route of ['HQ overview', /^My missions/, 'Master roadmap', 'Daily plan', 'Evidence vault',
-        'History', 'Opportunity pipeline', 'Interview readiness', 'Settings & data']) {
+      for (const route of ['Overview', /^Missions/, 'Roadmap', 'Daily plan', 'Saved work',
+        'History', 'Opportunities', 'Interview readiness', 'Settings & data']) {
         await navigate(page, route);
         const search = page.getByRole('textbox', { name: 'Search missions and evidence', exact: true });
         await search.fill('Pattern');
@@ -406,8 +410,8 @@ for (const width of [320, 390]) {
           expect(bounds!.x).toBeGreaterThanOrEqual(0);
           expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
         }
-        if (route === 'HQ overview' || route === 'Settings & data') {
-          await capture(page, testInfo, `${theme}-${width}-${route === 'HQ overview' ? 'hq' : 'settings'}-search`, false);
+        if (route === 'Overview' || route === 'Settings & data') {
+          await capture(page, testInfo, `${theme}-${width}-${route === 'Overview' ? 'hq' : 'settings'}-search`, false);
         }
         await search.press('Escape');
         await search.blur();

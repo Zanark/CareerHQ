@@ -8,6 +8,7 @@ const motionStyle: CSSProperties & { '--theme-motion-duration': string } = {
 export function ThemeToggle({ appearance }: { appearance: ReturnType<typeof useTheme> }) {
   return <button
     className="theme-toggle"
+    data-tour="theme-switch"
     type="button"
     role="switch"
     aria-label="Dark theme"

@@ -18,8 +18,8 @@ Progress, evidence text and links, plans, history, readiness, and opportunities 
 stored under `careerhq.workspace.v1` in **localStorage**. Evidence is text/links, not
 an uploaded file archive. The focus timer is tab-local.
 
-**localStorage is not encrypted or a secure vault.** The “Evidence vault” label
-describes organization, not security. Anyone with suitable access to the browser,
+**localStorage is not encrypted or a secure vault.** Saved work is ordinary browser
+data. Anyone with suitable access to the browser,
 extensions, developer tools, or same-origin JavaScript may read or modify it.
 
 GitHub Pages project paths are **not separate origins**. For example, another site
@@ -30,6 +30,22 @@ Do not store passwords, tokens, credentials, confidential employer material, or
 sensitive personal information. Prefer synthetic examples and non-sensitive summaries.
 There is no multi-device sync, account recovery, or server backup. Clearing site data,
 using private browsing, browser cleanup, or storage failure can lose local work.
+
+Normal UI updates at the same origin preserve compatible saved data; a new browser,
+device, scheme/domain/port or hosted-versus-local address is a separate storage location.
+Export/import is the supported transfer mechanism. Future format changes must provide
+an explicit migration; unsupported state must be recoverable rather than silently reset.
+
+## Tutorial
+
+The guided tutorial uses in-memory practice data, not the stored workspace. Its actual
+forms, checkpoint completions, opportunities, imports and resets affect only that example.
+Theme changes are temporary too. Exiting discards practice state and restores the real
+view without writing over newer data from another tab.
+
+Practice exports are labeled `careerhq-tutorial-example-*`; they are not real backups.
+Do not enter sensitive information in the tutorial either: if you export what you typed,
+it is still readable in that downloaded file.
 
 ## Backups, imports, and reset
 
