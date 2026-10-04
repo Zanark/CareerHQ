@@ -37,6 +37,7 @@ export interface TutorialChapter {
 
 export const chapters: TutorialChapter[] = [
   { id: 'welcome', title: 'Welcome' },
+  { id: 'perspective', title: 'Keep going' },
   { id: 'overview', title: 'Overview' },
   { id: 'plan', title: 'Plan & focus' },
   { id: 'mission', title: 'Mission basics' },
@@ -60,6 +61,12 @@ export const steps: TutorialStep[] = [
     id: 'welcome-intro', chapter: 'welcome', kind: 'explain',
     title: 'Welcome to the practice tutorial',
     body: 'Follow the glow and hand. Try the action, then click Next. Use Chapter to jump between features. This is temporary practice; your real progress stays untouched.',
+  },
+  {
+    id: 'perspective-intro', chapter: 'perspective', kind: 'explain', route: 'perspective',
+    targets: ['perspective-intro'],
+    title: 'Encouragement with receipts',
+    body: 'Keep going sits before Overview. It connects practical reminders to published research and its limits, then shows saved work from the current workspace. Here those are practice examples, not your real achievements. Reading changes no progress; Overview is still the default landing page.',
   },
   // Overview
   {

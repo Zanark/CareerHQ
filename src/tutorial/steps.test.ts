@@ -19,7 +19,7 @@ describe('current tutorial curriculum', () => {
       'source-projects', 'full-map-open', 'full-map-zoom', 'full-map-inspect', 'full-map-current', 'full-map-fit',
       'pipeline-details', 'pipeline-metrics', 'freelance-research-examples', 'freelance-brief', 'freelance-copy',
       'review-recall-setup', 'review-independent', 'settings-export', 'settings-import', 'persistence-transfer',
-      'evidence-save', 'evidence-complete', 'control-blocker', 'tools-theme',
+      'evidence-save', 'evidence-complete', 'control-blocker', 'tools-theme', 'perspective-intro',
     ]) expect(ids.has(id), id).toBe(true);
   });
 });

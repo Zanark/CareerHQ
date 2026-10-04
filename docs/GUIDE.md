@@ -23,6 +23,8 @@ Built with React, TypeScript, and Vite; data stays in your browser.
 - Preserves previous roadmap versions and requires confirmation before adopting new definitions.
 - Provides an interactive **Tutorial** using a separate, temporary practice workspace.
   Try real controls without changing your progress, theme preference, or existing focus session.
+- Includes an optional **Keep going** page before Overview: research-backed reminders,
+  explicit limits, and links to the latest work actually saved in this workspace.
 - Uses **DeepSeaFoam** dark and **Harbor Daylight** light palettes. The header switch
   animates sunrise/sunset, remembers your choice, and respects reduced motion.
 
@@ -101,6 +103,7 @@ Use the **Chapter** menu to work on one area at a time:
 
 | Chapter | What you practice |
 | --- | --- |
+| Keep going | Evidence-based encouragement, the limits of research, and the distinction between real and example records |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
@@ -147,6 +150,7 @@ estimates, not measured learning time.
 
 | Page | Use it for | What it does not do |
 | --- | --- | --- |
+| Keep going | Read grounded encouragement and revisit your actual saved work; expand Evidence & limits for each source | No guaranteed outcomes, invented achievements, streak pressure or progress changes; Overview remains the default landing page |
 | Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
 | Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |
 | Opportunities | Record roles, application stages and optional effort/resume details | No job search, application submission or resume evaluation |

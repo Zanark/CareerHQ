@@ -17,6 +17,7 @@ import { serializeWorkspace } from './workspaceFile';
 import { useTheme } from './useTheme';
 import { ThemeToggle } from './ThemeToggle';
 import { Overview } from './Overview';
+import { Perspective } from './perspective/Perspective';
 import { usePracticeWorkspace } from './usePracticeWorkspace';
 import type { WorkspaceModel } from './useWorkspace';
 import { Tutorial } from './tutorial/Tutorial';
@@ -29,6 +30,7 @@ import { FreelancePage, RecallPage } from './OperationTools';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
+  { id: 'perspective', label: 'Keep going', icon: Compass },
   { id: 'hq', label: 'Overview', icon: House },
   { id: 'missions', label: 'Missions', icon: LayoutGrid },
   { id: 'roadmap', label: 'Roadmap', icon: GitBranch },
@@ -125,7 +127,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     const onHash = () => { setRoute(routeNow()); setMenuOpen(false); setQuery(''); setFullRoadmapOpen(false); window.scrollTo(0, 0); };
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); searchRef.current?.focus(); }
-      if (event.key === 'Escape') { setMenuOpen(false); setQuery(''); }
+      if (event.key === 'Escape') { setMenuOpen(false); setQuery(''); searchRef.current?.blur(); }
     };
     window.addEventListener('hashchange', onHash);
     window.addEventListener('keydown', onKey);
@@ -206,8 +208,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     </aside>
     <div className="main-shell">
       <header className="topbar">
-        <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>CareerHQ</span><ChevronRight size={13} /><strong>{title}</strong></div>
-        <div className="top-actions"><div className="search-wrap"><Search size={16} /><input ref={searchRef} data-tour="global-search" placeholder="Search missions and work..." aria-label="Search missions and evidence" value={query} onChange={event => setQuery(event.target.value)} /><kbd>Ctrl K</kbd>
+        <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => { setMenuOpen(!menuOpen); setQuery(''); searchRef.current?.blur(); }} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>CareerHQ</span><ChevronRight size={13} /><strong>{title}</strong></div>
+        <div className="top-actions"><div className={`search-wrap${query ? ' has-results' : ''}`}><Search size={16} /><input ref={searchRef} data-tour="global-search" placeholder="Search missions and work" aria-label="Search missions and evidence" value={query} onChange={event => setQuery(event.target.value)} /><kbd>Ctrl K</kbd>
           {query && <div className="search-results"><span className="eyebrow">IN YOUR WORKSPACE</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission name or an artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
         </div><ThemeToggle appearance={appearance} /><button className="tutorial-launch" onClick={onStartTutorial} aria-label={practice ? 'Restart tutorial' : 'Start tutorial'} title="Interactive tutorial"><CircleHelp size={17} /><span>Tutorial</span></button></div>
       </header>
@@ -217,6 +219,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
         {practice && <div className="tutorial-practice-banner"><strong>Practice tutorial</strong><span>Temporary data. Your real progress is untouched.</span><button onClick={onExitTutorial}>Exit tutorial</button></div>}
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
+        {page === 'perspective' && <Perspective state={state} practice={practice} />}
         {page === 'hq' && <Overview state={state} date={date} practice={practice} onEvidence={openEvidence} onResume={resume} onExport={exportBackup} />}
         {page === 'missions' && <MissionsPage state={state} onResume={resume} />}
         {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} onFullRoadmap={() => setFullRoadmapOpen(true)} />}
@@ -240,7 +243,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'sources' && <OperationSourcesPage key={selected?.id ?? 'pattern'} initialSelection={selected?.id} state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
-        {(!['hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
+        {(!['perspective', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
         <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
       </main>
     </div>

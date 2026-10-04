@@ -143,6 +143,7 @@ for (const viewport of [{ width: 568, height: 320 }, { width: 640, height: 360 }
     await page.locator('header').getByRole('button', { name: 'Start tutorial', exact: true }).click();
     await expect.poll(() => page.locator('.tutorial-content').evaluate(element => element.clientHeight)).toBeGreaterThanOrEqual(80);
     await expect(page.locator('.tutorial-body')).toBeInViewport();
+    await next(page, 'perspective-intro');
     await next(page, 'overview-today');
     await finish(page, before);
   });

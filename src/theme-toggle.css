@@ -45,7 +45,6 @@
   .theme-toggle-label { display: none; }
   .theme-toggle { width: 66px; height: 40px; padding: 3px; }
   .top-actions { gap: 10px; }
-  .search-wrap:focus-within input { width: min(135px, 29vw); }
   .breadcrumbs { overflow: hidden; }
   .breadcrumbs > .mobile-menu { flex-shrink: 0; }
 }

@@ -9,8 +9,12 @@ site, repository, screenshots, or tests.
 
 The application has no login, cloud workspace, AI service, analytics integration,
 or automatic upload. Hosting providers still receive normal page/asset requests.
-Opening an external artifact or job link leaves the app and uses that destination's
+Opening an external artifact, job or research-source link leaves the app and uses that destination's
 privacy rules. “No app upload” is not a promise that web hosting has no access logs.
+
+**Keep going** bundles its research summaries locally. It reads saved work only from
+the visible workspace, never sends it to a research site, and makes no background
+requests for citations. Source links open only when clicked, without a referrer.
 
 ## What stays in this browser
 

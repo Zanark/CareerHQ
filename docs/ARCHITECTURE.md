@@ -16,6 +16,7 @@ plan as proof of capability.
 | `src/usePracticeWorkspace.ts` | Separate in-memory tutorial data using the same schema and domain operations, without storage writes. |
 | `src/tutorial/*` | Guided steps, state-derived completion gates, real-control highlighting and dialog-aware coaching. |
 | `src/roadmaps/*` | Read-only mission tree and top-down checkpoint flowcharts, using accessible HTML nodes and locally drawn SVG connections. |
+| `src/perspective/*` | Optional Keep going page: bundled research summaries with source limits, plus read-only recent evidence from the selected real or practice workspace. No scoring or predictions. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
