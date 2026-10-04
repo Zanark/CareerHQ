@@ -31,6 +31,18 @@ Theme switches during the tutorial are temporary and do not overwrite that prefe
 If preference storage is unavailable, switching still works for the current tab
 and the interface explains that it could not save the choice.
 
+## Career and life OS identity
+
+The logo joins two rounded loops, representing career and life, around one shared
+core. The wordmark keeps **CareerHQ** with the descriptor **Career & life OS**.
+This is a visual identity, not a change to the available tracking tools.
+
+[`src/assets/careerhq-mark.svg`](../src/assets/careerhq-mark.svg) is the single
+editable source for navigation, safe recovery and the favicon. Vite emits a
+content-hashed asset so updated tabs and the app use the same mark. Its deep-water
+tile and canonical seafoam, ivory and yellow stay consistent in both themes;
+the surrounding wordmark follows the current theme's heading and muted roles.
+
 ## Roles and integration
 
 `src/themes.css` loads after the existing layout stylesheet. The root contract is

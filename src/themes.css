@@ -155,11 +155,6 @@
   color: var(--dsf-muted);
 }
 
-:root[data-theme] :is(.brand-mark) {
-  background: var(--dsf-hero-bg);
-  color: var(--dsf-hero-accent);
-}
-
 :root[data-theme] :is(.workspace-monogram, .avatar, .nav-count, .column-count, .tabs button span, .search-wrap kbd) {
   background: var(--dsf-surface);
   border-color: var(--dsf-border);

@@ -64,8 +64,10 @@ strong { font-weight: 600; }
 
 .sidebar { position: fixed; inset: 0 auto 0 0; width: 223px; z-index: 40; background: #f0f3e9; border-right: 1px solid #e2e6d9; padding: 30px 16px 17px; display: flex; flex-direction: column; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 9px; font-size: 1.4375rem; font-weight: 650; letter-spacing: -.9px; }
-.brand-mark { width: 37px; height: 37px; border-radius: 11px; background: var(--forest); color: var(--lime); display: grid; place-items: center; }
-.brand-mark svg { width: 25px; height: 25px; }
+.brand-mark { display: block; width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; }
+.brand-copy { display: block; min-width: 0; }
+.brand-name { display: block; line-height: 1.1; white-space: nowrap; }
+.brand .brand-tagline { font-size: 0.5625rem; line-height: 1.4; letter-spacing: .02em; margin-top: 5px; }
 .brand-hq { font-weight: 350; }
 .brand small { display: block; font-size: 0.4375rem; letter-spacing: 2.3px; font-weight: 500; margin-top: 3px; color: #7a8772; }
 .workspace-label { display: flex; align-items: center; gap: 9px; margin: 35px 2px 27px; padding: 11px 10px; border: 1px solid #dce3d2; border-radius: 7px; background: #f7f9f2; font-size: 0.6875rem; font-weight: 600; }

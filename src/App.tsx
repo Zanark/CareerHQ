@@ -8,7 +8,8 @@ import {
 import { getMissions, getMission, getMissionVersion, recordRoadmapVersion, prerequisitesFor } from './domain/catalog';
 import { createInitialState, generatePlan, getSaveState, localDate, recordChange, recordEvidence, activateCheckpoint } from './domain/engine';
 import type { AppState, Capacity, DailyAction, Evidence, Mission, MissionId } from './domain/types';
-import { Badge, Empty, kindLabels, MissionIcon, PageHeading, Progress, SectionTitle, Star, statusLabels } from './components';
+import { Badge, Empty, kindLabels, MissionIcon, PageHeading, Progress, SectionTitle, statusLabels } from './components';
+import { BrandMark } from './BrandMark';
 import { EvidenceDialog, OpportunityDialog } from './dialogs';
 import { DataPage, GuidePage, HistoryPage, PipelinePage, ReadinessPage } from './pages';
 import { downloadFile, useWorkspace } from './useWorkspace';
@@ -71,7 +72,7 @@ export default function App() {
   }, [practice.end, practiceFocus.reset]);
   const visible = practice.active ? practice : workspace;
   if (!visible.state) {
-    return <div className="recovery-screen"><div className="recovery-toolbar"><Star /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
+    return <div className="recovery-screen"><div className="recovery-toolbar"><BrandMark /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
       if (window.confirm('Start over on this browser? Download your original data first. This replaces the unreadable workspace.')) workspace.replace(createInitialState(false));
     }}>Start a clean workspace</button></div></div>;
   }
@@ -190,7 +191,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         setQuery('');
       }
     }}>
-      <a href="#/hq" className="brand"><span className="brand-mark"><Star /></span><span>Career<span className="brand-hq">HQ</span></span></a>
+      <a href="#/hq" className="brand" aria-label="CareerHQ - Career and life operating system, Overview"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career &amp; life OS</small></span></a>
       <span className="nav-label">TRACKING</span>
       <nav>{mainNav.map(navButton)}</nav>
       <span className="nav-label second">CAREER</span>

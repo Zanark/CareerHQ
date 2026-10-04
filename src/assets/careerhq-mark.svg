@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>CareerHQ - Career and life operating system</title>
+  <desc>Two interlocking loops for career and life, with one shared core.</desc>
+  <rect width="64" height="64" rx="18" fill="#000F13"/>
+  <rect x="1" y="1" width="62" height="62" rx="17" fill="none" stroke="#00A591" stroke-opacity=".4"/>
+  <rect x="12" y="12" width="28" height="28" rx="10" fill="none" stroke="#00A591" stroke-width="4.5"/>
+  <rect x="24" y="24" width="28" height="28" rx="10" fill="none" stroke="#EEE8D5" stroke-width="4.5"/>
+  <circle cx="32" cy="32" r="4" fill="#EBE565"/>
+</svg>
