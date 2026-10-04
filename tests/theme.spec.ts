@@ -205,6 +205,12 @@ test('workspace resets and backup imports do not reset the separate theme prefer
 });
 
 async function animationFrame(toggle: Locator, milliseconds: number) {
+  await expect.poll(() => toggle.evaluate(button => {
+    const orbit = button.querySelector('.theme-orbit')!;
+    getComputedStyle(orbit).transform;
+    return orbit.getAnimations().some(animation =>
+      animation instanceof CSSTransition && animation.transitionProperty === 'transform');
+  })).toBe(true);
   return toggle.evaluate((button, time) => {
     const orbit = button.querySelector('.theme-orbit')!;
     const sun = button.querySelector('.theme-sun')!;

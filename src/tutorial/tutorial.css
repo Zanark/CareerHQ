@@ -6,7 +6,7 @@
   outline: 3px solid var(--dsf-accent) !important;
   outline-offset: 3px;
   border-radius: 6px;
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--dsf-accent) 18%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dsf-accent) 22%, transparent);
   scroll-margin: 96px;
 }
 
@@ -26,9 +26,7 @@
   pointer-events: auto;
 }
 
-.tutorial-panel-floating {
-  transition: top 160ms ease, left 160ms ease;
-}
+.tutorial-panel-floating { transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .tutorial-panel-floating { transition: none; }
@@ -254,4 +252,41 @@
     right: 10px;
     width: auto !important;
   }
+}
+
+.tutorial-cues, .tutorial-cues * { pointer-events: none; }
+.tutorial-target-ring {
+  position: fixed;
+  z-index: 2147483001;
+  border: 2px solid var(--dsf-accent);
+  outline: 1px solid var(--dsf-paper);
+  outline-offset: -4px;
+}
+.tutorial-glow-halo {
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--dsf-accent);
+  border-radius: inherit;
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--dsf-accent) 65%, transparent),
+    0 0 28px 7px color-mix(in srgb, var(--dsf-accent) 35%, transparent);
+  opacity: .8;
+}
+.tutorial-pointing-hand {
+  position: fixed;
+  z-index: 2147483002;
+  width: 48px;
+  height: 48px;
+}
+.tutorial-hand-motion { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px #00000055); }
+.tutorial-pointing-hand[data-direction="down"] .tutorial-hand-art { transform: rotate(180deg); }
+.tutorial-pointing-hand[data-direction="left"] .tutorial-hand-art { transform: rotate(-90deg); }
+.tutorial-pointing-hand[data-direction="right"] .tutorial-hand-art { transform: rotate(90deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .tutorial-glow-halo { animation: tutorial-glow-breathe 1800ms ease-in-out infinite; will-change: opacity; }
+  .tutorial-hand-motion { animation: tutorial-hand-point 1500ms ease-in-out infinite; will-change: transform; }
+}
+@keyframes tutorial-glow-breathe { 0%, 100% { opacity: .42; } 50% { opacity: 1; } }
+@keyframes tutorial-hand-point { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(var(--hand-x), var(--hand-y)); } }
+@media print {
+  .tutorial-cues, .tutorial-panel, .tutorial-practice-banner { display: none; }
 }

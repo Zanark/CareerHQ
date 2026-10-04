@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, LogOut, RotateCcw, SkipF
 import type { TutorialProps } from './types';
 import { chapters, steps } from './steps';
 import type { TutorialStep } from './steps';
+import { TutorialCue } from './TutorialCue';
 
 const MOBILE_WIDTH = 640;
 const PANEL_MARGIN = 12;
@@ -38,6 +39,14 @@ function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): 
   }
   if (dialog && targets.includes('recall-outcome') && dialog.querySelector<HTMLInputElement>('input[name="outcome"]:checked')?.parentElement?.textContent?.trim() === 'Partial') {
     return dialog.querySelector('[data-tour="recall-save"]');
+  }
+  if (!dialog && targets.includes('capacity')) {
+    const buttons = document.querySelectorAll<HTMLElement>('[data-tour="capacity"] button');
+    return [...buttons].find(button => button.textContent?.trim() === 'Gentle') ?? null;
+  }
+  if (!dialog && targets.includes('readiness-coding')) {
+    const buttons = document.querySelectorAll<HTMLElement>('[data-tour="readiness-coding"] button');
+    return [...buttons].find(button => button.textContent?.trim() === 'Building') ?? null;
   }
   for (const name of targets) {
     const scoped = dialog?.querySelector<HTMLElement>(`[data-tour="${name}"]`);
@@ -116,6 +125,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const [panelSize, setPanelSize] = useState({ width: 360, height: 220 });
   const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= MOBILE_WIDTH);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const nextRef = useRef<HTMLButtonElement | null>(null);
   const targetElRef = useRef<HTMLElement | null>(null);
   const enterThemeRef = useRef(signals.theme);
   const rafRef = useRef(0);
@@ -123,6 +133,8 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
 
   const step: TutorialStep = steps[stepIndex];
   const total = steps.length;
+  const satisfied = step.kind === 'explain' || achieved.has(step.id);
+  const nextCue = satisfied && (step.kind === 'action' || !step.targets?.length);
   const stepRoute = [...steps.slice(0, stepIndex + 1)].reverse().find(candidate => candidate.route)?.route ?? 'hq';
 
   // Navigate / invoke command exactly once when the step changes.
@@ -229,14 +241,13 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   // Scroll the target into view once when the step (or found target) changes, not continuously.
   useEffect(() => {
     const target = targetElement;
-    if (!target) return;
+    if (!target || nextCue) return;
     target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
     target.classList.add('tutorial-highlight');
     return () => target.classList.remove('tutorial-highlight');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step.id, targetElement]);
+  }, [step.id, targetElement, nextCue]);
 
-  const satisfied = step.kind === 'explain' || achieved.has(step.id);
   const chapterOf = (id: string) => chapters.find((candidate) => candidate.id === id);
   const currentChapter = chapterOf(step.chapter);
   const chapterStartIndex = useMemo(() => {
@@ -279,6 +290,8 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
 
   const panel = (
+    <>
+    <TutorialCue target={nextCue ? nextRef.current : targetElement} panel={panelRef.current} anchorRect={targetRect} />
     <div
       ref={panelRef}
       data-step={step.id}
@@ -330,7 +343,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
             <button type="button" className="button secondary" onClick={skip} disabled={stepIndex === total - 1}>
               <SkipForward size={14} /> Skip step
             </button>
-            <button type="button" className="button primary" onClick={stepIndex === total - 1 ? onExit : next} disabled={!satisfied}>
+            <button ref={nextRef} data-tutorial-next="next" type="button" className="button primary" onClick={stepIndex === total - 1 ? onExit : next} disabled={!satisfied}>
               {stepIndex === total - 1 ? 'Finish tutorial' : 'Next'} <ArrowRight size={14} />
             </button>
           </div>
@@ -341,6 +354,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
         </>
       )}
     </div>
+    </>
   );
 
   return createPortal(panel, host);

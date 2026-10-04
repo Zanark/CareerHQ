@@ -54,7 +54,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'welcome-intro', chapter: 'welcome', kind: 'explain',
     title: 'Welcome to the practice tutorial',
-    body: 'Practice with the real controls on temporary data. Your real progress and theme preference stay unchanged. Click the highlighted control, then Next. You can skip a step or exit at any time.',
+    body: 'Follow the glowing border and pointing hand. Use the indicated control, then click Next when it lights up. This is temporary practice data; your real progress stays unchanged. Skip or exit whenever you need.',
   },
   // Overview
   {

@@ -90,6 +90,11 @@ Highlights follow actual controls, with state-derived Next gates and optional sk
 No artificial user achievement is recorded to make a step pass. Exported practice files
 are explicitly labeled examples. Practice state itself is not saved across reloads.
 
+Tutorial cues share that portal: an animated opacity halo traces the current target,
+and a transform-animated pointing hand indicates buttons. They track scroll/resize
+without a continuous JavaScript animation loop, never intercept pointer events, and
+point to Next after an action completes. Reduced motion retains static cues.
+
 ## Delivery and verification
 
 Hash routes keep deep links compatible with GitHub Pages project hosting. Deploy only
