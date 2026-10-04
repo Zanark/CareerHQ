@@ -4,48 +4,48 @@
 .diagram-edge > path { stroke: var(--dsf-border); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; fill: none; }
 .diagram-edge.current > path { stroke: var(--dsf-accent); stroke-width: 2; }
 .diagram-edge.complete > path { stroke: var(--dsf-document); }
-.diagram-edge text { fill: var(--dsf-text); stroke: var(--dsf-background); stroke-width: 5px; paint-order: stroke; font-size: 10px; font-family: inherit; }
-.diagram-error { color: var(--dsf-error); padding: 14px; position: relative; font-size: 12px; }
+.diagram-edge text { fill: var(--dsf-text); stroke: var(--dsf-background); stroke-width: 5px; paint-order: stroke; font-size: 0.625rem; font-family: inherit; }
+.diagram-error { color: var(--dsf-error); padding: 14px; position: relative; font-size: 0.75rem; }
 [data-diagram-node] { position: relative; z-index: 1; }
-.roadmap-map-toolbar { display: flex; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 12px; color: var(--dsf-muted); }
+.roadmap-map-toolbar { display: flex; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.75rem; color: var(--dsf-muted); }
 .roadmap-map-toolbar > span { display: inline-flex; gap: 7px; align-items: center; }
 .roadmap-tree { margin: 0; }
 .tree-canvas { padding: 20px 20px 26px; }
 .tree-goal { max-width: 530px; margin: 0 auto; background: var(--dsf-surface); border: 1.5px solid var(--dsf-accent); border-radius: 32px; padding: 18px 30px; text-align: center; }
-.tree-goal > span { color: var(--dsf-accent); font-size: 10px; letter-spacing: 1.5px; }
-.tree-goal h2 { font-size: 18px; line-height: 1.6; margin-top: 5px; letter-spacing: -.3px; overflow-wrap: anywhere; }
+.tree-goal > span { color: var(--dsf-accent); font-size: 0.625rem; letter-spacing: 1.5px; }
+.tree-goal h2 { font-size: 1.125rem; line-height: 1.6; margin-top: 5px; letter-spacing: -.3px; overflow-wrap: anywhere; }
 .tree-branches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-top: 56px; }
 .tree-branches[data-count="1"] { grid-template-columns: 1fr; max-width: 480px; margin-inline: auto; }
 .tree-branches[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .tree-branch { min-width: 0; }
-.tree-group { display: flex; justify-content: center; align-items: center; gap: 10px; width: 190px; max-width: 100%; min-height: 43px; margin: 0 auto; border: 1px solid var(--dsf-border); border-radius: 24px; background: var(--dsf-background); font-size: 13px; }
-.tree-group > span { color: var(--dsf-muted); font-size: 11px; }
+.tree-group { display: flex; justify-content: center; align-items: center; gap: 10px; width: 190px; max-width: 100%; min-height: 43px; margin: 0 auto; border: 1px solid var(--dsf-border); border-radius: 24px; background: var(--dsf-background); font-size: 0.8125rem; }
+.tree-group > span { color: var(--dsf-muted); font-size: 0.6875rem; }
 .tree-missions { list-style: none; margin: 30px 0 0; padding: 0 0 0 26px; display: flex; flex-direction: column; gap: 18px; }
 .tree-mission { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; padding: 15px 13px; border: 1px solid var(--dsf-border); border-radius: 4px; background: var(--dsf-paper); color: var(--dsf-text); min-height: 85px; }
 .tree-mission-copy { flex: 1; min-width: 0; }
-.tree-mission strong { display: block; font-size: 13px; color: var(--dsf-heading); line-height: 1.55; }
+.tree-mission strong { display: block; font-size: 0.8125rem; color: var(--dsf-heading); line-height: 1.55; }
 .tree-mission-copy { overflow-wrap: anywhere; }
-.tree-mission small { display: block; font-size: 10px; line-height: 1.65; color: var(--dsf-muted); margin-top: 4px; }
+.tree-mission small { display: block; font-size: 0.625rem; line-height: 1.65; color: var(--dsf-muted); margin-top: 4px; }
 .tree-mission > svg { color: var(--dsf-accent); }
 .tree-mission.selected { border: 2px solid var(--dsf-accent); padding: 14px 12px; }
 .tree-mission:hover { background: var(--dsf-surface); }
-.roadmap-tree > figcaption { padding: 14px 20px 20px; font-size: 11px; color: var(--dsf-muted); line-height: 1.8; text-align: center; border-bottom: 1px solid var(--dsf-separator); }
+.roadmap-tree > figcaption { padding: 14px 20px 20px; font-size: 0.6875rem; color: var(--dsf-muted); line-height: 1.8; text-align: center; border-bottom: 1px solid var(--dsf-separator); }
 .roadmap-selected { margin-top: 30px; scroll-margin-top: 20px; outline: none; }
 .roadmap-selected-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; max-width: 690px; margin: 0 auto 18px; }
 .roadmap-selected-heading h2 { margin-top: 4px; }
 .mission-flowchart { margin: 0; border: 1px solid var(--dsf-separator); border-radius: 8px; background: var(--dsf-background); overflow: hidden; }
 .roadmap-selected > .mission-flowchart { max-width: 690px; margin-inline: auto; }
 .mission-flowchart > figcaption { padding: 19px 22px 0; }
-.mission-flowchart > figcaption h3 { font-size: 14px; }
-.mission-flowchart > figcaption p { font-size: 11px; color: var(--dsf-muted); margin-top: 8px; line-height: 1.8; }
+.mission-flowchart > figcaption h3 { font-size: 0.875rem; }
+.mission-flowchart > figcaption p { font-size: 0.6875rem; color: var(--dsf-muted); margin-top: 8px; line-height: 1.8; }
 .flow-canvas { padding: 26px 24px; display: flex; flex-direction: column; align-items: center; gap: 42px; }
-.flow-terminal { border: 1.5px solid var(--dsf-border); background: var(--dsf-surface); border-radius: 40px; min-width: 150px; padding: 11px 20px; color: var(--dsf-heading); font-size: 12px; text-align: center; }
+.flow-terminal { border: 1.5px solid var(--dsf-border); background: var(--dsf-surface); border-radius: 40px; min-width: 150px; padding: 11px 20px; color: var(--dsf-heading); font-size: 0.75rem; text-align: center; }
 .flow-terminal.complete { border-color: var(--dsf-document); }
 .flow-node { background: var(--dsf-paper); border: 1.5px solid var(--dsf-border); border-radius: 4px; }
 .flow-checkpoint { width: min(100%, 310px); padding: 15px 19px; }
-.flow-state { display: flex; align-items: center; gap: 6px; color: var(--dsf-muted); font-size: 10px; }
-.flow-checkpoint h4 { font-size: 13px; margin: 8px 0 5px; line-height: 1.5; }
-.flow-checkpoint small { color: var(--dsf-muted); font-size: 10px; }
+.flow-state { display: flex; align-items: center; gap: 6px; color: var(--dsf-muted); font-size: 0.625rem; }
+.flow-checkpoint h4 { font-size: 0.8125rem; margin: 8px 0 5px; line-height: 1.5; }
+.flow-checkpoint small { color: var(--dsf-muted); font-size: 0.625rem; }
 .flow-checkpoint.current { border-color: var(--dsf-accent); border-width: 2px; padding: 14.5px 18.5px; }
 .flow-checkpoint.current .flow-state { color: var(--dsf-accent); }
 .flow-checkpoint.complete { border-color: var(--dsf-document); }
@@ -53,15 +53,15 @@
 .flow-decision-row { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 46px; padding-block: 7px; }
 .flow-decision { width: 96px; height: 96px; display: grid; place-items: center; justify-self: center; }
 .flow-decision::before { content: ""; position: absolute; inset: 14px; border: 1.5px solid var(--dsf-accent); background: var(--dsf-surface); transform: rotate(45deg); }
-.flow-decision > span { position: relative; font-size: 10px; line-height: 1.45; text-align: center; color: var(--dsf-heading); }
+.flow-decision > span { position: relative; font-size: 0.625rem; line-height: 1.45; text-align: center; color: var(--dsf-heading); }
 .flow-practice { width: 100%; max-width: 170px; min-height: 80px; justify-self: end; display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; padding: 10px 8px; text-align: center; border-style: dashed; }
 .flow-practice > svg { color: var(--dsf-accent); }
-.flow-practice strong { font-size: 11px; color: var(--dsf-heading); }
-.flow-practice small { font-size: 10px; color: var(--dsf-muted); }
-.flow-note { font-size: 10px; line-height: 1.8; color: var(--dsf-muted); padding: 0 22px 20px; }
-.flow-related { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 690px; margin: 17px auto; font-size: 11px; color: var(--dsf-muted); }
+.flow-practice strong { font-size: 0.6875rem; color: var(--dsf-heading); }
+.flow-practice small { font-size: 0.625rem; color: var(--dsf-muted); }
+.flow-note { font-size: 0.625rem; line-height: 1.8; color: var(--dsf-muted); padding: 0 22px 20px; }
+.flow-related { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 690px; margin: 17px auto; font-size: 0.6875rem; color: var(--dsf-muted); }
 .flow-related a { display: inline-flex; align-items: center; gap: 4px; color: var(--dsf-accent); text-decoration: underline; text-underline-offset: 3px; }
-.diagram-pending { padding: 28px 20px; border: 1px dashed var(--dsf-border); border-radius: 6px; color: var(--dsf-muted); font-size: 12px; line-height: 1.8; }
+.diagram-pending { padding: 28px 20px; border: 1px dashed var(--dsf-border); border-radius: 6px; color: var(--dsf-muted); font-size: 0.75rem; line-height: 1.8; }
 @media (max-width: 1050px) {
   .tree-branches[data-count] { grid-template-columns: 1fr; max-width: 520px; margin-inline: auto; gap: 38px; padding-left: 24px; }
   .tree-group { width: 100%; max-width: none; justify-content: flex-start; padding-inline: 18px; }
@@ -70,17 +70,17 @@
 @media (max-width: 480px) {
   .tree-canvas { padding-inline: 8px; }
   .tree-goal { padding: 15px 20px; border-radius: 25px; }
-  .tree-goal h2 { font-size: 16px; }
+  .tree-goal h2 { font-size: 1rem; }
   .tree-branches[data-count] { padding-left: 18px; }
   .tree-missions { padding-left: 22px; }
   .tree-mission { padding: 12px 10px; gap: 8px; }
   .tree-mission.selected { padding: 11px 9px; }
   .tree-mission .mission-icon { width: 29px; height: 29px; }
-  .tree-mission strong { font-size: 12px; }
-  .tree-mission small { font-size: 10px; }
+  .tree-mission strong { font-size: 0.75rem; }
+  .tree-mission small { font-size: 0.625rem; }
   .roadmap-map-toolbar { flex-wrap: wrap; gap: 12px; }
   .roadmap-selected-heading { gap: 10px; }
-  .roadmap-selected-heading .button { font-size: 10px; padding: 9px 10px; }
+  .roadmap-selected-heading .button { font-size: 0.625rem; padding: 9px 10px; }
   .flow-canvas { padding-inline: 18px; gap: 37px; }
   .flow-decision-row { gap: 36px; }
   .flow-decision { width: 88px; height: 88px; }

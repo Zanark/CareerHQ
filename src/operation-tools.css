@@ -1,38 +1,38 @@
 /* Shared layout for FreelancePage and RecallPage. Prefixed so existing styles stay untouched. */
 .operation-tools-stats { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
 .operation-tools-stat { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border: 1px solid var(--dsf-border, var(--line)); border-radius: 9px; background: var(--dsf-paper, #fffefa); min-width: 150px; }
-.operation-tools-stat strong { font-size: 22px; font-weight: 500; letter-spacing: -0.6px; color: var(--dsf-heading, var(--forest)); }
-.operation-tools-stat span { font-size: 10px; color: var(--dsf-muted, var(--muted)); }
-.operation-tools-note { display: flex; gap: 9px; align-items: flex-start; font-size: 11px; color: var(--dsf-muted, var(--muted)); background: var(--dsf-surface, #eef2e6); border: 1px solid var(--dsf-border, var(--line)); border-radius: 8px; padding: 13px 15px; margin-bottom: 20px; line-height: 1.7; }
+.operation-tools-stat strong { font-size: 1.375rem; font-weight: 500; letter-spacing: -0.6px; color: var(--dsf-heading, var(--forest)); }
+.operation-tools-stat span { font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); }
+.operation-tools-note { display: flex; gap: 9px; align-items: flex-start; font-size: 0.6875rem; color: var(--dsf-muted, var(--muted)); background: var(--dsf-surface, #eef2e6); border: 1px solid var(--dsf-border, var(--line)); border-radius: 8px; padding: 13px 15px; margin-bottom: 20px; line-height: 1.7; }
 .operation-tools-note svg { flex-shrink: 0; margin-top: 2px; }
 
 /* Freelance */
 .freelance-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-.freelance-filters select { font-size: 11px; }
+.freelance-filters select { font-size: 0.6875rem; }
 .freelance-table td.freelance-skills { max-width: 220px; }
-.freelance-table select { font-size: 10px; }
+.freelance-table select { font-size: 0.625rem; }
 .freelance-select-cell { width: 34px; text-align: center; }
 .freelance-brief { margin-top: 24px; border: 1px solid var(--dsf-border, var(--line)); border-radius: 9px; padding: 18px 20px; background: var(--dsf-paper, #fffefa); }
-.freelance-brief textarea { width: 100%; margin-top: 12px; font-size: 11px; min-height: 160px; background: var(--dsf-surface, #f6f8f1); }
+.freelance-brief textarea { width: 100%; margin-top: 12px; font-size: 0.6875rem; min-height: 160px; background: var(--dsf-surface, #f6f8f1); }
 .freelance-brief-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
-.freelance-brief-error { font-size: 11px; color: var(--dsf-error, #a06f52); }
-.freelance-count { font-size: 10px; color: var(--dsf-muted, var(--muted)); }
+.freelance-brief-error { font-size: 0.6875rem; color: var(--dsf-error, #a06f52); }
+.freelance-count { font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); }
 
 /* Recall */
 .recall-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
-.recall-filters select { font-size: 11px; }
+.recall-filters select { font-size: 0.6875rem; }
 .recall-list { display: flex; flex-direction: column; gap: 14px; }
 .recall-card { border: 1px solid var(--dsf-border, var(--line)); border-radius: 9px; padding: 18px 20px; background: var(--dsf-paper, #fffefa); display: flex; flex-direction: column; gap: 10px; }
 .recall-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.recall-card-top h3 { font-size: 14px; }
-.recall-card-top p { font-size: 10px; color: var(--dsf-muted, var(--muted)); margin-top: 4px; }
-.recall-card-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 10px; color: var(--dsf-muted, var(--muted)); }
-.recall-schedule { font-size: 10px; color: var(--dsf-muted, var(--muted)); }
+.recall-card-top h3 { font-size: 0.875rem; }
+.recall-card-top p { font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); margin-top: 4px; }
+.recall-card-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); }
+.recall-schedule { font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); }
 .recall-history { margin-top: 6px; border-top: 1px solid var(--dsf-border, var(--line)); padding-top: 10px; display: flex; flex-direction: column; gap: 7px; }
-.recall-history-row { display: flex; gap: 10px; align-items: baseline; font-size: 10px; color: var(--dsf-muted, var(--muted)); flex-wrap: wrap; }
+.recall-history-row { display: flex; gap: 10px; align-items: baseline; font-size: 0.625rem; color: var(--dsf-muted, var(--muted)); flex-wrap: wrap; }
 .recall-checks { display: flex; flex-direction: column; gap: 10px; margin: 4px 0; }
 .recall-outcome { display: flex; gap: 10px; flex-wrap: wrap; }
-.recall-outcome label { display: flex; align-items: center; gap: 6px; font-size: 11px; border: 1px solid var(--dsf-border, var(--line)); border-radius: 6px; padding: 8px 11px; cursor: pointer; }
+.recall-outcome label { display: flex; align-items: center; gap: 6px; font-size: 0.6875rem; border: 1px solid var(--dsf-border, var(--line)); border-radius: 6px; padding: 8px 11px; cursor: pointer; }
 .recall-outcome input { width: 14px; height: 14px; margin: 0; }
 .badge.recall-tone-learning { background: #eaf1f6; color: #3d647c; border-color: #d3e2ea; }
 .badge.recall-tone-practiced { background: #eef4e5; color: #507042; border-color: #dce6cd; }

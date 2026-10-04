@@ -61,7 +61,7 @@
 }
 
 .tutorial-eyebrow {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -69,7 +69,7 @@
 }
 
 .tutorial-title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--dsf-heading);
   margin: 0;
@@ -104,19 +104,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--dsf-muted);
 }
-.tutorial-chapter-nav select { flex: 1; min-width: 0; font-size: 11px; padding: 7px 9px; }
+.tutorial-chapter-nav select { flex: 1; min-width: 0; font-size: 0.6875rem; padding: 7px 9px; }
 :root.tutorial-running { scroll-padding-bottom: var(--tutorial-clearance, 24px); }
 .tutorial-running .modal { scroll-padding-bottom: var(--tutorial-clearance, 24px); }
 @media (max-width: 640px) {
   .tutorial-running [data-workspace="practice"] main { padding-bottom: var(--tutorial-clearance, 280px); }
   .tutorial-running .modal { padding-bottom: calc(28px + var(--tutorial-clearance, 280px)); }
 }
-.tutorial-practice-banner { display: flex; gap: 12px; align-items: center; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--dsf-accent); border-radius: 7px; background: var(--dsf-paper); font-size: 11px; }
+.tutorial-practice-banner { display: flex; gap: 12px; align-items: center; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--dsf-accent); border-radius: 7px; background: var(--dsf-paper); font-size: 0.6875rem; }
 .tutorial-practice-banner > span { color: var(--dsf-muted); flex: 1; }
-.tutorial-practice-banner > button { color: var(--dsf-accent); text-decoration: underline; font-size: 11px; }
+.tutorial-practice-banner > button { color: var(--dsf-accent); text-decoration: underline; font-size: 0.6875rem; }
 @media (max-width: 480px) {
   .tutorial-practice-banner { flex-wrap: wrap; gap: 7px; }
   .tutorial-practice-banner > span { flex-basis: 100%; order: 2; }
@@ -130,7 +130,7 @@
   background: none;
   border: none;
   color: var(--dsf-accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 2px 0;
   cursor: pointer;
@@ -162,7 +162,7 @@
   border: none;
   background: none;
   color: var(--dsf-text);
-  font-size: 12px;
+  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -176,14 +176,14 @@
 }
 
 .tutorial-body {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--dsf-text);
   margin: 0;
 }
 
 .tutorial-status {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--dsf-accent);
   margin: 0;
@@ -197,7 +197,7 @@
   background: var(--dsf-warning-wash);
   border: 1px solid var(--dsf-warning);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .tutorial-missing p { margin: 0; }
@@ -211,7 +211,7 @@
 
 .tutorial-actions .button {
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 .tutorial-footer-actions {
@@ -230,7 +230,7 @@
   background: none;
   border: none;
   color: var(--dsf-muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   cursor: pointer;
   padding: 4px 0;

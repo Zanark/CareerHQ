@@ -28,8 +28,8 @@ export function OrbitArt() {
     <circle cx="113" cy="198" r="7" fill="var(--dsf-hero-accent)" /><circle cx="319" cy="90" r="5" fill="var(--dsf-hero-muted)" />
     <circle cx="157" cy="59" r="3" fill="var(--dsf-hero-muted)" /><circle cx="295" cy="212" r="3" fill="var(--dsf-hero-muted)" />
     <path d="M104 224h42M311 64h30" stroke="var(--dsf-hero-muted)" strokeOpacity=".6" />
-    <text x="103" y="239" fill="var(--dsf-hero-muted)" fontSize="9" fontFamily="monospace" letterSpacing="2">YOU ARE HERE</text>
-    <text x="276" y="52" fill="var(--dsf-hero-muted)" fontSize="9" fontFamily="monospace" letterSpacing="2">WHAT'S NEXT</text>
+    <text x="103" y="239" fill="var(--dsf-hero-muted)" fontSize="0.5625rem" fontFamily="monospace" letterSpacing="2">YOU ARE HERE</text>
+    <text x="276" y="52" fill="var(--dsf-hero-muted)" fontSize="0.5625rem" fontFamily="monospace" letterSpacing="2">WHAT'S NEXT</text>
   </svg>;
 }
 

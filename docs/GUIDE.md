@@ -91,6 +91,10 @@ remove local progress. Export regularly; import replaces the destination after c
 
 Use a current Node.js LTS release and npm.
 
+Text uses `rem` units and the shared `--type-scale` value in `src/typography.css`.
+The current scale is **1.5×** the original typography, without page zoom. Keep new
+font sizes relative to this scale; layouts should wrap rather than shrink the text.
+
 ```sh
 npm ci
 npm run dev

@@ -54,7 +54,8 @@ export function TutorialCue({ target, panel, anchorRect }: {
           { left: left - GAP - HAND_SIZE, top: top + box.height / 2 - HAND_SIZE / 2, direction: 'right' },
           { left: left + box.width / 2 - HAND_SIZE / 2, top: top - GAP - HAND_SIZE, direction: 'down' },
         ];
-        const fits = candidates.filter(candidate => candidate.left >= 4 && candidate.top >= 4 &&
+        const ordered = panel?.contains(target) ? [candidates[1], candidates[2], candidates[0], candidates[3]] : candidates;
+        const fits = ordered.filter(candidate => candidate.left >= 4 && candidate.top >= 4 &&
           candidate.left + HAND_SIZE <= innerWidth - 4 && candidate.top + HAND_SIZE <= innerHeight - 4);
         const panelRect = panel && !panel.contains(target) ? panel.getBoundingClientRect() : null;
         hand = fits.find(candidate => !panelRect || !overlaps({ ...candidate, width: HAND_SIZE, height: HAND_SIZE }, panelRect)) ?? fits[0] ?? null;

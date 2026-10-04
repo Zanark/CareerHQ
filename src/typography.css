@@ -1,0 +1,66 @@
+:root {
+  --type-scale: 1.5;
+  font-size: calc(16px * var(--type-scale));
+}
+
+.skip-link { top: 0; transform: translateY(-150%); }
+.skip-link:focus { top: 12px; transform: none; }
+.button { max-width: 100%; white-space: normal; }
+.theme-toggle-label { width: auto; min-width: 2.5em; }
+.nav-item { flex-shrink: 0; }
+.overview-heading { flex-wrap: wrap; }
+.overview-time, .overview-done, .overview-checkpoint > .text-link { flex-shrink: 0; }
+.overview-row-content h3, .flow-checkpoint h4, .source-reference-topic { overflow-wrap: anywhere; }
+.overview-track-progress { width: 145px; flex-shrink: 0; }
+.overview-status { width: 130px; flex-shrink: 0; }
+.source-heading, .source-stage-heading, .roadmap-selected-heading, .save-state-main { flex-wrap: wrap; }
+.section-title { align-items: flex-start; }
+.section-title > .text-link { flex-shrink: 0; }
+.tutorial-head {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  background: var(--dsf-paper);
+  margin-top: -14px;
+  padding-top: 14px;
+  padding-bottom: 6px;
+}
+.flow-terminal { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.flow-decision { width: 120px; height: 120px; }
+.flow-decision::before { inset: 18px; }
+.flow-practice { min-width: 0; overflow-wrap: anywhere; }
+
+@media (min-width: 761px) {
+  .sidebar { width: 272px; }
+  .main-shell { margin-left: 272px; }
+  .toast { left: calc(50% + 136px); }
+}
+
+@media (max-width: 1050px) {
+  .overview-status { display: none; }
+  .overview-checkpoint { flex-wrap: wrap; }
+  .overview-track-progress { flex: 0 0 120px; }
+  .overview-summary > a { min-width: 0; }
+}
+
+@media (max-width: 760px) {
+  .sidebar { width: min(290px, calc(100vw - 32px)); }
+  .toast { left: 50%; }
+  .top-actions { flex-shrink: 0; }
+  .theme-toggle-label { min-width: 0; }
+}
+
+@media (max-width: 480px) {
+  .overview-heading { gap: 12px; }
+  .overview-track-progress { flex: 1; }
+  .overview-page .section-title { flex-wrap: wrap; }
+  .section-title > .text-link { max-width: none; text-align: left; }
+  .flow-decision-row { grid-template-columns: 120px minmax(0, 1fr); gap: 32px; }
+  .source-details > .mission-flowchart { margin-inline: -14px; }
+  .source-level { flex-wrap: wrap; }
+  .readiness-row .segmented { flex-wrap: wrap; }
+}
+
+@media print {
+  .main-shell { margin-left: 0; }
+}

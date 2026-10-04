@@ -83,7 +83,7 @@ function computePlacement(targetRect: DOMRect | null, panelSize: { width: number
     const width = viewportWidth - PANEL_MARGIN * 2;
     return { top: viewportHeight - panelSize.height - PANEL_MARGIN, left: PANEL_MARGIN, width, maxHeight: viewportHeight * 0.6 };
   }
-  const width = Math.min(360, viewportWidth - PANEL_MARGIN * 2);
+  const width = Math.min(440, viewportWidth - PANEL_MARGIN * 2);
   if (!targetRect) {
     return { top: viewportHeight - panelSize.height - PANEL_MARGIN, left: viewportWidth - width - PANEL_MARGIN, width, maxHeight: viewportHeight - PANEL_MARGIN * 2 };
   }
@@ -122,7 +122,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
   const [targetMissing, setTargetMissing] = useState(false);
-  const [panelSize, setPanelSize] = useState({ width: 360, height: 220 });
+  const [panelSize, setPanelSize] = useState({ width: 440, height: 220 });
   const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= MOBILE_WIDTH);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const nextRef = useRef<HTMLButtonElement | null>(null);
