@@ -23,8 +23,8 @@ Built with React, TypeScript, and Vite; data stays in your browser.
 - Preserves previous roadmap versions and requires confirmation before adopting new definitions.
 - Provides an interactive **Tutorial** using a separate, temporary practice workspace.
   Try real controls without changing your progress, theme preference, or existing focus session.
-- Includes an optional **Keep going** page before Overview: research-backed reminders,
-  explicit limits, and links to the latest work actually saved in this workspace.
+- Includes an optional **Keep going** page before Overview: your supplied past
+  accomplishments and actual saved work, with sources rather than motivational quotes.
 - Uses **DeepSeaFoam** dark and **Harbor Daylight** light palettes. The header switch
   animates sunrise/sunset, remembers your choice, and respects reduced motion.
 
@@ -145,7 +145,7 @@ Use the **Chapter** menu to work on one area at a time:
 
 | Chapter | What you practice |
 | --- | --- |
-| Keep going | Evidence-based encouragement, the limits of research, and the distinction between real and example records |
+| Keep going | Your own past accomplishments, completed work versus practice, and private history that never awards checkpoint credit |
 | DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
@@ -160,6 +160,14 @@ mastery, or complete source milestones. Clipboard access is optional: if the bro
 Copy brief, use the text preview and Skip step rather than treating a failed copy as success.
 
 ### A normal working session
+
+**For work you did before using CareerHQ:** open **Keep going**. Use **Load personal
+history** to review a privately supplied history file, or **Add a past accomplishment**
+to record it yourself with its source. The history import adds records without replacing
+the workspace; duplicate IDs are not added again, and conflicting replacements are rejected.
+Dates are optional rather than guessed. This is separate from mission checkpoint evidence.
+Personal history is included in your normal **Export backup** and restored by importing
+that workspace backup on another machine. Nothing personal is bundled in the public website.
 
 1. Open a mission. Use **Bring into focus** if it is in the background, then **Make
    primary mission** if you want it considered first. Leave other areas in the background
@@ -193,7 +201,7 @@ estimates, not measured learning time.
 
 | Page | Use it for | What it does not do |
 | --- | --- | --- |
-| Keep going | Read grounded encouragement and revisit your actual saved work; expand Evidence & limits for each source | No guaranteed outcomes, invented achievements, streak pressure or progress changes; Overview remains the default landing page |
+| Keep going | Read your own source-linked past accomplishments and actual saved work; load private history after reviewing it | No research quotes, generic motivation, invented wins, or automatic checkpoint credit; Overview remains the default |
 | DSA practice library | Browse all 50 expanded DSA sections and curated problem links | No automatic solve tracking, completion credit, or requirement to clear every listed problem |
 | Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
 | Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |

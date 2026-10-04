@@ -159,6 +159,15 @@ export interface RecallEntry {
   createdAt: string;
 }
 
+export interface PersonalProof {
+  id: string;
+  title: string;
+  detail: string;
+  source: string;
+  date?: string;
+  url: string;
+}
+
 export interface AppState {
   schemaVersion: 2;
   roadmapVersion: '2.0.0';
@@ -177,6 +186,7 @@ export interface AppState {
   archives: RoadmapArchive[];
   freelanceOpportunities: FreelanceOpportunity[];
   recalls: RecallEntry[];
+  personalProof?: PersonalProof[];
 }
 
 export interface EvidenceInput {

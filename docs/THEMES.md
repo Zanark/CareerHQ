@@ -79,7 +79,7 @@ daylight). This keeps small labels readable instead of putting raw yellow or
 violet text on an unsuitable background. These derived inks and 9% paper washes
 are not new canonical palette solids.
 
-Overview counters and Keep going reminders have distinct accents. Full-map
+Overview counters and personal-history cards have distinct accents. Full-map
 stage bands aid scanning; the actual current checkpoint still has its labeled
 seafoam glow, and completed states still use the green status signal. A rose
 mission border is an identity, not an error. Errors retain their explicit

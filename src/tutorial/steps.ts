@@ -66,8 +66,8 @@ export const steps: TutorialStep[] = [
   {
     id: 'perspective-intro', chapter: 'perspective', kind: 'explain', route: 'perspective',
     targets: ['perspective-intro'],
-    title: 'Encouragement with receipts',
-    body: 'Keep going sits before Overview. It connects practical reminders to published research and its limits, then shows saved work from the current workspace. Here those are practice examples, not your real achievements. Reading changes no progress; Overview is still the default landing page.',
+    title: 'Your own completed work',
+    body: 'Keep going shows past accomplishments you supplied and work you recorded, not research or motivational quotes. Here you see only temporary practice data. Personal-history files are previewed before adding and do not complete mission checkpoints. Your real records stay untouched.',
   },
   // Overview
   {

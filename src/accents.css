@@ -72,21 +72,8 @@
 :root[data-theme] .full-roadmap-stage-heading h3 { color: var(--stage-ink); }
 :root[data-theme] .full-roadmap-stage-heading { border-bottom: 1px solid var(--dsf-separator); margin-bottom: 24px; }
 
-:root[data-theme] .perspective-intro h1 span { color: var(--tone); }
-:root[data-theme] .perspective-intro .perspective-thesis { border-left-color: var(--dsf-violet); }
-:root[data-theme] .perspective-reminder { border-top: 5px solid var(--accent); }
-:root[data-theme] .perspective-number {
-  color: var(--tone); background: var(--wash); border: 1px solid var(--accent);
-  padding: 8px 11px; border-radius: 8px;
-}
-:root[data-theme] .perspective-reminder h3,
-:root[data-theme] .perspective-try > span,
-:root[data-theme] .perspective-source a { color: var(--tone); }
-:root[data-theme] .perspective-next { border-top: 4px solid var(--accent); background: var(--dsf-paper); }
-:root[data-theme] .perspective-next .eyebrow { color: var(--tone); }
-
 @media print {
-  :root[data-theme] :is(.mission-card, .evidence-card, .pipeline-column, .mission-flowchart, .perspective-reminder, .full-roadmap-stage) {
+  :root[data-theme] :is(.mission-card, .evidence-card, .pipeline-column, .mission-flowchart, .personal-proof-card, .full-roadmap-stage) {
     border-top-color: var(--dsf-border);
   }
 }

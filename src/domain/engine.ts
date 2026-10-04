@@ -7,6 +7,7 @@ import {
   dateSchema, idSchema, parseLegacyV1, migrateLegacyToLatest, text, timestampSchema, urlSchema,
 } from './legacyState';
 import { freelanceVerdicts, missionIds, opportunityStages, readinessKeys } from './types';
+import { personalProofListSchema } from './personalProofSchema';
 import type {
   AppState, Checkpoint, CheckpointStatus, DailyAction, Evidence, EvidenceInput,
   Mission, MissionId, MissionProgress, RecallEntry, RoadmapVersion,
@@ -137,6 +138,7 @@ const stateSchema = z.object({
   archives: z.array(archiveSchema).max(500),
   freelanceOpportunities: z.array(freelanceSchema).max(MAX_RECORDS),
   recalls: z.array(recallSchema).max(MAX_RECORDS),
+  personalProof: personalProofListSchema.optional(),
 }).strict();
 
 const evidenceInputSchema = z.object({
@@ -338,6 +340,7 @@ function validateV2Relations(state: AppState): AppState {
 
   for (const opportunity of state.opportunities) unique(opportunity.id);
   for (const freelance of state.freelanceOpportunities) unique(freelance.id);
+  for (const proof of state.personalProof ?? []) unique(proof.id);
 
   for (const recall of state.recalls) {
     unique(recall.id);
@@ -391,6 +394,7 @@ function nextId(state: AppState, prefix: string): string {
     ...state.opportunities.map((entry) => entry.id),
     ...state.freelanceOpportunities.map((entry) => entry.id),
     ...state.recalls.map((entry) => entry.id),
+    ...(state.personalProof ?? []).map((entry) => entry.id),
     ...Object.values(state.plans).flat().map((entry) => entry.id),
   ]);
   let sequence = state.evidence.length + state.events.length + state.freelanceOpportunities.length + state.recalls.length + 1;

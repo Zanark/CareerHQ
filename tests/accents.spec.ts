@@ -73,6 +73,11 @@ for (const theme of ['dark', 'light']) {
 
   test(`${theme} editorial reminders, saved work, plan and source views retain readable colored ink`, async ({ page }) => {
     const state = createInitialState(true);
+    state.personalProof = ['Parser', 'Queue', 'Tree', 'Graph'].map((title, index) => ({
+      id: `personal-color-${index}`, title: `Fictional ${title} implementation`,
+      detail: 'Synthetic completed work for appearance coverage, not actual personal history.',
+      source: 'Fictional color fixture', url: '',
+    }));
     state.plans[localDate()] = generatePlan(state);
     const raw = JSON.stringify(state);
     await page.addInitScript(({ theme, key, raw }) => {
@@ -80,7 +85,7 @@ for (const theme of ['dark', 'light']) {
       if (!localStorage.getItem(key)) localStorage.setItem(key, raw);
     }, { theme, key, raw });
     for (const [route, selector] of [
-      ['perspective', '.perspective-intro h1 span, .perspective-reminder h3, .perspective-number, .perspective-try > span'],
+      ['perspective', '.personal-proof-card h3, .personal-proof-source, .perspective-receipt h3'],
       ['plan', '.mission-tag, .plan-item .text-link, .plan-number, .timer-time'],
       ['evidence', '.mission-tag, .evidence-card h3'],
       ['roadmap', '.tree-mission strong'],
@@ -90,7 +95,7 @@ for (const theme of ['dark', 'light']) {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await readable(page, selector);
       if (route === 'perspective') {
-        const colors = await page.locator('.perspective-reminder').evaluateAll(elements => elements.map(element => getComputedStyle(element).borderTopColor));
+        const colors = await page.locator('.personal-proof-card').evaluateAll(elements => elements.map(element => getComputedStyle(element).borderTopColor));
         expect(new Set(colors).size).toBe(4);
       }
       expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);

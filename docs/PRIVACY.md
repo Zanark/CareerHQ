@@ -13,9 +13,11 @@ or automatic upload. Hosting providers still receive normal page/asset requests.
 Opening an external artifact, job or research-source link leaves the app and uses that destination's
 privacy rules. “No app upload” is not a promise that web hosting has no access logs.
 
-**Keep going** bundles its research summaries locally. It reads saved work only from
-the visible workspace, never sends it to a research site, and makes no background
-requests for citations. Source links open only when clicked, without a referrer.
+**Keep going** reads personal history and saved work from the visible workspace only.
+Past accomplishments are never bundled in the public source or sent to a remote service.
+A personal-history file is read locally, previewed, and added only after confirmation.
+It does not replace the workspace or award checkpoint credit. Artifact links open
+only when clicked, without a referrer.
 
 The DSA practice library also uses bundled references. Browsing sections and filtering
 problems sends no progress to LeetCode. Clicking a problem link opens LeetCode in a new
@@ -28,6 +30,9 @@ stored under `careerhq.workspace.v1` in **localStorage**. Evidence is text/links
 an uploaded file archive. The focus timer is tab-local.
 The compatible storage key now holds data format v2, including previous-roadmap archives,
 private freelance leads, optional application effort fields, and recall records.
+An optional `personalProof` collection holds user-supplied past accomplishments and
+their sources. It is included in ordinary unencrypted workspace backups. Existing
+workspaces without this collection are left unchanged until history is explicitly added.
 
 **localStorage is not encrypted or a secure vault.** Saved work is ordinary browser
 data. Anyone with suitable access to the browser,
