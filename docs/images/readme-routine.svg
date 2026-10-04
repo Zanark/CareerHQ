@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="900" viewBox="0 0 1080 900" role="img" aria-labelledby="routine-title routine-desc" font-family="Segoe UI, Arial, sans-serif">
+  <title id="routine-title">One session. Three moves.</title>
+  <desc id="routine-desc">A top-to-bottom flow: one, choose a checkpoint; two, do the work outside the tracker; three, save your evidence. Complete a checkpoint only when its criteria are met. Logging practice alone does not automatically complete or unlock a checkpoint.</desc>
+  <defs>
+    <clipPath id="routine-frame">
+      <rect width="1080" height="900" rx="28"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#routine-frame)">
+    <rect width="1080" height="900" fill="#000F13"/>
+    <path d="M1080 255V900H907C920 806 1028 774 987 689C952 617 836 624 839 527C842 435 953 439 928 356C914 310 1004 261 1080 255Z" fill="#001E26"/>
+    <g fill="none" stroke="#00A591" stroke-width="1.4" opacity=".2">
+      <path d="M849 114C898 76 1013 109 988 176C963 243 851 238 881 296C901 334 1017 322 1058 370"/>
+      <path d="M866 133C903 105 983 127 964 174C944 221 827 231 860 300C883 348 1001 344 1042 389"/>
+      <path d="M886 151C909 132 953 146 941 172C927 203 804 223 838 304C862 362 982 365 1025 408"/>
+      <path d="M1051 622C998 635 1015 689 1054 711C1098 736 1069 790 1017 819"/>
+      <path d="M1077 612C1015 637 1042 671 1071 694C1122 734 1091 803 1034 839"/>
+    </g>
+    <g fill="none" stroke="#00A591" stroke-linecap="round" stroke-width="4">
+      <path d="M64 66H96"/>
+      <path d="M64 77H88"/>
+      <path d="M64 88H80"/>
+    </g>
+    <path d="M124 77H912" stroke="#EEE8D5" stroke-opacity=".2"/>
+    <text x="1016" y="86" text-anchor="end" fill="#EEE8D5" opacity=".65" font-size="24" letter-spacing="2">03 / 04</text>
+    <text x="64" y="172" fill="#EEE8D5" font-size="78" font-weight="600" letter-spacing="-3">One session.</text>
+    <text x="64" y="261" fill="#00A591" font-size="78" font-weight="700" letter-spacing="-3">Three moves.</text>
+
+    <g fill="none" stroke="#00A591" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M112 422V500M102 490L112 500L122 490"/>
+      <path d="M112 582V660M102 650L112 660L122 650"/>
+    </g>
+    <g fill="#00A591">
+      <circle cx="112" cy="386" r="34"/>
+      <circle cx="112" cy="546" r="34"/>
+      <circle cx="112" cy="706" r="34"/>
+    </g>
+    <g fill="#000F13" font-size="44" font-weight="700" text-anchor="middle">
+      <text x="112" y="402">1</text>
+      <text x="112" y="562">2</text>
+      <text x="112" y="722">3</text>
+    </g>
+    <g fill="#EEE8D5" font-size="48" font-weight="600" letter-spacing="-1">
+      <text x="186" y="402">Choose a checkpoint</text>
+      <text x="186" y="550">Do the work</text>
+      <text x="186" y="722">Save your evidence</text>
+    </g>
+    <text x="186" y="607" fill="#EEE8D5" font-size="44" opacity=".8">Outside the tracker.</text>
+    <path d="M186 453H1016M186 627H1016" stroke="#EEE8D5" stroke-opacity=".15"/>
+
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M844 418H876Q896 418 896 398V378Q896 358 916 358H966" stroke="#EEE8D5" stroke-width="4"/>
+      <circle cx="844" cy="418" r="7" fill="#001E26" stroke="#EEE8D5" stroke-width="3"/>
+      <circle cx="966" cy="358" r="7" fill="#001E26" stroke="#EEE8D5" stroke-width="3"/>
+      <circle cx="896" cy="391" r="21" fill="#001E26" stroke="#00A591" stroke-width="4"/>
+      <circle cx="896" cy="391" r="7" fill="#00A591"/>
+      <path d="M926 407L913 398M924 416L935 406" stroke="#00A591" stroke-width="3"/>
+
+      <path d="M850 518Q879 507 907 527Q936 507 966 518V578Q936 566 907 586Q879 566 850 578Z" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M907 527V586" stroke="#EEE8D5" stroke-width="3"/>
+      <path d="M863 539Q877 536 892 544M863 553Q877 550 892 558M922 550Q936 542 951 546" stroke="#EEE8D5" stroke-opacity=".5" stroke-width="3"/>
+      <path d="M929 532L933 515L964 484L979 499L948 530Z" fill="#001E26" stroke="#00A591" stroke-width="4"/>
+      <path d="M954 494L969 509M933 515L948 530" stroke="#00A591" stroke-width="3"/>
+
+      <path d="M863 743V662H929L956 689V743Z" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M929 662V689H956" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M880 718H904M880 732H927" stroke="#EEE8D5" stroke-opacity=".5" stroke-width="3"/>
+      <path d="M893 693L916 670Q927 659 936 668Q945 677 934 688L910 712Q903 719 897 713Q891 707 898 700L919 679" stroke="#00A591" stroke-width="4"/>
+    </g>
+
+    <path d="M64 786H1016" stroke="#00A591" stroke-opacity=".7" stroke-width="2"/>
+    <text x="64" y="847" fill="#EEE8D5" font-size="44">Complete only when the criteria are met.</text>
+  </g>
+</svg>

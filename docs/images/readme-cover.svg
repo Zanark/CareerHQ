@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="820" viewBox="0 0 1080 820" role="img" aria-labelledby="cover-title cover-desc" font-family="Segoe UI, Arial, sans-serif">
+  <title id="cover-title">CareerHQ - Track your learning. Keep your proof.</title>
+  <desc id="cover-desc">An illustrated introduction to CareerHQ. A folded roadmap, a daily calendar and a folder of saved work form a connected path. These represent roadmaps, a daily plan and saved evidence, not a screenshot or sample progress.</desc>
+  <defs>
+    <clipPath id="cover-frame">
+      <rect width="1080" height="820" rx="28"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#cover-frame)">
+    <rect width="1080" height="820" fill="#000F13"/>
+    <path d="M805 0H1080V485C1024 457 1000 410 1002 345C1007 236 852 235 823 149C808 105 829 52 805 0Z" fill="#001E26"/>
+    <g fill="none" stroke="#00A591" stroke-width="1.5" opacity=".25">
+      <path d="M867-56C826 38 845 98 923 131C1003 165 1051 186 1062 268C1075 364 1012 388 1068 458"/>
+      <path d="M891-43C859 29 873 80 941 108C1036 146 1074 180 1085 258C1095 329 1058 377 1096 431"/>
+      <path d="M916-31C893 20 904 59 961 84C1062 126 1099 170 1108 247"/>
+      <path d="M-80 753C73 647 132 773 278 752C424 731 504 755 614 817"/>
+      <path d="M-66 778C81 678 129 801 278 779C412 759 505 787 597 840"/>
+      <path d="M-51 803C92 710 133 828 281 807C412 788 490 815 571 860"/>
+    </g>
+    <g fill="none" stroke="#00A591" stroke-linecap="round" stroke-width="4">
+      <path d="M64 66H96"/>
+      <path d="M64 77H88"/>
+      <path d="M64 88H80"/>
+    </g>
+    <path d="M124 77H912" stroke="#EEE8D5" stroke-opacity=".2"/>
+    <text x="1016" y="86" text-anchor="end" fill="#EEE8D5" opacity=".65" font-size="24" letter-spacing="2">01 / 04</text>
+
+    <text x="64" y="191" fill="#EEE8D5" font-size="90" font-weight="700" letter-spacing="-4">CareerHQ</text>
+    <text x="64" y="290" fill="#EEE8D5" font-size="66" font-weight="400" letter-spacing="-2">Track your learning.</text>
+    <text x="64" y="367" fill="#00A591" font-size="66" font-weight="600" letter-spacing="-2">Keep your proof.</text>
+
+    <path d="M193 554C306 493 359 510 403 563C451 621 463 635 539 610C650 573 701 490 805 530L883 554" fill="none" stroke="#00A591" stroke-width="3" stroke-dasharray="8 12" stroke-linecap="round"/>
+    <path d="M383 540L403 563L374 565M767 515L794 526L771 543" fill="none" stroke="#00A591" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="202" cy="621" rx="107" ry="16" fill="#001E26"/>
+      <path d="M112 493L172 470L232 494L292 471V591L232 614L172 590L112 613Z" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M172 470V590M232 494V614" fill="none" stroke="#EEE8D5" stroke-width="3" stroke-opacity=".4"/>
+      <path d="M132 562C150 562 144 520 166 520S195 568 214 549S238 514 270 525" fill="none" stroke="#00A591" stroke-width="5"/>
+      <circle cx="132" cy="562" r="8" fill="#001E26" stroke="#00A591" stroke-width="4"/>
+      <circle cx="214" cy="549" r="8" fill="#001E26" stroke="#00A591" stroke-width="4"/>
+      <circle cx="270" cy="525" r="8" fill="#EEE8D5"/>
+    </g>
+    <text x="202" y="683" text-anchor="middle" fill="#EEE8D5" font-size="44" font-weight="600" letter-spacing="-1">Roadmaps</text>
+
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="539" cy="669" rx="100" ry="15" fill="#001E26"/>
+      <rect x="468" y="541" width="144" height="116" rx="13" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M468 577H612M498 529V553M581 529V553" fill="none" stroke="#EEE8D5" stroke-width="4"/>
+      <circle cx="509" cy="617" r="16" fill="#00A591"/>
+      <path d="M509 591V594M509 640V643M483 617H486M532 617H535M491 599L494 602M525 632L528 635M491 635L494 632M525 602L528 599" fill="none" stroke="#00A591" stroke-width="3"/>
+      <path d="M554 608H587M554 625H578" fill="none" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M622 516L632 507M632 541H646M603 505V492" fill="none" stroke="#00A591" stroke-width="4"/>
+    </g>
+    <text x="540" y="733" text-anchor="middle" fill="#EEE8D5" font-size="44" font-weight="600" letter-spacing="-1">Daily plan</text>
+
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="879" cy="637" rx="107" ry="15" fill="#001E26"/>
+      <path d="M797 541V512Q797 502 807 502H850L868 520H955V622H797Z" fill="#001E26" stroke="#00A591" stroke-width="4"/>
+      <path d="M824 566V469H898L934 505V573" fill="#000F13" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M898 469V505H934" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M846 504H873M846 522H908M846 540H897" fill="none" stroke="#EEE8D5" stroke-width="3" stroke-opacity=".65"/>
+      <path d="M787 548H848L867 564H966L951 625H802Z" fill="#001E26" stroke="#EEE8D5" stroke-width="4"/>
+      <path d="M849 591H901" stroke="#00A591" stroke-width="5"/>
+    </g>
+    <text x="879" y="683" text-anchor="middle" fill="#EEE8D5" font-size="44" font-weight="600" letter-spacing="-1">Saved work</text>
+  </g>
+</svg>

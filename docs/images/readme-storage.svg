@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="820" viewBox="0 0 1080 820" role="img" aria-labelledby="storage-title storage-desc" font-family="Segoe UI, Arial, sans-serif">
+  <title id="storage-title">Saved here. Backed up by you.</title>
+  <desc id="storage-desc">A laptop browser points to an exported JSON document, which points to another laptop. Labels read This browser, Export backup and Import elsewhere. There is no account or automatic sync. Workspace data uses unencrypted browser localStorage and manual JSON transfer. Exports contain text records and links, not copies of linked artifact files.</desc>
+  <defs>
+    <clipPath id="storage-frame">
+      <rect width="1080" height="820" rx="28"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#storage-frame)">
+    <rect width="1080" height="820" fill="#F3F2E9"/>
+    <path d="M846 0H1080V331C996 313 1032 240 980 206C926 170 859 195 850 119C846 84 867 41 846 0Z" fill="#E3ECE7"/>
+    <path d="M0 555C126 598 213 563 278 585C393 624 438 604 540 589C685 567 708 624 837 597C932 577 987 572 1080 604V691H0Z" fill="#E3ECE7" opacity=".65"/>
+    <g fill="none" stroke="#173D3A" stroke-width="1.3" opacity=".15">
+      <path d="M923-32C890 15 907 65 949 81C1015 107 961 161 1012 184C1047 200 1076 184 1096 217"/>
+      <path d="M947-23C922 15 934 44 971 61C1035 91 990 141 1030 161C1062 177 1086 163 1114 192"/>
+      <path d="M972-14C955 14 962 24 993 41C1054 73 1019 119 1049 139C1077 157 1100 143 1131 167"/>
+    </g>
+    <g fill="none" stroke="#00A591" stroke-linecap="round" stroke-width="4">
+      <path d="M64 66H96"/>
+      <path d="M64 77H88"/>
+      <path d="M64 88H80"/>
+    </g>
+    <path d="M124 77H912" stroke="#173D3A" stroke-opacity=".2"/>
+    <text x="1016" y="86" text-anchor="end" fill="#173D3A" opacity=".65" font-size="24" letter-spacing="2">04 / 04</text>
+
+    <text x="64" y="174" fill="#173D3A" font-size="78" font-weight="600" letter-spacing="-3">Saved here.</text>
+    <text x="64" y="263" fill="#173D3A" font-size="78" font-weight="700" letter-spacing="-3">Backed up by you.</text>
+    <text x="64" y="336" fill="#173D3A" font-size="44">No account. No automatic sync.</text>
+
+    <g stroke-linecap="round" stroke-linejoin="round">
+      <rect x="93" y="415" width="216" height="140" rx="10" fill="#F3F2E9" stroke="#173D3A" stroke-width="4"/>
+      <rect x="110" y="431" width="182" height="106" rx="4" fill="#E3ECE7" stroke="#173D3A" stroke-width="3"/>
+      <path d="M110 450H292" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <path d="M121 441H124M132 441H135" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <path d="M72 555H330L347 578H55Z" fill="#E3ECE7" stroke="#173D3A" stroke-width="4"/>
+      <path d="M180 555L185 563H219L224 555" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <circle cx="201" cy="492" r="30" fill="#F3F2E9"/>
+      <path d="M188 512V470H206L216 480V512Z" fill="#F3F2E9" stroke="#00A591" stroke-width="3"/>
+      <path d="M206 470V480H216M195 490H209M195 499H205" fill="none" stroke="#00A591" stroke-width="3"/>
+
+      <path d="M365 487H438M425 474L438 487L425 500" fill="none" stroke="#00A591" stroke-width="4"/>
+      <path d="M642 487H715M702 474L715 487L702 500" fill="none" stroke="#00A591" stroke-width="4"/>
+
+      <path d="M480 422H577L621 466V587H480Z" fill="#173D3A" opacity=".08"/>
+      <path d="M465 405H563L607 449V570H465Z" fill="#F3F2E9" stroke="#173D3A" stroke-width="4"/>
+      <path d="M563 405V449H607" fill="#E3ECE7" stroke="#173D3A" stroke-width="4"/>
+      <path d="M520 446Q507 446 507 456V463Q507 474 497 474Q507 474 507 485V491Q507 501 520 501M553 446Q566 446 566 456V463Q566 474 576 474Q566 474 566 485V491Q566 501 553 501" fill="none" stroke="#00A591" stroke-width="3.5"/>
+
+      <rect x="771" y="415" width="216" height="140" rx="10" fill="#F3F2E9" stroke="#173D3A" stroke-width="4"/>
+      <rect x="788" y="431" width="182" height="106" rx="4" fill="#E3ECE7" stroke="#173D3A" stroke-width="3"/>
+      <path d="M788 450H970" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <path d="M799 441H802M810 441H813" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <path d="M750 555H1008L1025 578H733Z" fill="#E3ECE7" stroke="#173D3A" stroke-width="4"/>
+      <path d="M858 555L863 563H897L902 555" fill="none" stroke="#173D3A" stroke-width="3"/>
+      <circle cx="879" cy="492" r="30" fill="#F3F2E9"/>
+      <path d="M866 512V470H884L894 480V512Z" fill="#F3F2E9" stroke="#00A591" stroke-width="3"/>
+      <path d="M884 470V480H894M873 490H887M873 499H883" fill="none" stroke="#00A591" stroke-width="3"/>
+    </g>
+    <text x="537" y="545" fill="#173D3A" font-size="44" font-weight="600" text-anchor="middle">.json</text>
+    <g fill="#173D3A" font-size="44" font-weight="600" text-anchor="middle">
+      <text x="201" y="643">This</text>
+      <text x="201" y="690">browser</text>
+      <text x="540" y="643">Export</text>
+      <text x="540" y="690">backup</text>
+      <text x="879" y="643">Import</text>
+      <text x="879" y="690">elsewhere</text>
+    </g>
+    <path d="M64 720H1016" stroke="#173D3A" stroke-opacity=".3"/>
+    <text x="64" y="781" fill="#173D3A" font-size="44">Linked files stay separate.</text>
+  </g>
+</svg>

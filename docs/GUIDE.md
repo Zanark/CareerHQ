@@ -48,19 +48,94 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 
 ## Start using it
 
-1. A new browser starts with **no assumed progress**. Existing workspaces, including
-   earlier sample workspaces, are preserved rather than reset during an update.
-2. Click **Tutorial** in the header or sidebar for the click-by-click practice walkthrough.
-   Exit or finish to return to your real data and previous page. Practice exports are
-   named `careerhq-tutorial-example-*`, not real backups.
-   The current target glows, buttons get a pointing hand, and completed actions point you
-   to Next. Reduced-motion mode keeps the glow and hand static. Back, Skip and Exit remain available.
-3. Use Overview for daily actions and current checkpoints. Open a mission or Daily plan
-   for its details, timer, capacity, and completion criteria.
-4. Only select **This checkpoint is complete** when your artifact demonstrates
-   every listed criterion. Saving ordinary progress does not unlock the next checkpoint.
-5. Download private backups regularly. Importing a valid backup **replaces**, rather
-   than merges, the current workspace after confirmation.
+**CareerHQ is the tracker, not the teacher.** Use your learning material, editor, lab,
+or coach to do the work. Come back here to record the result and keep your place.
+The built-in data describes what to work on; it does not claim you have already done it.
+
+### First, find the PDF content
+
+1. Open [Operation documents](https://zanark.github.io/CareerHQ/#/sources).
+2. Choose an area from **Mission**. For example, **DSA · Pattern Forge**.
+3. Read **Sources, scope and supporting material**, then use **Roadmap stage** to
+   browse its stages. Expand **Topics and completion criteria in this stage** for the detail.
+4. Compare **Documented roadmap** with **Active tracker**. If the active tracker is
+   still v1, export a backup, review the new definition, then select **Adopt documented
+   roadmap** only when you want to switch. Old progress is archived, not transferred as
+   completion credit. If both versions are v2, no adoption is needed.
+5. Select **Open current tracker** to work on that mission.
+
+You do **not** need to upload the PDFs or import a JSON file to obtain these roadmaps.
+They are already part of the website. **Reload sample is not a PDF import**: it replaces
+the current workspace with fictional examples. A new browser starts without assumed
+progress; an existing workspace is preserved.
+
+### Learn the controls safely
+
+Click **Tutorial** in the header or sidebar. Follow the glowing target and pointing
+hand, perform the indicated action, then select **Next**. Back, Skip and Exit are
+available throughout. Exit returns to your real workspace; practice changes are discarded.
+
+The tutorial covers actual controls using temporary data. Its files are named
+`careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the
+mission subjects. The roadmap-adoption step is explanatory rather than a hands-on
+adoption exercise.
+
+### A normal working session
+
+1. Open a mission. Use **Bring into focus** if it is in the background, then **Make
+   primary mission** if you want it considered first. Leave other areas in the background
+   when you do not want daily actions for them.
+2. Open [Daily plan](https://zanark.github.io/CareerHQ/#/plan), choose **Gentle**,
+   **Steady**, or **Deep focus**, and select **Refresh plan** if today's untouched plan
+   needs your latest priorities. A plan with logged actions stays intact.
+3. Select **Open checkpoint** and do its **Next action** outside the tracker.
+   Read the **Completion criteria** before deciding the checkpoint is finished.
+4. Return to that daily action and select **Log progress**. Add an artifact title,
+   a truthful description of the work, and optionally an HTTP(S) link. Leave **This
+   checkpoint is complete** unchecked to record practice without advancing.
+5. When your work demonstrates every criterion, check **This checkpoint is complete**,
+   confirm each criterion, and select **Complete & unlock next**.
+6. Find the record in **Saved work** and the event in **History**. Use **Export backup**
+   in **Settings & data** to keep a private copy.
+
+For example, the documented first DSA checkpoint is **HashMap Fundamentals**:
+practice adding, updating and looking up values in a small C# `Dictionary`.
+An evidence title might be `Dictionary add/update/lookup practice`; describe what
+you actually implemented and what still confused you. Do not paste an example as proof
+of work you have not done.
+
+**Daily action done, checkpoint complete, retained recall, and interview ready are
+different states.** Logging through a daily action records that action; standalone
+mission evidence is not automatically linked back to a daily-plan row. The focus timer
+does not log work. Its session is tab-local, and the planned minutes are authored
+estimates, not measured learning time.
+
+### Where the other information goes
+
+| Page | Use it for | What it does not do |
+| --- | --- | --- |
+| Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
+| Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |
+| Opportunities | Record roles, application stages and optional effort/resume details | No job search, application submission or resume evaluation |
+| Freelance ledger | Research ten leads, classify them, select five and copy a review brief | Adding leads does not complete the Side Income checkpoints |
+| Interview readiness | Self-assess five interview skill areas | Ratings are not computed from evidence or completion |
+| Settings & data | Change the goal, export and restore private records | Goal text does not instruct an AI planner |
+
+The Side Income mission completes a **starting research sprint**, not an income target.
+Escape Velocity's completion criteria concern the **transition outcome**, not finishing
+one application. AI Engineering's nine projects are a reference ladder, not nine tracked
+builds; the six certification milestones do not mean six earned certifications.
+Competitive programming currently provides a **forecast only**.
+
+### A small first review
+
+Start with **one mission**, not all nine. Review its first action and criteria for
+clarity and suitability, try saving practice in the tutorial, then locate the result
+in Saved work. Also check whether the source page shows the roadmap version you expected.
+
+Useful feedback is: **page/checkpoint + what you expected + what happened**, with a
+cropped screenshot if helpful. No private backup or complete PDF is needed to report
+an interface problem.
 
 **Local is not encrypted.** Saved work is not a secure vault.
 Other JavaScript on the same GitHub Pages origin can read the same localStorage.
@@ -68,6 +143,27 @@ Do not enter credentials, confidential material, or sensitive personal informati
 Keep exported backups private. Read [Privacy](PRIVACY.md) before entering real data.
 Saving and exporting share a 5 MiB compact UTF-8 limit so accepted workspaces remain importable.
 Larger writes fail without replacing the previous saved workspace.
+
+### Current boundaries worth knowing
+
+The documents' full teaching, coached assessment, exercise ladders and strategic
+planning rules are not implemented. Some checkpoints summarize a broad topic group or
+phase; completing that short checklist is not proof of mastery of the whole subject.
+Use the original learning material for the full practice progression.
+The [integration review](OPERATION-SOURCES.md#review-findings-structure-is-not-a-complete-course)
+lists specific content gaps, including narrowed Service Fabric requirements, missing
+hands-on obligations and phase reviews that are not next-lesson instructions.
+
+There is no normal edit/delete interface for saved evidence or lead details; opportunity
+stages and freelance verdicts can be changed. Evidence can be added only to an active,
+unblocked mission's current unfinished checkpoint. After a documented track is complete,
+its ordinary evidence workflow cannot record more practice. Recall remains available
+for eligible previous DSA/System Design work.
+
+Recall is self-reported. A failed review flags **Needs review**, but the present algorithm
+can reuse older spaced successes when a subsequent independent review restores
+**Retained**; it does not require a fresh spaced recovery cycle. Treat that badge as a
+tracking aid rather than an assessment.
 
 ## Persistence and changing machines
 
@@ -160,8 +256,20 @@ Implementation entry points: `src/App.tsx` (`Workspace`), `src/dialogs.tsx`
 (`EvidenceDialog`), `src/useWorkspace.ts` (`useWorkspace`), `src/domain/catalog.ts`
 (`missions`), and `src/domain/engine.ts` (`parseState`, `generatePlan`, `recordEvidence`).
 
-## README screenshots
+## README artwork
 
-Images under `docs/images/` are real browser captures from a fresh workspace and the
-isolated tutorial. They contain no personal progress. They illustrate appearance, not
-evidence that any visitor has completed a checkpoint.
+The root README uses original editorial illustrations, not screenshots or personal
+progress. Each panel explains one idea: the tracker, document-derived roadmaps, the
+working loop, or manual data portability. Native Markdown supplies links and the
+important limitations; image alt text provides a text alternative.
+
+Editable sources are `docs/images/readme-*.svg`. Their `readme-*.png` counterparts are
+rendered with the existing Playwright dependency:
+
+```sh
+node scripts/render-readme.mjs
+```
+
+The renderer uses Microsoft Edge on Windows and Chromium elsewhere. Keep fonts local
+and text large enough for a narrow README column. Older `overview.png`, `roadmap.png`,
+and `tutorial.png` remain genuine fresh-workspace/practice screenshots, not user records.

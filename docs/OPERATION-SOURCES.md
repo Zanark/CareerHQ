@@ -70,3 +70,44 @@ without deleting completed checkpoints. This is not AI assessment.
 
 **Operation documents** exposes sources, optional/future material, phase/topic granularity,
 and the adoption flow. The tutorial uses isolated practice data for these surfaces too.
+
+## Review findings: structure is not a complete course
+
+The document-to-code review confirmed the node counts above, but found narrower execution
+requirements in several places. These are current limitations, not changes to the original
+documents or claims that the omitted work has been completed.
+
+| Area | What the tracker does not fully capture |
+| --- | --- |
+| Pattern Forge | Its short criteria do not track the complete copy/modify/solve progression or every supplied exercise. Completing the five-node HashMap track is not completing DSA. |
+| System Forge | Broad topic groups can be completed with representative exercises. For example, the common-designs group does not require building every listed system. Supplementary visual details such as mock-interview feedback and AI-specific failure/timeout handling are not fully carried into the criteria. |
+| Fabric Core | Node 4.4 covers application upgrades but omits cluster upgrades. The Stage 1 checklist ends with a working cluster, while the source milestone includes a running application. Node 3.6 accepts discussion preparation rather than requiring the discussion itself. |
+| Fabric first-time setup | Explorer appears before environment setup in the supplied sequence. A new learner may need the setup instructions before performing the Explorer exercise; the tracker is not a self-contained installation tutorial. |
+| Blueprint | The five phase reviews replace fine-grained execution. The named Hashmaps Foundation kickoff remains reference material rather than the current actionable checkpoint. |
+| Neural Edge | Seven phase reviews are tracked; the nine-project ladder is reference-only. Some review criteria accept explanations or representative examples rather than a working implementation of every phase capability. |
+| Credential Forge | Six milestones are not six earned certifications. Practical labs are not consistently required by the short criteria. Module 2 remains a reference rather than a separately tracked next lesson; free-first learning guidance is abbreviated. |
+| Escape Velocity | The outcome workflow and parallel workstreams are present, but the full coached reconstruction/implementation/teach-back sequence is not an executable teaching flow. A single application is not mission completion. |
+| Side Income | The source calls for classifying all ten researched leads; the checkpoint criteria explicitly require classification only of the selected five. Recurring-skill analysis and an actual coach evaluation are not fully captured by preparing a review brief. |
+| Algorithm Forge | The four forecast phases and practice scenarios are preserved without invented checkpoints. Plateau/recovery guidance is abbreviated; ratings and time ranges are conditional estimates. |
+| Shared learning model | Task duration estimates and bounded acceptance criteria are application-authored adaptations. Neither the timer nor a completed checklist measures subject mastery. |
+
+Technical source locations: Pattern handoff section 11 and 19; System handoff sections
+3, 7 and 10-11; Fabric handoff section 3; Blueprint handoff sections 4-5 and 19.
+Implementation: `src/domain/operations/technical.ts`, `growth.ts`, and `operationBuilder.ts`.
+Fabric Stage 2's displayed page reference points to the heading on physical page 2;
+its numbered content continues on page 3.
+
+Growth/execution source locations: Neural roadmap pages 1-2; Credential handoff sections
+3, 11 and 19; Escape handoff sections 1-3 and 11; Side Income Sprint 3 and Mission Report;
+Algorithm timeline pages 1-2. Implementation: `src/domain/operations/growth.ts` and
+`execution.ts`. The Neural and Credential documents also give different certification
+priorities; they are not one independently validated exam schedule.
+
+The Operating System also describes capabilities beyond the present tracker: teaching
+and coach assessment, recall-aware daily scheduling, role-specific readiness evaluation,
+reusable multi-mission evidence, and external integrations. Those are not delivered merely
+because the source-defined mission names and stages are present. The source's later-stage
+capabilities are distinct from its smaller V1 tracking goal.
+
+For actual use, begin with [the PDF walkthrough and one-session instructions](GUIDE.md#start-using-it).
+Review the first action and criteria of one mission before treating a whole phase as completed.
