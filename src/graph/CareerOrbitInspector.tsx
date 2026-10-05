@@ -46,10 +46,13 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
   const visibleCount = ids.filter(id => visibleIds.has(id)).length;
   const current = orbit.currentNodeId ? nodes.get(orbit.currentNodeId) : undefined;
   return <aside ref={ref} className="career-graph-inspector career-orbit-inspector" tabIndex={-1}
-    aria-label="Selected career orbit" style={{ borderTopColor: orbit.color }} data-orbit-id={orbit.id}>
+    aria-label="Selected career orbit" style={{ borderTopColor: orbit.color }} data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}>
     <div className="career-graph-node-meta"><span>{orbit.kind === 'mission' ? 'Mission orbit' : 'Record / reference orbit'}</span>
       <button className="icon-button" aria-label="Close orbit details" onClick={onClose}><X size={17} /></button></div>
     <h2>{orbit.label}</h2>
+    {orbit.missionMode && <p className="career-orbit-view-note">{orbit.missionMode === 'active'
+      ? 'Active mission - colored outer ring; revolves when animation is on.'
+      : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} mission - small gray stationary ring near the core.`}</p>}
     {!orbit.progress && <p className="career-orbit-summary">{orbit.summary}</p>}
     {orbit.roadmapVersion && <p className="career-graph-node-context">Saved tracker v{orbit.roadmapVersion}</p>}
     {orbit.progress && <div className="career-orbit-progress">

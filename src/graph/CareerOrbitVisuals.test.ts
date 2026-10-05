@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BufferGeometry, Color, LineSegments, PerspectiveCamera, Points, Vector3 } from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import type { CareerGraphNode } from './careerGraphModel';
 import type { CareerOrbit } from './careerOrbitTypes';
-import { CareerOrbitVisuals } from './CareerOrbitVisuals';
-import { CAREER_ORBIT_PLANES, orbitPoint } from './careerOrbitMotion';
+import {
+  CareerOrbitVisuals, ORBIT_ANCHOR_DIAMETER, SELECTED_ORBIT_ANCHOR_DIAMETER,
+  ORBIT_HIGHLIGHT_SEGMENTS, ORBIT_HIGHLIGHT_WIDTH, ORBIT_HIGHLIGHT_HALO_WIDTH,
+} from './CareerOrbitVisuals';
+import { CAREER_ORBIT_PLANES, careerOrbitMotion, orbitPoint } from './careerOrbitMotion';
 import { SAVED_STATUS_PULSE_SECONDS } from './careerOrbitSavedPulses';
 import { CareerRippleField } from './careerRipple';
 
@@ -13,7 +17,7 @@ function node(id: string, position: [number, number, number] = [12, 7, 3]): Care
 
 function orbit(index = 0): CareerOrbit {
   return {
-    id: `orbit:${index}`, index, kind: 'mission', label: `Mission ${index}`,
+    id: `orbit:${index}`, index, kind: 'mission', missionMode: 'active', label: `Mission ${index}`,
     summary: '1 of 3 checkpoints complete', detail: '', color: '#EDAE29', href: '/',
     hubNodeId: 'mission:hub', memberIds: ['checkpoint:done', 'checkpoint:now', 'checkpoint:later'],
     roadmapVersion: '1.0.0',
@@ -50,12 +54,61 @@ function position(geometry: BufferGeometry, index: number): Vector3 {
   return new Vector3().fromBufferAttribute(geometry.getAttribute('position'), index);
 }
 
+function displayedPosition(geometry: BufferGeometry, index: number, field: CareerRippleField): Vector3 {
+  const base = position(geometry, index);
+  return base.clone().lerp(field.deformWorld(base, new Vector3()), geometry.getAttribute('aRippleWeight').getX(index));
+}
+
+function highlightPoint(visuals: CareerOrbitVisuals, segment: number, end = false): Vector3 {
+  return new Vector3().fromBufferAttribute(visuals.highlight.geometry.getAttribute(end ? 'instanceEnd' : 'instanceStart'), segment);
+}
+
 function screen(point: Vector3, view: PerspectiveCamera): [number, number] {
   point.project(view);
   return [(point.x + 1) * 400, (1 - point.y) * 400];
 }
 
 describe('semantic career orbit geometry', () => {
+  it.each([false, true])('uses larger shaded planets but retains small saved-status packets (calm=%s)', calm => {
+    const visuals = new CareerOrbitVisuals(calm), data = orbit();
+    visuals.setData([data], nodes(), new Vector3(), 60);
+    visuals.setSelection({ orbitId: data.id });
+    expect(ORBIT_ANCHOR_DIAMETER).toBe(32);
+    expect(SELECTED_ORBIT_ANCHOR_DIAMETER).toBe(36);
+    expect(visuals.anchors.material.vertexShader).toContain('gl_PointSize = 32.0 * uPixelRatio');
+    expect(visuals.selectedAnchor.material.vertexShader).toContain('gl_PointSize = 36.0 * uPixelRatio');
+    expect(visuals.savedPulsePackets.material.vertexShader).toContain('gl_PointSize = 10.0 * uPixelRatio');
+    expect(visuals.anchors.material.fragmentShader).toContain('float diffuse');
+    expect(visuals.anchors.material.fragmentShader).toContain('float atmosphere');
+    expect(visuals.savedPulsePackets.material).not.toBe(visuals.anchors.material);
+    expect(position(visuals.selectedAnchor.geometry, 0)).toEqual(position(visuals.anchors.geometry, 0));
+    const color = new Color(data.color);
+    const selected = visuals.selectedAnchor.geometry.getAttribute('color');
+    expect([selected.getX(0), selected.getY(0), selected.getZ(0)])
+      .toEqual(color.toArray().map(value => Math.fround(value)));
+    for (const ratio of [1, 2, 1.5]) {
+      visuals.resize(ratio);
+      for (const point of [visuals.anchors, visuals.selectedAnchor, visuals.savedPulsePackets]) {
+        expect(point.material.uniforms.uPixelRatio.value).toBe(ratio);
+      }
+    }
+    visuals.dispose();
+  });
+
+  it('picks the enlarged planet body and selected halo without enlarging unrelated path hit areas', () => {
+    const visuals = new CareerOrbitVisuals(), data = orbit(), view = camera();
+    visuals.setData([data], nodes(), new Vector3(), 60);
+    const center = new Vector3();
+    visuals.getAnchor({ orbitId: data.id }, center);
+    const [x, y] = screen(center, view);
+    expect(visuals.pickAnchor(x + 14, y, view, 800, 800)?.selection).toEqual({ orbitId: data.id });
+    expect(visuals.pickAnchor(x + 19, y, view, 800, 800)).toBeUndefined();
+    visuals.setSelection({ orbitId: data.id });
+    expect(visuals.pickAnchor(x + 19, y, view, 800, 800)?.selection).toEqual({ orbitId: data.id });
+    expect(visuals.pickAnchor(x + 21, y, view, 800, 800)).toBeUndefined();
+    visuals.dispose();
+  });
+
   it('uses fixed identity planes and exactly two deterministic speed boosts, not filtered order', () => {
     expect(CAREER_ORBIT_PLANES.map(item => item.multiplier).sort()).toEqual([...Array<number>(13).fill(1), 1.5, 2]);
     expect(new Set(CAREER_ORBIT_PLANES.map(item => item.speed)).size).toBe(15);
@@ -121,6 +174,7 @@ describe('semantic career orbit geometry', () => {
   it('sizes collection buckets by actual record counts rather than a fictitious completion percentage', () => {
     const data = orbit(10);
     data.kind = 'evidence';
+    delete data.missionMode;
     delete data.progress;
     data.segments[0].members = [data.segments[0].members[0]];
     data.segments[1].members = [
@@ -250,11 +304,11 @@ describe('semantic career orbit geometry', () => {
     expect(visuals.pickPath(...screen(displayed.clone(), view), view, 800, 800)).toEqual(selection);
     for (const material of [
       visuals.paths.material, visuals.anchors.material, visuals.primaryTethers.material,
-      visuals.detailTethers.material, visuals.selectedAnchor.material,
+      visuals.detailTethers.material, visuals.selectedAnchor.material, visuals.savedPulsePackets.material,
       visuals.savedPulseTethers.material, visuals.savedPulsePackets.material,
     ]) {
       expect(material.uniforms.uRippleAmplitude).toBe(field.uniforms.uRippleAmplitude);
-      expect(material.vertexShader).toContain('rippleView(modelViewMatrix');
+      expect(material.vertexShader).toContain('mix(basePosition, rippleView(basePosition), aRippleWeight)');
     }
     const tetherStart = position(visuals.detailTethers.geometry, 0);
     expect(field.deformWorld(tetherStart, tetherStart).distanceTo(displayed)).toBeLessThan(0.00001);
@@ -346,6 +400,177 @@ describe('semantic career orbit geometry', () => {
     calm.dispose();
   });
 
+  it.each(['background', 'planned'] as const)('keeps %s mission geometry small, gray and stationary without changing its saved work', mode => {
+    const visuals = new CareerOrbitVisuals();
+    const data = { ...orbit(7), missionMode: mode, color: '#657B83' };
+    const before = JSON.stringify(data), actual = nodes(), beforeNodes = JSON.stringify([...actual]);
+    const center = new Vector3(8, 3, -4), view = camera();
+    visuals.setMotionAllowed(true);
+    visuals.setData([data], actual, center, 60);
+    const anchor = new Vector3();
+    visuals.getAnchor({ orbitId: data.id }, anchor);
+    expect(anchor.distanceTo(center) / 60).toBeCloseTo(0.55);
+    expect(visuals.getMotion(data.id)).toMatchObject({ quiet: true, revolving: false, normalizedRadius: 0.55, rippleWeight: 0 });
+    const paths = visuals.paths.geometry.getAttribute('position').array.slice();
+    const anchors = visuals.anchors.geometry.getAttribute('position').array.slice();
+    const gray = new Color(data.color);
+    for (const selection of [{ orbitId: data.id }, { orbitId: data.id, segmentId: 'stage:first' }]) {
+      visuals.setSelection(selection);
+      visuals.update(view, 12);
+      expect(visuals.paths.geometry.getAttribute('position').array).toEqual(paths);
+      expect(visuals.anchors.geometry.getAttribute('position').array).toEqual(anchors);
+      for (const mesh of [visuals.paths, visuals.anchors, visuals.primaryTethers, visuals.detailTethers, visuals.selectedAnchor]) {
+        const colors = mesh.geometry.getAttribute('color');
+        for (let index = 0; index < colors.count; index++) {
+          expect(colors.getX(index) / colors.getY(index)).toBeCloseTo(gray.r / gray.g, 5);
+          expect(colors.getZ(index) / colors.getY(index)).toBeCloseTo(gray.b / gray.g, 5);
+        }
+      }
+      expect(visuals.savedPulseCount).toBe(0);
+    }
+    expect(JSON.stringify(data)).toBe(before);
+    expect(JSON.stringify([...actual])).toBe(beforeNodes);
+    visuals.dispose();
+  });
+
+  it('updates live mission modes at the existing phase without changing other identities, radii or the camera', () => {
+    const visuals = new CareerOrbitVisuals(), filtered = new CareerOrbitVisuals();
+    const data = { ...orbit(4), missionMode: 'background' as const, color: '#657B83' };
+    const active = orbit(1), collection = { ...orbit(12), kind: 'evidence' as const };
+    delete collection.missionMode;
+    const actual = nodes(), view = camera(), center = new Vector3(8, 3, -4);
+    const cameraPosition = view.position.clone(), quiet = new Vector3(), other = new Vector3(), records = new Vector3();
+    visuals.setMotionAllowed(true);
+    visuals.setData([data, active, collection], actual, center, 60);
+    visuals.setSelection({ orbitId: data.id, segmentId: 'stage:first' });
+    visuals.update(view, 12);
+    visuals.getAnchor({ orbitId: data.id }, quiet);
+    visuals.getAnchor({ orbitId: active.id }, other);
+    visuals.getAnchor({ orbitId: collection.id }, records);
+    const resumed = { ...data, missionMode: 'active' as const, color: '#EDAE29' };
+    visuals.setData([collection, resumed, active], actual, center, 60);
+    const point = new Vector3();
+    visuals.getAnchor({ orbitId: data.id }, point);
+    expect(point).toEqual(orbitPoint(4, CAREER_ORBIT_PLANES[4].anchorAngle, 12, center, 60, new Vector3()));
+    visuals.getAnchor({ orbitId: active.id }, point);
+    expect(point).toEqual(other);
+    visuals.getAnchor({ orbitId: collection.id }, point);
+    expect(point).toEqual(records);
+    expect(visuals.getMotion(collection.id)?.quiet).toBe(false);
+    expect(visuals.selectedAnchor.geometry.getAttribute('aRippleWeight').getX(0)).toBe(1);
+    visuals.setData([collection, data, active], actual, center, 60);
+    visuals.getAnchor({ orbitId: data.id }, point);
+    expect(point).toEqual(quiet);
+    expect(visuals.selectedAnchor.geometry.getAttribute('aRippleWeight').getX(0)).toBe(0);
+    filtered.setData([data], actual, center, 60);
+    filtered.update(view, 32);
+    filtered.getAnchor({ orbitId: data.id }, point);
+    expect(point).toEqual(quiet);
+    expect(visuals.animationTime).toBe(12);
+    expect(visuals.savedPulseCount).toBe(0);
+    expect(view.position).toEqual(cameraPosition);
+    visuals.dispose();
+    filtered.dispose();
+  });
+
+  it.each([false, true])('pins quiet rings and markers through heartbeat while every real tether endpoint stays attached (calm=%s)', calm => {
+    const visuals = new CareerOrbitVisuals(calm), field = new CareerRippleField(), view = camera();
+    const data = { ...orbit(5), missionMode: 'planned' as const, color: '#657B83' }, actual = nodes();
+    const center = new Vector3(8, 3, -4);
+    view.position.set(55, 30, 250);
+    view.lookAt(center);
+    view.updateMatrixWorld();
+    field.source.copy(center);
+    visuals.setRippleField(field);
+    visuals.setData([data], actual, center, 60);
+    const selected = { orbitId: data.id, segmentId: 'stage:first' };
+    visuals.setSelection(selected);
+    const base = new Vector3(), shown = new Vector3();
+    visuals.getAnchor(selected, base);
+    const before = visuals.paths.geometry.getAttribute('position').array.slice();
+    field.setWave(base.distanceTo(center), 100, 2.4);
+    field.updateCamera(view);
+    visuals.update(view, 15);
+    visuals.getDisplayedAnchor(selected, shown);
+    expect(shown).toEqual(base);
+    expect(field.deformWorld(base, new Vector3()).distanceTo(base)).toBeGreaterThan(1);
+    expect(visuals.paths.geometry.getAttribute('position').array).toEqual(before);
+    for (const mesh of [visuals.paths, visuals.anchors, visuals.selectedAnchor]) {
+      const positions = mesh.geometry.getAttribute('position');
+      const weights = mesh.geometry.getAttribute('aRippleWeight');
+      expect(weights.count).toBe(positions.count);
+      expect([...weights.array].every(weight => weight === 0)).toBe(true);
+      expect(displayedPosition(mesh.geometry, 0, field)).toEqual(position(mesh.geometry, 0));
+    }
+    expect(visuals.pickAnchor(...screen(shown.clone(), view), view, 800, 800)?.selection).toEqual(selected);
+    expect(visuals.pickPath(...screen(shown.clone(), view), view, 800, 800)).toEqual(selected);
+    const primaryAnchor = new Vector3();
+    visuals.getDisplayedAnchor({ orbitId: data.id }, primaryAnchor);
+    expect(visuals.pickAnchor(...screen(primaryAnchor.clone(), view), view, 800, 800)?.selection).toEqual({ orbitId: data.id });
+    for (const [mesh, ids, anchor] of [
+      [visuals.primaryTethers, ['mission:hub'], primaryAnchor],
+      [visuals.detailTethers, ['checkpoint:done', 'checkpoint:now'], shown],
+    ] as const) {
+      const weights = mesh.geometry.getAttribute('aRippleWeight');
+      ids.forEach((id, index) => {
+        const start = index * 16, end = start + 15;
+        expect(weights.getX(start)).toBe(0);
+        expect(weights.getX(end)).toBe(1);
+        expect(displayedPosition(mesh.geometry, start, field).distanceTo(anchor)).toBeLessThan(0.00001);
+        const node = new Vector3().fromArray(actual.get(id)!.position);
+        const endpoint = field.deformWorld(node, new Vector3());
+        expect(endpoint.distanceTo(node)).toBeGreaterThan(0);
+        expect(displayedPosition(mesh.geometry, end, field).distanceTo(endpoint)).toBeLessThan(0.00001);
+      });
+    }
+    field.cancel();
+    visuals.getDisplayedAnchor(selected, shown);
+    expect(shown).toEqual(base);
+    visuals.dispose();
+  });
+
+  it('retains collection revolution, full radius and heartbeat response beside quiet missions', () => {
+    const visuals = new CareerOrbitVisuals(), field = new CareerRippleField(), view = camera();
+    const quiet = { ...orbit(2), missionMode: 'background' as const, color: '#657B83' };
+    const collection = { ...orbit(11), kind: 'evidence' as const };
+    delete collection.missionMode;
+    visuals.setRippleField(field);
+    visuals.setData([quiet, collection], nodes(), new Vector3(), 60);
+    const before = new Vector3(), after = new Vector3(), displayed = new Vector3();
+    visuals.getAnchor({ orbitId: collection.id }, before);
+    visuals.update(view, 8);
+    visuals.getAnchor({ orbitId: collection.id }, after);
+    expect(after.distanceTo(before)).toBeGreaterThan(10);
+    expect(after.length() / 60).toBeCloseTo(CAREER_ORBIT_PLANES[11].radius);
+    field.setWave(after.length(), 24, 2.4);
+    field.updateCamera(view);
+    visuals.getDisplayedAnchor({ orbitId: collection.id }, displayed);
+    expect(displayed.distanceTo(after)).toBeCloseTo(2.4);
+    expect(displayedPosition(visuals.anchors.geometry, 1, field).distanceTo(displayed)).toBeLessThan(0.00001);
+    expect(visuals.pickAnchor(...screen(displayed, view), view, 800, 800)?.selection).toEqual({ orbitId: collection.id });
+    visuals.dispose();
+  });
+
+  it('cancels rendered saved-status geometry on a quiet transition without replay when reactivated', () => {
+    const visuals = new CareerOrbitVisuals(), data = orbit(), actual = nodes();
+    visuals.setMotionAllowed(true);
+    visuals.setData([data], actual, new Vector3(), 60);
+    data.segments[0].members[1].status = 'complete';
+    visuals.setData([data], actual, new Vector3(), 60);
+    expect(visuals.savedPulseCount).toBe(1);
+    data.missionMode = 'background';
+    data.color = '#657B83';
+    visuals.setData([data], actual, new Vector3(), 60);
+    expect(visuals.savedPulseCount).toBe(0);
+    expect(visuals.savedPulseTethers.visible).toBe(false);
+    expect(visuals.savedPulsePackets.geometry.drawRange.count).toBe(0);
+    data.missionMode = 'active';
+    data.color = '#EDAE29';
+    visuals.setData([data], actual, new Vector3(), 60);
+    expect(visuals.savedPulseCount).toBe(0);
+    visuals.dispose();
+  });
+
   it('sends a finite saved-status packet along only the changed checkpoint membership toward its moving stage', () => {
     const visuals = new CareerOrbitVisuals();
     visuals.setMotionAllowed(true);
@@ -356,6 +581,12 @@ describe('semantic career orbit geometry', () => {
     data.segments[0].members[1].current = false;
     visuals.setData([data], actual, new Vector3(), 60);
     expect(visuals.savedPulseCount).toBe(1);
+    for (const mesh of [visuals.paths, visuals.anchors, visuals.primaryTethers, visuals.detailTethers,
+      visuals.selectedAnchor, visuals.savedPulseTethers, visuals.savedPulsePackets]) {
+      const weights = mesh.geometry.getAttribute('aRippleWeight');
+      expect(weights.count).toBe(mesh.geometry.getAttribute('position').count);
+      expect([...weights.array].every(weight => weight === 1)).toBe(true);
+    }
     expect(visuals.tetherTargetIds).toEqual(['mission:hub', 'checkpoint:now']);
     expect(position(visuals.savedPulsePackets.geometry, 0).toArray()).toEqual(actual.get('checkpoint:now')!.position);
     const tether = visuals.savedPulseTethers.geometry.getAttribute('position');
@@ -434,6 +665,7 @@ describe('semantic career orbit geometry', () => {
   it('retains all 10,000 records and tethers with reduced curve complexity and stable frame buffers', () => {
     const data = orbit(9);
     data.kind = 'action';
+    delete data.missionMode;
     data.memberIds = Array.from({ length: 10000 }, (_, index) => `record:${index}`);
     delete data.progress;
     data.segments = [{
@@ -479,13 +711,176 @@ describe('semantic career orbit geometry', () => {
     visuals.dispose();
   });
 
+  it('highlights the full 360-degree identity ring for whole-orbit and stage selections, without altering status ticks or membership', () => {
+    const visuals = new CareerOrbitVisuals(), data = orbit(6), actual = nodes(), view = camera();
+    const center = new Vector3(8, 3, -4), beforeData = JSON.stringify(data), beforeNodes = JSON.stringify([...actual]);
+    const beforeCamera = view.matrixWorld.clone();
+    visuals.setData([data], actual, center, 60);
+    visuals.update(view, 8);
+    const paths = visuals.paths.geometry.getAttribute('position').array.slice();
+    const colors = visuals.paths.geometry.getAttribute('color').array.slice();
+    const plane = CAREER_ORBIT_PLANES[6];
+    for (const selection of [{ orbitId: data.id }, { orbitId: data.id, segmentId: 'stage:first' }]) {
+      visuals.setSelection(selection);
+      expect(visuals.highlightVisible).toBe(true);
+      expect(visuals.highlightedOrbitId).toBe(data.id);
+      expect(visuals.highlight.geometry).toBe(visuals.highlightHalo.geometry);
+      expect(visuals.highlight.geometry.instanceCount).toBe(ORBIT_HIGHLIGHT_SEGMENTS);
+      expect(visuals.highlight.geometry.drawRange).toEqual({ start: 6, count: 6 });
+      for (let segment = 0; segment < ORBIT_HIGHLIGHT_SEGMENTS; segment++) {
+        const start = highlightPoint(visuals, segment), end = highlightPoint(visuals, segment, true);
+        const expected = orbitPoint(6, plane.anchorAngle + segment / ORBIT_HIGHLIGHT_SEGMENTS * Math.PI * 2,
+          8, center, 60, new Vector3());
+        expect(start.distanceTo(expected)).toBeLessThan(0.00001);
+        expect(start.distanceTo(center)).toBeCloseTo(plane.radius * 60, 5);
+        expect(end).toEqual(highlightPoint(visuals, (segment + 1) % ORBIT_HIGHLIGHT_SEGMENTS));
+      }
+      expect(highlightPoint(visuals, 0)).toEqual(position(visuals.anchors.geometry, 0));
+      const anchor = new Vector3();
+      visuals.getAnchor(selection, anchor);
+      expect(position(visuals.selectedAnchor.geometry, 0).distanceTo(anchor)).toBeLessThan(0.00001);
+      expect(position(visuals.detailTethers.geometry, 0).distanceTo(anchor)).toBeLessThan(0.00001);
+      expect(visuals.tetherTargetIds).toEqual(selection.segmentId
+        ? ['mission:hub', 'checkpoint:done', 'checkpoint:now']
+        : ['mission:hub', 'checkpoint:done', 'checkpoint:now', 'checkpoint:later']);
+      expect(visuals.paths.geometry.getAttribute('position').array).toEqual(paths);
+      expect(visuals.paths.geometry.getAttribute('color').array).toEqual(colors);
+    }
+    expect(visuals.highlight.material.linewidth).toBe(ORBIT_HIGHLIGHT_WIDTH);
+    expect(visuals.highlightHalo.material.linewidth).toBe(ORBIT_HIGHLIGHT_HALO_WIDTH);
+    expect(visuals.highlightHalo.material.fragmentShader).toContain('exp(-3.5 * across * across)');
+    expect(visuals.highlight.material.worldUnits).toBe(false);
+    expect(visuals.highlight.material.vertexShader).toContain('offset *= linewidth;');
+    expect(visuals.highlight.material.color).toEqual(new Color(data.color).multiplyScalar(1.5));
+    expect(visuals.paths.renderOrder).toBeGreaterThan(visuals.highlight.renderOrder);
+    expect(visuals.highlight.renderOrder).toBeLessThan(2); // Actual work markers render at order 2.
+    expect(JSON.stringify(data)).toBe(beforeData);
+    expect(JSON.stringify([...actual])).toBe(beforeNodes);
+    expect(view.matrixWorld).toEqual(beforeCamera);
+    visuals.dispose();
+  });
+
+  it.each(['active', 'background', 'planned'] as const)('keeps %s highlight geometry and planet attachment on the same ripple policy', missionMode => {
+    const visuals = new CareerOrbitVisuals(), field = new CareerRippleField(), view = camera();
+    const data = { ...orbit(4), missionMode, color: missionMode === 'active' ? '#EDAE29' : '#657B83' };
+    const center = new Vector3(8, 3, -4), quiet = missionMode !== 'active';
+    visuals.setRippleField(field);
+    visuals.setData([data], nodes(), center, 60);
+    visuals.setSelection({ orbitId: data.id });
+    const initial = highlightPoint(visuals, 0);
+    visuals.update(view, 8);
+    const baseline = highlightPoint(visuals, 0);
+    expect(baseline.equals(initial)).toBe(quiet);
+    field.source.copy(center);
+    field.setWave(baseline.distanceTo(center), 24, 2.4);
+    field.updateCamera(view);
+    visuals.update(view, 0);
+    const displayed = new Vector3();
+    visuals.getDisplayedAnchor({ orbitId: data.id }, displayed);
+    const gpuEquivalent = baseline.clone().lerp(field.deformWorld(baseline, new Vector3()), quiet ? 0 : 1);
+    expect(gpuEquivalent.distanceTo(displayed)).toBeLessThan(0.00001);
+    expect(displayedPosition(visuals.selectedAnchor.geometry, 0, field).distanceTo(displayed)).toBeLessThan(0.00001);
+    expect(highlightPoint(visuals, 0)).toEqual(baseline);
+    for (const material of [visuals.highlight.material, visuals.highlightHalo.material]) {
+      expect(material.uniforms.uRippleWeight.value).toBe(quiet ? 0 : 1);
+      expect(material.uniforms.uRippleAmplitude).toBe(field.uniforms.uRippleAmplitude);
+      expect(material.vertexShader).toContain('start = mix(start, rippleView(start), uRippleWeight);');
+      expect(material.vertexShader).toContain('end = mix(end, rippleView(end), uRippleWeight);');
+      expect(material.color).toEqual(new Color(data.color).multiplyScalar(1.5));
+      expect(material.depthWrite).toBe(false);
+    }
+    visuals.setRimOnly(true);
+    visuals.update(view, 0);
+    for (const material of [visuals.highlight.material, visuals.highlightHalo.material]) {
+      expect(material.uniforms.uRimOnly.value).toBe(1);
+      expect(material.uniforms.uRadius.value).toBe(60);
+      expect(material.uniforms.uCenterView.value).toEqual(center.clone().applyMatrix4(view.matrixWorldInverse));
+      expect(material.fragmentShader).toContain('alpha * rimVisibility()');
+      expect(material.vertexShader).toContain('clip.xy - (projectionMatrix * mvPosition).xy');
+    }
+    visuals.setMotionAllowed(false);
+    field.cancel();
+    visuals.update(view, 0);
+    expect(visuals.highlightVisible).toBe(true);
+    expect(highlightPoint(visuals, 0)).toEqual(baseline);
+    visuals.setRimOnly(false);
+    expect(visuals.highlight.material.uniforms.uRimOnly.value).toBe(0);
+    visuals.dispose();
+  });
+
+  it('reuses one highlight buffer through switches, live modes, filtered order, visibility and pause, and clears stale identities', () => {
+    const visuals = new CareerOrbitVisuals(), first = orbit(2), second = orbit(8), actual = nodes(), view = camera();
+    const geometry = visuals.highlight.geometry;
+    const starts = geometry.getAttribute('instanceStart'), ends = geometry.getAttribute('instanceEnd');
+    const dispose = vi.spyOn(geometry, 'dispose');
+    const center = new Vector3(8, 3, -4);
+    visuals.setData([first, second], actual, center, 60);
+    expect(visuals.highlightVisible).toBe(false);
+    expect(geometry.instanceCount).toBe(0);
+    visuals.setSelection({ orbitId: first.id });
+    visuals.update(view, 8);
+    const firstPoint = highlightPoint(visuals, 0);
+    visuals.setSelection({ orbitId: second.id, segmentId: 'stage:second' });
+    expect(visuals.highlightedOrbitId).toBe(second.id);
+    expect(highlightPoint(visuals, 0)).not.toEqual(firstPoint);
+    visuals.setData([second], actual, center, 60);
+    expect(visuals.animationTime).toBe(8);
+    expect(highlightPoint(visuals, 0).distanceTo(orbitPoint(8, CAREER_ORBIT_PLANES[8].anchorAngle,
+      8, center, 60, new Vector3()))).toBeLessThan(0.00001);
+    second.missionMode = 'background';
+    second.color = '#657B83';
+    visuals.setData([second, first], actual, center, 60);
+    expect(highlightPoint(visuals, 0).distanceTo(center) / 60).toBeCloseTo(0.56);
+    const quiet = highlightPoint(visuals, 0);
+    visuals.update(view, 30);
+    expect(highlightPoint(visuals, 0)).toEqual(quiet);
+    visuals.setVisible(false);
+    expect(visuals.highlightVisible).toBe(false);
+    visuals.setVisible(true);
+    expect(visuals.highlightVisible).toBe(true);
+    expect(highlightPoint(visuals, 0)).toEqual(quiet);
+    visuals.setData([first], actual, center, 60);
+    expect(visuals.highlightVisible).toBe(false);
+    expect(visuals.highlightedOrbitId).toBeNull();
+    expect(geometry.instanceCount).toBe(0);
+    visuals.setSelection({ orbitId: first.id });
+    expect(visuals.highlightedOrbitId).toBe(first.id);
+    visuals.setSelection(null);
+    expect(visuals.highlightVisible).toBe(false);
+    expect(visuals.highlightedOrbitId).toBeNull();
+    expect(visuals.paths.renderOrder).toBe(-1);
+    expect(geometry.instanceCount).toBe(0);
+    expect(geometry.getAttribute('instanceStart')).toBe(starts);
+    expect(geometry.getAttribute('instanceEnd')).toBe(ends);
+    expect(visuals.highlightHalo.geometry).toBe(geometry);
+    expect(dispose).not.toHaveBeenCalled();
+    visuals.dispose();
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('leaves unselected calm focus unchanged and gives an explicit selection the same quiet full-circle policy', () => {
+    const visuals = new CareerOrbitVisuals(true), data = { ...orbit(3), missionMode: 'background' as const, color: '#657B83' };
+    visuals.setData([data], nodes(), new Vector3(), 60);
+    visuals.update(camera(), 10);
+    expect(visuals.highlightVisible).toBe(false);
+    expect(visuals.paths.renderOrder).toBe(-1);
+    expect(visuals.paths.material.uniforms.uOpacity.value).toBe(0.38);
+    visuals.setSelection({ orbitId: data.id, segmentId: 'stage:first' });
+    const before = highlightPoint(visuals, 0);
+    visuals.update(camera(), 10);
+    expect(visuals.highlight.geometry.instanceCount).toBe(ORBIT_HIGHLIGHT_SEGMENTS);
+    expect(highlightPoint(visuals, 0)).toEqual(before);
+    expect(visuals.highlight.material.uniforms.uRippleWeight.value).toBe(0);
+    visuals.dispose();
+  });
+
   it('disposes geometries and shared materials exactly once, safely after pause or repeated cleanup', () => {
     const visuals = new CareerOrbitVisuals();
     visuals.setData([orbit()], nodes(), new Vector3(), 60);
     const geometries = new Set<BufferGeometry>();
     const materials = new Set<import('three').Material>();
     visuals.object.traverse(item => {
-      if (!(item instanceof LineSegments || item instanceof Points)) return;
+      if (!(item instanceof LineSegments || item instanceof Points || item instanceof LineSegments2)) return;
       geometries.add(item.geometry);
       for (const material of Array.isArray(item.material) ? item.material : [item.material]) materials.add(material);
     });
@@ -496,5 +891,7 @@ describe('semantic career orbit geometry', () => {
     for (const dispose of disposals) expect(dispose).toHaveBeenCalledOnce();
     expect(visuals.object.children).toHaveLength(0);
     expect(visuals.tetherCount).toBe(0);
+    expect(visuals.highlightVisible).toBe(false);
+    expect(visuals.highlightedOrbitId).toBeNull();
   });
 });

@@ -26,6 +26,6 @@ export function compactOrbitTooltip(orbit: CareerOrbit, selection: CareerOrbitSe
   return `${title} · ${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-export function showOrbitIdentityLabels(width: number, height: number, decorationVisible: boolean): boolean {
-  return decorationVisible && width >= 640 && height >= 350;
+export function showOrbitIdentityLabels(width: number, height: number, ringsVisible: boolean): boolean {
+  return ringsVisible && width >= 640 && height >= 350;
 }

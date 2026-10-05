@@ -113,10 +113,45 @@ describe('Career orbits: stable read-only graph views', () => {
       'Daily work', 'Saved evidence', 'Applications', 'Freelance leads', 'Past accomplishments', 'Untracked curriculum',
     ]);
     for (const item of graph.orbits) expect(item.color).toMatch(/^#[0-9A-F]{6}$/);
-    expect(graph.orbits.slice(0, 9).map(item => item.color)).toEqual([
-      '#45D072', '#268BD2', '#CB4B16', '#E84A5F', '#6C71C4', '#EBE565', '#00A591', '#586E75', '#00A591',
-    ]);
+    const missionColors = [
+      '#45D072', '#268BD2', '#CB4B16', '#E84A5F', '#6C71C4', '#EBE565', '#00A591', '#D33682', '#00A591',
+    ];
+    expect(graph.orbits.slice(0, 9).map(item => item.color)).toEqual(
+      missionIds.map((id, index) => state.missions[id].mode === 'active' ? missionColors[index] : '#657B83'),
+    );
+    expect(graph.orbits.slice(0, 9).map(item => item.missionMode)).toEqual(missionIds.map(id => state.missions[id].mode));
+    expect(graph.orbits.slice(9).every(item => item.missionMode === undefined)).toBe(true);
     expectExactMembership(graph);
+  });
+
+  it.each(versions)('uses every saved mission mode, not primary focus, without recoloring work or changing v%s membership', version => {
+    const state = complete(createInitialState(false, version));
+    const before = buildCareerGraph(state);
+    for (const mode of ['background', 'active'] as const) {
+      for (const id of missionIds) state.missions[id].mode = getMission(id, state).planned ? 'planned' : mode;
+      state.focusMissionId = 'pattern';
+      const raw = JSON.stringify(state);
+      const graph = buildCareerGraph(state);
+      expect(JSON.stringify(state)).toBe(raw);
+      expect(graph.stats).toEqual(before.stats);
+      expect(graph.nodes.map(node => ({ id: node.id, position: node.position, status: node.status })))
+        .toEqual(before.nodes.map(node => ({ id: node.id, position: node.position, status: node.status })));
+      expect(graph.orbits.slice(9)).toEqual(before.orbits.slice(9));
+      for (const id of missionIds) {
+        const item = orbit(graph, 'mission', id);
+        const original = orbit(before, 'mission', id);
+        const expectedMode = state.missions[id].mode;
+        expect(item.missionMode).toBe(expectedMode);
+        if (expectedMode !== 'active') expect(item.color).toBe('#657B83');
+        else expect(item.color).not.toBe('#657B83');
+        expect(item.detail).toContain(expectedMode === 'active' ? 'colored outer ring' : 'smaller gray ring near the core');
+        expect(item.memberIds).toEqual(original.memberIds);
+        expect(item.segments).toEqual(original.segments);
+        expect(item.progress).toEqual(original.progress);
+        expect(item.currentNodeId).toEqual(original.currentNodeId);
+      }
+      if (mode === 'active' && version === '3.0.0') expect(orbit(graph, 'mission', 'algorithm').color).toBe('#D33682');
+    }
   });
 
   it.each(versions)('partitions exactly the actual saved v%s checkpoints into actual definition stages', version => {

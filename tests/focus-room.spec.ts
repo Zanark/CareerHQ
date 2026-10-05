@@ -321,6 +321,7 @@ test.describe('genuine calm 3D focus room', () => {
     const scene = room(page).locator('.career-graph-scene');
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
     await expect(scene).toHaveAttribute('data-decoration-mode', 'full-shell');
+    await expect(scene).toHaveAttribute('data-camera-rotation-speed', '0.24');
     await expect(scene).toHaveAttribute('data-edge-style', 'orange-screen-space-ribbons');
     await expect(scene).toHaveAttribute('data-node-count', String(expected.nodes.length));
     await expect(scene).toHaveAttribute('data-edge-count', String(expected.edges.length));

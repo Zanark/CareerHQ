@@ -77,8 +77,8 @@ export const steps: TutorialStep[] = [
   {
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-orbits'],
-    title: 'Read the moving rings',
-    body: 'Explore ring views lists nine saved missions and six record/reference collections. A mission ring uses your saved roadmap edition, stages and current checkpoint; other rings show real record groups and counts. Select a ring or its members to inspect them. Stretching tethers mean membership, not new prerequisites or completion credit.',
+    title: 'Read the mission rings',
+    body: 'Explore ring views lists nine saved missions and six record/reference collections. Select a card to light up its entire ring. Active missions have colored moving outer rings; background/planned missions keep smaller gray stationary rings. Bring into focus controls this, not Make primary mission. Rings and Sparks hide each layer separately. Stage selection keeps the whole ring highlighted; tethers show only that group, not new prerequisites or completion credit.',
   },
   {
     id: 'career-graph-search', chapter: 'career-graph', kind: 'action',

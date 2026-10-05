@@ -1,18 +1,32 @@
 import { expect, test } from '@playwright/test';
+import { PNG } from './png';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
 
+function changedPixels(first: Buffer, second: Buffer): number {
+  const a = PNG.sync.read(first), b = PNG.sync.read(second);
+  expect([b.width, b.height]).toEqual([a.width, a.height]);
+  let changed = 0;
+  for (let index = 0; index < a.data.length; index += 4) {
+    if (Math.abs(a.data[index] - b.data[index]) + Math.abs(a.data[index + 1] - b.data[index + 1]) + Math.abs(a.data[index + 2] - b.data[index + 2]) > 12) changed++;
+  }
+  return changed;
+}
+
 for (const width of [1440, 320]) {
-  test(`rings and sparks can be hidden without changing the filtered graph at ${width}px`, async ({ page }, testInfo) => {
+  test(`rings and sparks can be hidden independently without changing the filtered graph at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./#/home');
     const scene = page.locator('.career-graph-scene');
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-    const toggle = page.getByRole('checkbox', { name: 'Rings & sparks', exact: true });
-    await expect(toggle).toBeChecked();
-    await expect(scene).toHaveAttribute('data-decoration-visible', 'true');
+    const rings = page.getByRole('checkbox', { name: 'Rings', exact: true });
+    const sparks = page.getByRole('checkbox', { name: 'Sparks', exact: true });
+    await expect(rings).toBeChecked();
+    await expect(sparks).toBeChecked();
+    await expect(scene).toHaveAttribute('data-rings-visible', 'true');
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'true');
     const raw = await page.evaluate(key => localStorage.getItem(key), key);
     await page.getByLabel('Filter career graph by mission').selectOption('pattern');
     await expect.poll(async () => Number(await scene.getAttribute('data-node-count'))).toBeLessThan(100);
@@ -25,25 +39,46 @@ for (const width of [1440, 320]) {
     await canvas.evaluate(element => element.setAttribute('data-original-decoration-canvas', 'true'));
     await page.mouse.move(1, 1);
     const before = await canvas.screenshot();
-    await toggle.uncheck();
-    await expect(scene).toHaveAttribute('data-decoration-visible', 'false');
-    await expect(page.getByRole('button', { name: 'Clear center', exact: true })).toBeDisabled();
-    await expect(scene.locator('.career-graph-scene__space-note')).toHaveText('Orange links: connections · Orbit views and sparks hidden');
+    const clear = page.getByRole('button', { name: 'Clear center', exact: true });
+    await sparks.uncheck();
+    await expect(scene).toHaveAttribute('data-rings-visible', 'true');
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
+    await expect(clear).toBeEnabled();
+    const ringsOnly = await canvas.screenshot();
+    expect(changedPixels(before, ringsOnly), 'Only the spark pixels should disappear').toBeGreaterThan(20);
+    await rings.uncheck();
+    await expect(scene).toHaveAttribute('data-rings-visible', 'false');
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
+    await expect(clear).toBeDisabled();
+    await expect(scene.locator('.career-graph-scene__space-note')).toHaveText('Orange links: connections · Rings hidden · Sparks hidden');
     const hidden = await canvas.screenshot();
-    expect(hidden.equals(before)).toBe(false);
+    expect(changedPixels(ringsOnly, hidden), 'Ring geometry should disappear independently').toBeGreaterThan(20);
+    await sparks.check();
+    await expect(scene).toHaveAttribute('data-rings-visible', 'false');
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'true');
+    await expect(rings).not.toBeChecked();
+    await expect(clear).toBeDisabled();
+    await expect(scene.locator('.career-graph-scene__orbit-diagnostic[data-screen-visible="true"]')).toHaveCount(0);
+    const sparksOnly = await canvas.screenshot();
+    expect(changedPixels(hidden, sparksOnly), 'Sparks should return without rings').toBeGreaterThan(20);
     await testInfo.attach('rings-and-sparks-visible', { body: before, contentType: 'image/png' });
+    await testInfo.attach('rings-only', { body: ringsOnly, contentType: 'image/png' });
     await testInfo.attach('rings-and-sparks-hidden', { body: hidden, contentType: 'image/png' });
+    await testInfo.attach('sparks-only', { body: sparksOnly, contentType: 'image/png' });
     await expect(canvas).toHaveAttribute('data-original-decoration-canvas', 'true');
     await expect(scene).toHaveAttribute('data-node-count', nodes!);
     await expect(scene).toHaveAttribute('data-edge-count', edges!);
     await expect(scene).toHaveAttribute('data-cursor-offset', force!);
-    await toggle.check();
-    await expect(scene).toHaveAttribute('data-decoration-visible', 'true');
-    const clear = page.getByRole('button', { name: 'Clear center', exact: true });
+    await rings.check();
+    await expect(scene).toHaveAttribute('data-rings-visible', 'true');
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'true');
     await clear.click();
     await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
-    await toggle.uncheck();
-    await toggle.check();
+    await sparks.uncheck();
+    await rings.uncheck();
+    await rings.check();
+    await expect(sparks).not.toBeChecked();
+    await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
     await expect(clear).toHaveAttribute('aria-pressed', 'true');
     await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -1,4 +1,5 @@
 import { Euler, Quaternion, Vector3 } from 'three';
+import type { CareerOrbit } from './careerOrbitTypes';
 
 function seededRandom(seed: number): () => number {
   return () => {
@@ -30,13 +31,33 @@ export const CAREER_ORBIT_PLANES = Array.from({ length: 15 }, (_, index) => {
   };
 });
 
+export interface CareerOrbitMotion {
+  quiet: boolean;
+  revolving: boolean;
+  normalizedRadius: number;
+  radiusScale: number;
+  rippleWeight: number;
+}
+
+/** Saved mission mode alone controls presentation; collections keep their original motion. */
+export function careerOrbitMotion(orbit: Pick<CareerOrbit, 'kind' | 'missionMode' | 'index'>): CareerOrbitMotion {
+  const quiet = orbit.kind === 'mission' && orbit.missionMode !== 'active';
+  const radius = CAREER_ORBIT_PLANES[orbit.index].radius;
+  const normalizedRadius = quiet ? 0.48 + orbit.index * 0.01 : radius;
+  return { quiet, revolving: !quiet, normalizedRadius, radiusScale: normalizedRadius / radius, rippleWeight: quiet ? 0 : 1 };
+}
+
+export function orbitRotation(index: number, time: number, calm = false, revolving = true): number {
+  return revolving ? time * CAREER_ORBIT_PLANES[index].speed * (calm ? 0.4 : 1) : 0;
+}
+
 export function orbitPoint(
   index: number, angle: number, time: number, center: Vector3, radius: number,
-  target: Vector3, offset = 0, calm = false,
+  target: Vector3, offset = 0, calm = false, motion?: CareerOrbitMotion,
 ): Vector3 {
   const plane = CAREER_ORBIT_PLANES[index];
-  const phase = angle + time * plane.speed * (calm ? 0.4 : 1);
-  const distance = radius * (plane.radius + offset);
+  const phase = angle + orbitRotation(index, time, calm, motion?.revolving);
+  const distance = radius * (plane.radius + offset) * (motion?.radiusScale ?? 1);
   return target.copy(center)
     .addScaledVector(plane.x, Math.cos(phase) * distance)
     .addScaledVector(plane.y, Math.sin(phase) * distance);

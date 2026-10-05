@@ -73,7 +73,7 @@ references and untracked expanded curriculum remain distinct reference nodes.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
-Fine, glowing orange links represent actual graph connections. The revolving rings
+Fine, glowing orange links represent actual graph connections. The rings
 are **15 data views**: nine saved missions, plus Daily work, Saved evidence,
 Applications, Freelance leads, Past accomplishments and Untracked curriculum.
 Mission rings summarize the stages, recorded completion and current checkpoint of
@@ -81,11 +81,21 @@ your **saved roadmap edition**. Archived completions and unadopted curriculum do
 not inflate that progress. Record rings show their real groups/counts, not invented
 completion percentages; empty collections say so.
 
-Select a ring anchor or open **Explore ring views** below the graph. Choose a stage
-or record group, inspect its connected members, or open the relevant mission/records.
+Only **active missions** have colored, revolving outer rings. **Background** and
+**planned** missions retain smaller, gray, stationary rings closer to the white core.
+This follows **Bring into focus / Move to background**, not just the single
+**Make primary mission** choice. Their saved checkpoints, completion and evidence
+remain intact and inspectable. The six record/reference rings keep their existing behavior.
+
+Each ring has a larger, softly shaded planet-like anchor in its view color;
+background/planned anchors remain gray. Select it or a card under **Explore ring views**
+to highlight the **entire ring** with a thicker, bright glow. Choosing a stage or
+record group keeps the whole ring highlighted while its detailed tethers show only
+that group's members. Inspect a member or open the relevant mission/records.
+Selection does not move the camera, change focus mode, or start a stationary ring.
 An active, unblocked mission also offers **Record evidence**, using the same existing
 form and explicit completion criteria without leaving the graph.
-**Focus ring** brings its moving anchor into view. Ring tethers stretch as the rings
+**Focus ring** brings its anchor into view. Ring tethers stretch as active rings
 revolve while your inner work nodes keep their positions. They mean membership,
 not an additional prerequisite or task. Detailed member connections belong to the
 selected ring/group rather than an always-on web across every collection.
@@ -94,10 +104,13 @@ The inspector distinguishes global members from those visible through your filte
 
 Full-shell paths remain visible by default. **Clear center** masks projected ring
 paths without hiding data anchors or membership links. Sparks and glow are still
-atmosphere, not extra nodes. Uncheck **Rings & sparks** to hide the ring views and
-decorative dots. Real work nodes, their connections, glow and your zoom stay unchanged.
-Re-enabling it restores your selected Clear center mode. Like the other graph
-filters, this is a view-only choice, not a saved-progress change.
+atmosphere, not extra nodes. **Rings** and **Sparks** are separate, default-on switches:
+hide ring paths, anchors and membership tethers without hiding the floating dots,
+or hide only the dots while keeping the rings. Real work nodes, their connections,
+core glow and your zoom stay unchanged. **Clear center** and **Focus ring** depend
+only on Rings. Re-enabling Rings restores your selected Clear center mode, and
+**Reveal orbit and members** never changes the Sparks setting. Like the other
+graph filters, these are view-only choices, not saved-progress changes.
 Connection lines bend away from your cursor but stay attached to their endpoints.
 The push is stronger at the normal view and gradually weakens as you zoom closer.
 Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**
@@ -106,9 +119,11 @@ starts paused, and manual navigation remains available.
 
 **Core heartbeat** sends an outward ripple from the actual white CareerOS node
 every ten seconds. There is no separate luminous ring: a soft travelling wave
-temporarily pushes nodes, links, orbits and sparks outward, then they settle back
+temporarily pushes nodes, links, moving orbits and sparks outward, then they settle back
 to their normal positions. Labels and picking follow the displayed meshes;
 connections remain attached. The saved layout and progress never move.
+Quiet background/planned rings stay still even during the heartbeat; their tethers
+remain attached to any moving work-node endpoints. Camera rotation still changes your view of them.
 Its toggle affects only that visual rhythm, not the rotating data orbits or
 saved-status completion pulses. Pause animation
 and reduced motion stop it; it is not an attention measure or evidence of AI activity.

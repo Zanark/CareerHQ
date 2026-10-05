@@ -18,6 +18,7 @@ interface MemberSnapshot {
 }
 interface OrbitSnapshot {
   roadmapVersion: RoadmapVersion;
+  missionMode: CareerOrbit['missionMode'];
   members: Map<string, MemberSnapshot>;
 }
 type VisiblePulseNode = Pick<CareerGraphNode, 'kind' | 'archived' | 'roadmapVersion'>;
@@ -45,7 +46,8 @@ export class CareerOrbitSavedPulses {
           members.set(member.nodeId, { status: member.status, current: member.current });
           const before = previous?.members.get(member.nodeId);
           const target = visibleNodes.get(member.nodeId);
-          if (this.enabled && previous?.roadmapVersion === orbit.roadmapVersion
+          if (this.enabled && orbit.missionMode === 'active' && previous?.missionMode === 'active'
+            && previous.roadmapVersion === orbit.roadmapVersion
             && before?.current && before.status === 'incomplete' && member.status === 'complete'
             && this.previousVisible.has(member.nodeId) && target?.kind === 'checkpoint'
             && !target.archived && target.roadmapVersion === orbit.roadmapVersion) {
@@ -58,13 +60,13 @@ export class CareerOrbitSavedPulses {
           }
         }
       }
-      next.set(orbit.id, { roadmapVersion: orbit.roadmapVersion, members });
+      next.set(orbit.id, { roadmapVersion: orbit.roadmapVersion, missionMode: orbit.missionMode, members });
     }
     let count = 0;
     for (const pulse of this.active) {
       const snapshot = next.get(pulse.orbitId);
       const target = visibleNodes.get(pulse.nodeId);
-      if (this.enabled && snapshot?.roadmapVersion === pulse.roadmapVersion
+      if (this.enabled && snapshot?.missionMode === 'active' && snapshot.roadmapVersion === pulse.roadmapVersion
         && snapshot.members.get(pulse.nodeId)?.status === 'complete' && target?.kind === 'checkpoint'
         && !target.archived && target.roadmapVersion === pulse.roadmapVersion) {
         this.active[count++] = pulse;

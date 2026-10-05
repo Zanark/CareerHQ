@@ -53,16 +53,28 @@ Orbits are not added to `nodes`, `edges` or completion statistics. Their separat
 tethers mean collection membership, with actual graph endpoints; filtered-out members
 stay listed with explicit reveal actions instead of silently becoming "no records."
 
-Data orbits revolve outside the enclosing data sphere, leaving work-node positions
-fixed. Full-shell projection is the default; Clear center masks orbit paths but not
+Mission orbits carry their saved `missionMode`: only `active` missions revolve
+outside the enclosing data sphere. Background/planned mission rings use smaller
+stable radii near the core, muted gray presentation and no independent animation.
+The single `focusMissionId` does not override this mode. Six collection orbits retain
+their existing behavior. Work-node positions, statuses and membership stay unchanged.
+Full-shell projection is the default; Clear center masks orbit paths but not
 their useful anchors. The accessible ring index and inspector work without WebGL.
 The animation pause control is independent of inspection and camera manipulation.
+Separate view-only Rings and Sparks switches control `CareerOrbitVisuals` and
+the `HolographicCore` particle object independently. Ring picking, labels, focus
+and explicit reveal follow only ring visibility; core glow is outside both switches.
+Orbit selection highlights the complete orbit, independent of the selected stage/group.
+The selection glow is presentation geometry, not another ring, work node or prerequisite;
+membership tethers remain scoped to the selected group, with unchanged data and camera.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 The optional periodic core heartbeat is separate from saved-status completion pulses.
 Its source is the real core node and its ten-second cadence uses active elapsed time.
 A shared radial deformation moves rendered meshes outward and back without changing
 model coordinates; node/edge/orbit endpoints, labels and picking must use equivalent
-positions. No standalone luminous wave ring is drawn. It never creates graph records
+positions. Quiet mission rings do not deform; their tether ring ends remain fixed
+while work-node ends follow the same field as their actual nodes.
+No standalone luminous wave ring is drawn. It never creates graph records
 or focus events. Focus framing targets the core; the main graph retains its camera.
 
 There is no backend, authentication layer, remote database, agent execution service,

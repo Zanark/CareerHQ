@@ -36,7 +36,7 @@ import { CoreHeartbeat } from './CoreHeartbeat';
 import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
 import { careerEdgeVertexShader, careerRippleVertexShader, createRippleUniforms } from './careerRipple';
-import { CareerOrbitVisuals } from './CareerOrbitVisuals';
+import { CareerOrbitVisuals, ORBIT_ANCHOR_DIAMETER, SELECTED_ORBIT_ANCHOR_DIAMETER } from './CareerOrbitVisuals';
 import type { OrbitAnchorInfo } from './CareerOrbitVisuals';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import { chooseCareerSceneHit, compactOrbitTooltip, showOrbitIdentityLabels } from './careerSceneInteraction';
@@ -72,8 +72,10 @@ export interface CareerGraphSceneProps {
   allowReducedMotion?: boolean;
   /** Clip the shell's projected interior; defaults to false, or true in focus. */
   rimOnly?: boolean;
-  /** Show derived orbit views and decorative particles without changing node glow. */
-  showDecoration?: boolean;
+  /** Show derived orbit paths, anchors and membership tethers. */
+  showRings?: boolean;
+  /** Show decorative particles independently of rings and node glow. */
+  showSparks?: boolean;
   /** Independent visual rhythm from the actual core; still respects ambient motion preferences. */
   heartbeat?: boolean;
   onInteraction?: () => void;
@@ -363,11 +365,11 @@ class CareerScene implements CareerGraphSceneHandle {
   private hoveredId: string | null = null;
   private labelId: string | null = null;
   private missionLabels: { node: GraphNode; element: HTMLSpanElement; width: number; height: number }[] = [];
-  private orbitLabels: (OrbitAnchorInfo & { element: HTMLSpanElement; width: number; height: number })[] = [];
+  private orbitLabels: (OrbitAnchorInfo & { element: HTMLSpanElement; diagnostic: HTMLSpanElement; width: number; height: number })[] = [];
   private readonly orbitLabelRects: LabelBox[] = [];
   private orbitLabelRectCount = 0;
   private readonly orbitPoint = new Vector3();
-  private decorationVisible = true;
+  private ringsVisible = true;
   private autoRotate = false;
   private animate = false;
   private allowReducedMotion = false;
@@ -425,7 +427,8 @@ class CareerScene implements CareerGraphSceneHandle {
     this.controls.maxDistance = 1800;
     this.controls.rotateSpeed = 0.65;
     this.controls.zoomSpeed = 0.8;
-    this.controls.autoRotateSpeed = visualProfile === 'focus' ? 0.12 : 0.3;
+    this.controls.autoRotateSpeed = visualProfile === 'focus' ? 0.24 : 0.3;
+    this.root.dataset.cameraRotationSpeed = String(this.controls.autoRotateSpeed);
     this.controls.enabled = visualProfile !== 'focus';
     this.controls.mouseButtons = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN };
     this.controls.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
@@ -490,15 +493,30 @@ class CareerScene implements CareerGraphSceneHandle {
   private get canvas(): HTMLCanvasElement { return this.renderer.domElement; }
 
   setGraph(graph: CareerGraph): void {
+    const previous = this.graph;
+    const pointsChanged = !previous || previous.nodes.length !== graph.nodes.length || graph.nodes.some((node, index) => {
+      const before = previous.nodes[index];
+      return node.id !== before.id || node.kind !== before.kind || node.status !== before.status
+        || node.current !== before.current || node.position.some((value, axis) => value !== before.position[axis]);
+    });
+    const edgesChanged = pointsChanged || !previous || previous.edges.length !== graph.edges.length
+      || graph.edges.some((edge, index) => {
+        const before = previous.edges[index];
+        return edge.id !== before.id || edge.source !== before.source || edge.target !== before.target;
+      });
     this.graph = graph;
     this.nodeMap = new Map(graph.nodes.map(node => [node.id, node]));
-    // Replace GPU buffers, not the camera or the WebGL context, when progress changes.
-    this.nodeGeometry.dispose();
-    this.edgeGeometry.dispose();
-    writePointGeometry(this.nodeGeometry, graph.nodes);
+    // Metadata-only updates (including mission mode) leave work geometry intact.
+    if (pointsChanged) {
+      this.nodeGeometry.dispose();
+      writePointGeometry(this.nodeGeometry, graph.nodes);
+    }
     this.edgeSegments = graph.edges.length > 2000 ? 6 : 12;
     if (this.visualProfile === 'focus') this.edgeSegments /= 2;
-    writeEdgeGeometry(this.edgeGeometry, graph.edges, this.nodeMap, this.edgeSegments);
+    if (edgesChanged) {
+      this.edgeGeometry.dispose();
+      writeEdgeGeometry(this.edgeGeometry, graph.edges, this.nodeMap, this.edgeSegments);
+    }
     const dense = graph.edges.length > 2000;
     this.edgesMaterial.opacity = this.visualProfile === 'focus' ? 0.3 : dense ? 0.32 : 0.5;
     this.edgeGlowMaterial.opacity = this.visualProfile === 'focus' ? 0.08 : dense ? 0.1 : 0.16;
@@ -529,6 +547,12 @@ class CareerScene implements CareerGraphSceneHandle {
     this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
     this.root.dataset.orbitCount = String(this.orbits.orbitCount);
     this.canvas.dataset.orbitCount = String(this.orbits.orbitCount);
+    for (const element of [this.root, this.canvas]) {
+      element.dataset.orbitDataRadius = this.bounds.radius.toFixed(6);
+      element.dataset.orbitCenterX = this.bounds.center.x.toFixed(6);
+      element.dataset.orbitCenterY = this.bounds.center.y.toFixed(6);
+      element.dataset.orbitCenterZ = this.bounds.center.z.toFixed(6);
+    }
     this.root.dataset.nodeCount = String(graph.nodes.length);
     this.root.dataset.edgeCount = String(graph.edges.filter(edge => this.nodeMap.has(edge.source) && this.nodeMap.has(edge.target)).length);
     this.hoveredId = null;
@@ -545,18 +569,32 @@ class CareerScene implements CareerGraphSceneHandle {
       return { node, element, width: 0, height: 0 };
     });
     this.orbitLabelLayer.replaceChildren();
-    this.orbitLabels = this.visualProfile === 'focus' ? [] : this.orbits.anchorInfo.map(info => {
+    this.orbitLabels = this.orbits.anchorInfo.map(info => {
       const element = document.createElement('span');
       element.className = 'career-graph-scene__orbit-label';
       element.dataset.orbitId = info.orbit.id;
       element.dataset.orbitIndex = String(info.orbit.index);
+      element.dataset.orbitMode = info.orbit.kind === 'mission' ? info.orbit.missionMode ?? '' : 'collection';
+      element.dataset.orbitNormalizedRadius = info.motion.normalizedRadius.toFixed(6);
+      element.dataset.missionMode = element.dataset.orbitMode;
+      element.dataset.orbitRadius = element.dataset.orbitNormalizedRadius;
+      element.dataset.orbitColor = info.orbit.color;
       element.dataset.memberCount = String(info.orbit.memberIds.length);
       element.dataset.visibleMemberCount = String(info.visibleMemberCount);
       element.dataset.emptyState = !info.orbit.memberIds.length ? 'empty' : !info.visibleMemberCount ? 'filtered' : 'populated';
       element.style.setProperty('--orbit-color', info.orbit.color);
       element.textContent = `${info.orbit.label}${!info.orbit.memberIds.length ? ' · No records' : !info.visibleMemberCount ? ' · Members hidden' : ''}`;
       this.orbitLabelLayer.appendChild(element);
-      return { ...info, element, width: 0, height: 0 };
+      const diagnostic = document.createElement('span');
+      diagnostic.className = 'career-graph-scene__orbit-diagnostic';
+      diagnostic.hidden = true;
+      diagnostic.dataset.orbitId = info.orbit.id;
+      diagnostic.dataset.orbitIndex = String(info.orbit.index);
+      diagnostic.dataset.missionMode = element.dataset.missionMode;
+      diagnostic.dataset.orbitRadius = element.dataset.orbitRadius;
+      diagnostic.dataset.orbitColor = info.orbit.color;
+      this.orbitLabelLayer.appendChild(diagnostic);
+      return { ...info, element, diagnostic, width: 0, height: 0 };
     });
     this.setOrbitSelection(this.selectedOrbit, true);
     if ((!this.framed || (this.visualProfile === 'focus' && focusBoundsChanged))
@@ -606,7 +644,41 @@ class CareerScene implements CareerGraphSceneHandle {
     }
     this.orbitMarker.dataset.orbitId = active?.orbitId ?? '';
     this.orbitMarker.dataset.segmentId = active?.segmentId ?? '';
+    this.updateSelectedOrbitDiagnostics();
     this.setSelection(this.selectedId);
+  }
+
+  private updateSelectedOrbitDiagnostics(): void {
+    const orbit = this.graph?.orbits.find(item => item.id === this.selectedOrbit?.orbitId);
+    const motion = orbit ? this.orbits.getMotion(orbit.id) : undefined;
+    const mode = orbit ? orbit.kind === 'mission' ? orbit.missionMode ?? '' : 'collection' : '';
+    const radius = motion?.normalizedRadius.toFixed(6) ?? '';
+    const revolving = String(Boolean(motion?.revolving));
+    const motionRunning = String(Boolean(motion?.revolving && this.orbitMotionAllowed));
+    for (const element of [this.root, this.canvas]) {
+      element.dataset.selectedOrbitMode = mode;
+      element.dataset.selectedOrbitNormalizedRadius = radius;
+      element.dataset.selectedOrbitRevolving = revolving;
+      element.dataset.selectedOrbitMotionRunning = motionRunning;
+      element.dataset.highlightedOrbitId = this.orbits.highlightedOrbitId ?? '';
+      element.dataset.orbitHighlightVisible = String(this.orbits.highlightVisible && !this.lost);
+      element.dataset.orbitHighlightWidth = String(this.orbits.highlight.material.linewidth);
+      element.dataset.orbitHighlightHaloWidth = String(this.orbits.highlightHalo.material.linewidth);
+      element.dataset.orbitHighlightSegments = String(this.orbits.highlight.geometry.instanceCount);
+    }
+    this.orbitMarker.dataset.orbitMode = mode;
+    this.orbitMarker.dataset.missionMode = mode;
+    this.orbitMarker.dataset.orbitNormalizedRadius = radius;
+    this.orbitMarker.dataset.orbitRadius = radius;
+    this.orbitMarker.dataset.orbitRevolving = revolving;
+    this.orbitMarker.dataset.orbitMotionRunning = motionRunning;
+    this.orbitMarker.dataset.orbitColor = orbit?.color ?? '';
+    for (const entry of this.orbitLabels) {
+      for (const marker of [entry.element, entry.diagnostic]) {
+        marker.dataset.orbitRevolving = String(entry.motion.revolving);
+        marker.dataset.orbitMotionRunning = String(entry.motion.revolving && this.orbitMotionAllowed);
+      }
+    }
   }
 
   setMotion(autoRotate: boolean, animate: boolean, allowReducedMotion: boolean): void {
@@ -615,6 +687,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.lastReducedMotion = this.motionPreference.matches;
     this.allowReducedMotion = allowReducedMotion && (autoRotate || animate);
     this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
+    this.updateSelectedOrbitDiagnostics();
     this.refreshHeartbeat();
     this.controls.autoRotate = false;
     // Start from the resumed frame, never from time spent paused or hidden.
@@ -629,12 +702,18 @@ class CareerScene implements CareerGraphSceneHandle {
     this.requestFrame();
   }
 
-  setDecorationVisible(value: boolean): void {
-    this.hologram.setDecorationVisible(value);
-    this.decorationVisible = value;
+  setRingsVisible(value: boolean): void {
+    this.ringsVisible = value;
     this.orbits.setVisible(value);
     if (!value) this.hoveredOrbit = null;
-    this.root.dataset.decorationVisible = String(value);
+    this.root.dataset.ringsVisible = String(this.orbits.object.visible);
+    this.updateSelectedOrbitDiagnostics();
+    this.requestFrame();
+  }
+
+  setSparksVisible(value: boolean): void {
+    this.hologram.setSparksVisible(value);
+    this.root.dataset.sparksVisible = String(value);
     this.requestFrame();
   }
 
@@ -807,6 +886,10 @@ class CareerScene implements CareerGraphSceneHandle {
     return !this.motionPreference.matches || this.allowReducedMotion;
   }
 
+  private get orbitMotionAllowed(): boolean {
+    return this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost;
+  }
+
   private render = (time: number): void => {
     this.frame = 0;
     if (this.disposed || this.lost || !this.intersecting || document.hidden) return;
@@ -858,9 +941,9 @@ class CareerScene implements CareerGraphSceneHandle {
     this.updateAnimationState(ambient ? 'running' : 'paused', time);
     if (this.visualProfile === 'career') {
       this.updateLabels();
-      this.updateOrbitLabels();
-      this.updateMissionLabels();
     }
+    this.updateOrbitLabels();
+    if (this.visualProfile === 'career') this.updateMissionLabels();
     if (!this.reportedReady) {
       this.reportedReady = true;
       this.callbacks.onStatusChange('ready');
@@ -1072,8 +1155,8 @@ class CareerScene implements CareerGraphSceneHandle {
     if (!rect.width || !rect.height) return undefined;
     const x = clientX - rect.left, y = clientY - rect.top;
     const node = this.pickNode(x, y, rect.width, rect.height);
-    const anchor = this.decorationVisible ? this.orbits.pickAnchor(x, y, this.camera, rect.width, rect.height) : undefined;
-    const path = !node && !anchor && this.decorationVisible
+    const anchor = this.ringsVisible ? this.orbits.pickAnchor(x, y, this.camera, rect.width, rect.height) : undefined;
+    const path = !node && !anchor && this.ringsVisible
       ? this.orbits.pickPath(x, y, this.camera, rect.width, rect.height) : undefined;
     return chooseCareerSceneHit(node, anchor, path);
   }
@@ -1089,11 +1172,23 @@ class CareerScene implements CareerGraphSceneHandle {
   }
 
   private updateOrbitLabels(): void {
-    this.orbitLabelLayer.hidden = !showOrbitIdentityLabels(this.width, this.height, this.decorationVisible);
+    this.orbitLabelLayer.hidden = this.visualProfile === 'focus'
+      || !showOrbitIdentityLabels(this.width, this.height, this.ringsVisible);
     this.orbitLabelRectCount = 0;
-    const selectedVisible = this.decorationVisible && this.selectedOrbit ? this.projectOrbit(this.selectedOrbit) : false;
+    this.updateSelectedOrbitDiagnostics();
+    const selectedProjected = this.selectedOrbit ? this.projectOrbit(this.selectedOrbit) : false;
+    const selectedVisible = this.ringsVisible && selectedProjected;
     this.orbitMarker.hidden = !selectedVisible;
     this.orbitMarker.dataset.screenVisible = String(selectedVisible);
+    if (this.selectedOrbit && this.orbits.getMotion(this.selectedOrbit.orbitId)) {
+      this.orbitMarker.dataset.worldX = this.orbitPoint.x.toFixed(6);
+      this.orbitMarker.dataset.worldY = this.orbitPoint.y.toFixed(6);
+      this.orbitMarker.dataset.worldZ = this.orbitPoint.z.toFixed(6);
+    } else {
+      delete this.orbitMarker.dataset.worldX;
+      delete this.orbitMarker.dataset.worldY;
+      delete this.orbitMarker.dataset.worldZ;
+    }
     if (selectedVisible) {
       const x = this.projected.x.toFixed(2), y = this.projected.y.toFixed(2);
       this.orbitMarker.dataset.screenX = x;
@@ -1101,7 +1196,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.orbitMarker.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     }
     const tooltip = this.hoveredOrbit ?? (!this.hoveredId ? this.selectedOrbit : null);
-    if (tooltip && this.decorationVisible && this.projectOrbit(tooltip)) {
+    if (this.visualProfile === 'career' && tooltip && this.ringsVisible && this.projectOrbit(tooltip)) {
       const orbit = this.graph?.orbits.find(item => item.id === tooltip.orbitId);
       if (orbit) {
         this.label.hidden = false;
@@ -1109,7 +1204,7 @@ class CareerScene implements CareerGraphSceneHandle {
         this.label.textContent = compactOrbitTooltip(orbit, tooltip, Boolean(this.hoveredOrbit));
         this.label.dataset.status = 'orbit';
         this.label.style.setProperty('--orbit-color', orbit.color);
-        const x = MathUtils.clamp(this.projected.x + 16, 8, Math.max(8, this.width - this.label.offsetWidth - 8));
+        const x = MathUtils.clamp(this.projected.x + SELECTED_ORBIT_ANCHOR_DIAMETER / 2 + 8, 8, Math.max(8, this.width - this.label.offsetWidth - 8));
         const y = MathUtils.clamp(this.projected.y - this.label.offsetHeight - 14, 8, Math.max(8, this.height - this.label.offsetHeight - 8));
         this.label.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
       }
@@ -1117,10 +1212,16 @@ class CareerScene implements CareerGraphSceneHandle {
     // Identity labels are secondary to the hover/selected detail and avoid one another.
     for (const entry of this.orbitLabels) {
       const { element, orbit } = entry;
-      const visible = this.decorationVisible && this.projectOrbit({ orbitId: orbit.id });
-      element.dataset.screenVisible = String(visible);
-      element.dataset.screenX = this.projected.x.toFixed(2);
-      element.dataset.screenY = this.projected.y.toFixed(2);
+      const projected = this.projectOrbit({ orbitId: orbit.id });
+      const visible = this.ringsVisible && projected;
+      for (const marker of [element, entry.diagnostic]) {
+        marker.dataset.worldX = this.orbitPoint.x.toFixed(6);
+        marker.dataset.worldY = this.orbitPoint.y.toFixed(6);
+        marker.dataset.worldZ = this.orbitPoint.z.toFixed(6);
+        marker.dataset.screenVisible = String(visible);
+        marker.dataset.screenX = this.projected.x.toFixed(2);
+        marker.dataset.screenY = this.projected.y.toFixed(2);
+      }
       element.style.visibility = 'hidden';
       element.dataset.labelVisible = 'false';
       if (!visible || this.orbitLabelLayer.hidden) continue;
@@ -1129,7 +1230,7 @@ class CareerScene implements CareerGraphSceneHandle {
         entry.height = element.offsetHeight;
       }
       const { width, height } = entry;
-      const x = MathUtils.clamp(this.projected.x + 12, 5, Math.max(5, this.width - width - 5));
+      const x = MathUtils.clamp(this.projected.x + ORBIT_ANCHOR_DIAMETER / 2 + 6, 5, Math.max(5, this.width - width - 5));
       const y = MathUtils.clamp(this.projected.y - height / 2, 5, Math.max(5, this.height - height - 5));
       let overlaps = false;
       for (let index = 0; index < this.orbitLabelRectCount; index++) {
@@ -1258,6 +1359,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.controls.autoRotate = false;
     }
     this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
+    this.updateSelectedOrbitDiagnostics();
     this.refreshHeartbeat();
   }
 
@@ -1270,6 +1372,7 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private syncVisibility(): void {
     this.refreshHeartbeat();
+    this.updateSelectedOrbitDiagnostics();
     if (!this.intersecting || document.hidden) {
       this.orbits.setMotionAllowed(false);
       cancelAnimationFrame(this.frame);
@@ -1287,6 +1390,7 @@ class CareerScene implements CareerGraphSceneHandle {
     event.preventDefault();
     this.lost = true;
     this.orbits.setMotionAllowed(false);
+    this.updateSelectedOrbitDiagnostics();
     this.refreshHeartbeat();
     this.reportedReady = false;
     this.controls.enabled = false;
@@ -1355,7 +1459,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1444,7 +1548,8 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
   const maskInterior = rimOnly ?? (visualProfile === 'focus');
   useEffect(() => { runtimeRef.current?.setMotion(autoRotate, animateAmbient, allowReducedMotion); }, [autoRotate, animateAmbient, allowReducedMotion, visualProfile]);
   useEffect(() => { runtimeRef.current?.setRimOnly(maskInterior); }, [maskInterior, visualProfile]);
-  useEffect(() => { runtimeRef.current?.setDecorationVisible(showDecoration); }, [showDecoration, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setRingsVisible(showRings); }, [showRings, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setSparksVisible(showSparks); }, [showSparks, visualProfile]);
   useEffect(() => { runtimeRef.current?.setHeartbeat(heartbeat); }, [heartbeat, visualProfile]);
 
   return (
@@ -1468,7 +1573,10 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{!showDecoration ? 'Orange links: connections · Orbit views and sparks hidden' : maskInterior ? 'Orbit paths: clear center · Anchors and membership tethers stay visible' : 'Orbits: saved missions and records · Tethers: membership · Sparks: decoration'}</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">
+        {showRings ? maskInterior ? 'Ring paths: clear center · Membership anchors stay visible' : 'Rings: saved missions and records · Tethers: membership' : 'Orange links: connections · Rings hidden'}
+        {' · '}{showSparks ? 'Sparks: decoration' : 'Sparks hidden'}
+      </span>}
     </div>
   );
 });

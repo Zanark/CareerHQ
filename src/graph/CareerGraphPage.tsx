@@ -52,7 +52,8 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const [includeRecords, setIncludeRecords] = useState(true);
   const [includeReferences, setIncludeReferences] = useState(true);
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
-  const [includeDecoration, setIncludeDecoration] = useState(true);
+  const [includeRings, setIncludeRings] = useState(true);
+  const [includeSparks, setIncludeSparks] = useState(true);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
@@ -220,7 +221,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     const members = ids.map(id => nodeMap.get(id)!);
     if (members.some(node => recordKinds.has(node.kind))) setIncludeRecords(true);
     if (members.some(node => node.status === 'reference')) setIncludeReferences(true);
-    setIncludeDecoration(true);
+    setIncludeRings(true);
     setQuery('');
     setListCount(40);
   }
@@ -249,7 +250,8 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
             <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
             <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
             <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
-            <label className="graph-checkbox" title="Show mission and record-view orbits plus decorative floating dots. Work nodes and their connections stay visible."><input type="checkbox" checked={includeDecoration} onChange={event => setIncludeDecoration(event.target.checked)} />Rings &amp; sparks</label>
+            <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
+            <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
           </div>
         </div>
         <div className="career-graph-stage" data-tour="career-graph-stage">
@@ -258,7 +260,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
               <CareerGraphScene ref={controls} graph={visible} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
-                rimOnly={rimOnly} showDecoration={includeDecoration} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
+                rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
           <div className="career-graph-stage-label"><Network size={15} /><span>{practice ? 'PRACTICE NETWORK' : 'CAREER NETWORK'}</span></div>
@@ -278,7 +280,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           </aside>
           {selectedOrbit && <CareerOrbitInspector ref={orbitInspectorRef} key={selectedOrbit.id}
             orbit={selectedOrbit} segment={selectedSegment} nodes={nodeMap} visibleIds={visibleIds}
-            ringsVisible={includeDecoration && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
+            ringsVisible={includeRings && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
             onClose={() => setOrbitSelection(null)} onSelect={selectOrbit} onReveal={revealOrbit} onInspect={inspectOrbitMember}
             onRecord={recordableOrbitMission ? () => onRecord(recordableOrbitMission) : undefined} />}
         </div>
@@ -287,7 +289,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <button className="icon-button" aria-label="Zoom career graph in" disabled={!sceneReady} onClick={() => controls.current?.zoomIn()}><Plus size={17} /></button>
           <button className="icon-button" aria-label="Zoom career graph out" disabled={!sceneReady} onClick={() => controls.current?.zoomOut()}><Minus size={17} /></button>
           <button className="button secondary" disabled={!sceneReady || !selected} onClick={() => { if (selected) controls.current?.focusNode(selected.id); }}><Focus size={15} />Focus node</button>
-          <button className="button secondary" disabled={!sceneReady || !activeOrbitSelection || !includeDecoration || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
+          <button className="button secondary" disabled={!sceneReady || !activeOrbitSelection || !includeRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
             onClick={() => { if (activeOrbitSelection) controls.current?.focusOrbit(activeOrbitSelection); }}><Focus size={15} />Focus ring</button>
           <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
@@ -295,7 +297,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <label className="graph-checkbox" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds; paused with animation.">
             <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
           </label>
-          <button className="button secondary" disabled={!sceneReady || !includeDecoration} aria-pressed={rimOnly}
+          <button className="button secondary" disabled={!sceneReady || !includeRings} aria-pressed={rimOnly}
             title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
             onClick={() => setRimOnly(value => !value)}>Clear center</button>
           <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>
@@ -304,14 +306,17 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
           <div className="career-graph-legend"><span>Work nodes:</span><span><i className="graph-status-complete" />Done</span><span><i className="graph-status-incomplete" />Unfinished</span><span><i className="graph-status-reference" />Reference</span></div>
           <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
-          <p className="career-graph-orbit-key">{visible.orbits.length} ring views · moving tethers show membership, not prerequisites or extra work nodes.</p>
+          <p className="career-graph-orbit-key">{visible.orbits.length} ring views · active missions: colored outer rings · background/planned: small, gray, stationary inner rings.</p>
         </div>
         <details ref={orbitIndexRef} className="career-orbit-index" data-tour="career-graph-orbits">
           <summary>Explore ring views ({graph.orbits.length})</summary>
-          <p>Nine saved-mission views and six record/reference collections. Inspect any ring here, even without 3D.</p>
+          <p>Nine saved-mission views and six record/reference collections. Mission rings follow Bring into focus / Move to background, not just the primary mission. Inspect any ring here, even without 3D.</p>
           <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
+            data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}
             aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
-            <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong><small>{orbit.summary}</small></span>
+            <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong>
+              {orbit.missionMode && <small>{orbit.missionMode === 'active' ? 'Active - colored outer ring' : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} - small stationary ring`}</small>}
+              <small>{orbit.summary}</small></span>
           </button>)}</div>
         </details>
         {fullscreenError && <p className="career-graph-render-notice" role="alert">{fullscreenError}</p>}

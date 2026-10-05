@@ -1,10 +1,14 @@
 import {
   BufferAttribute, BufferGeometry, Color, DynamicDrawUsage, Group, LineSegments,
-  PerspectiveCamera, Points, ShaderMaterial, Vector3,
+  PerspectiveCamera, Points, ShaderMaterial, Vector3, type InterleavedBufferAttribute,
 } from 'three';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import type { CareerGraphNode } from './careerGraphModel';
 import type { CareerOrbit, CareerOrbitSelection } from './careerOrbitTypes';
-import { CAREER_ORBIT_PLANES, orbitPoint } from './careerOrbitMotion';
+import { CAREER_ORBIT_PLANES, careerOrbitMotion, orbitPoint, orbitRotation } from './careerOrbitMotion';
+import type { CareerOrbitMotion } from './careerOrbitMotion';
 import { CareerOrbitSavedPulses, SAVED_STATUS_PULSE_SECONDS } from './careerOrbitSavedPulses';
 import type { SavedStatusPulse } from './careerOrbitSavedPulses';
 import type { CareerOrbitScreenHit } from './careerSceneInteraction';
@@ -14,12 +18,19 @@ import type { CareerRippleField } from './careerRipple';
 const TAU = Math.PI * 2;
 const STATUS = { complete: new Color('#45D072'), incomplete: new Color('#F34B00'), reference: new Color('#268BD2') };
 const WHITE = new Color('#EEE8D5');
+export const ORBIT_ANCHOR_DIAMETER = 32;
+export const SELECTED_ORBIT_ANCHOR_DIAMETER = 36;
+export const ORBIT_HIGHLIGHT_SEGMENTS = 256;
+export const ORBIT_HIGHLIGHT_WIDTH = 4;
+export const ORBIT_HIGHLIGHT_HALO_WIDTH = 18;
 const vertex = `
   ${careerRippleVertexShader}
+  attribute float aRippleWeight;
   varying vec3 vColor;
   varying vec3 vViewPosition;
   void main() {
-    vec4 viewPosition = rippleView(modelViewMatrix * vec4(position, 1.0));
+    vec4 basePosition = modelViewMatrix * vec4(position, 1.0);
+    vec4 viewPosition = mix(basePosition, rippleView(basePosition), aRippleWeight);
     vColor = color;
     vViewPosition = viewPosition.xyz;
     gl_Position = projectionMatrix * viewPosition;
@@ -58,9 +69,86 @@ function lineMaterial(masked = false, opacity = 0.65): ShaderMaterial {
   });
 }
 
+function highlightMaterial(halo = false): LineMaterial {
+  const material = new LineMaterial({
+    linewidth: halo ? ORBIT_HIGHLIGHT_HALO_WIDTH : ORBIT_HIGHLIGHT_WIDTH,
+    opacity: halo ? 0.42 : 0.96,
+    transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
+  });
+  Object.assign(material.uniforms, createRippleUniforms(), {
+    uRippleWeight: { value: 1 }, uCenterView: { value: new Vector3() },
+    uRadius: { value: 1 }, uRimOnly: { value: 0 },
+  });
+  material.vertexShader = material.vertexShader
+    .replace('#include <fog_pars_vertex>', `#include <fog_pars_vertex>
+      ${careerRippleVertexShader}
+      uniform float uRippleWeight;
+      varying vec3 vViewPosition;`)
+    .replace('vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );', `
+      vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );
+      start = mix(start, rippleView(start), uRippleWeight);
+      end = mix(end, rippleView(end), uRippleWeight);`)
+    .replace('#include <logdepthbuf_vertex>', `
+      vViewPosition = mvPosition.xyz;
+      // Mask the actual ribbon pixels, including the halo width, not just its centerline.
+      vViewPosition.xy += (clip.xy - (projectionMatrix * mvPosition).xy)
+        / vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
+      #include <logdepthbuf_vertex>`);
+  material.fragmentShader = material.fragmentShader
+    .replace('#include <fog_pars_fragment>', `#include <fog_pars_fragment>\n${mask}`)
+    .replace('gl_FragColor = vec4( diffuseColor.rgb, alpha );', `
+      float across = abs(vUv.x);
+      alpha *= ${halo ? 'exp(-3.5 * across * across) * (1.0 - smoothstep(0.72, 1.0, across))'
+        : '(1.0 - smoothstep(0.65, 1.0, across))'};
+      gl_FragColor = vec4(diffuseColor.rgb, alpha * rimVisibility());`);
+  return material;
+}
+
+const planetFragment = `
+  varying vec3 vColor;
+  void main() {
+    vec2 point = (gl_PointCoord - 0.5) * 2.0;
+    float radius = length(point);
+    if (radius > 1.0) discard;
+    vec2 sphere = vec2(point.x, -point.y) / 0.78;
+    vec3 normal = normalize(vec3(sphere, sqrt(max(0.0, 1.0 - dot(sphere, sphere)))));
+    vec3 light = normalize(vec3(-0.45, 0.55, 0.9));
+    float diffuse = max(0.0, dot(normal, light));
+    float specular = pow(max(0.0, dot(normal, normalize(light + vec3(0.0, 0.0, 1.0)))), 24.0);
+    vec3 surface = vColor * (0.24 + 0.9 * diffuse) + vec3(0.12) * specular;
+    float body = 1.0 - smoothstep(0.74, 0.80, radius);
+    float atmosphere = (1.0 - smoothstep(0.78, 1.0, radius)) * 0.22;
+    gl_FragColor = vec4(mix(vColor * 0.85, surface, body), max(body, atmosphere));
+    #include <colorspace_fragment>
+  }
+`;
+
+const packetFragment = `
+  varying vec3 vColor;
+  void main() {
+    float r = length(gl_PointCoord - 0.5) * 2.0;
+    if (r > 1.0) discard;
+    float alpha = max(1.0 - smoothstep(0.3, 0.5, r), 1.0 - smoothstep(0.08, 0.16, abs(r - 0.8)));
+    gl_FragColor = vec4(vColor, alpha);
+    #include <colorspace_fragment>
+  }
+`;
+
+function pointMaterial(diameter: number, fragmentShader: string): ShaderMaterial {
+  return new ShaderMaterial({
+    vertexShader: vertex.replace('void main()', 'uniform float uPixelRatio;\nvoid main()').replace(
+      'gl_Position = projectionMatrix * viewPosition;',
+      `gl_Position = projectionMatrix * viewPosition; gl_PointSize = ${diameter.toFixed(1)} * uPixelRatio;`),
+    fragmentShader,
+    uniforms: { ...createRippleUniforms(), uPixelRatio: { value: 1 } },
+    vertexColors: true, transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
+  });
+}
+
 interface PathRange { start: number; end: number; selection: CareerOrbitSelection }
 interface OrbitEntry {
   orbit: CareerOrbit;
+  motion: CareerOrbitMotion;
   start: number;
   end: number;
   segmentAngles: Map<string, number>;
@@ -75,6 +163,7 @@ interface Tether {
 }
 export interface OrbitAnchorInfo {
   orbit: CareerOrbit;
+  motion: CareerOrbitMotion;
   visibleMemberCount: number;
 }
 
@@ -86,26 +175,17 @@ function dynamicPositions(values: number[] | Float32Array): BufferAttribute {
 export class CareerOrbitVisuals {
   readonly object = new Group();
   readonly paths = new LineSegments(new BufferGeometry(), lineMaterial(true));
-  readonly anchors = new Points(new BufferGeometry(), new ShaderMaterial({
-    vertexShader: `${vertex.replace('void main()', 'uniform float uPixelRatio;\nvoid main()').replace(
-      'gl_Position = projectionMatrix * viewPosition;', 'gl_Position = projectionMatrix * viewPosition; gl_PointSize = 10.0 * uPixelRatio;')}`,
-    fragmentShader: `
-      varying vec3 vColor;
-      void main() {
-        float r = length(gl_PointCoord - 0.5) * 2.0;
-        if (r > 1.0) discard;
-        float alpha = max(1.0 - smoothstep(0.3, 0.5, r), 1.0 - smoothstep(0.08, 0.16, abs(r - 0.8)));
-        gl_FragColor = vec4(vColor, alpha);
-        #include <colorspace_fragment>
-      }`,
-    uniforms: { ...createRippleUniforms(), uPixelRatio: { value: 1 } },
-    vertexColors: true, transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
-  }));
+  readonly anchors = new Points(new BufferGeometry(), pointMaterial(ORBIT_ANCHOR_DIAMETER, planetFragment));
   readonly primaryTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.22));
   readonly detailTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.55));
   readonly savedPulseTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.55));
-  readonly savedPulsePackets = new Points(new BufferGeometry(), this.anchors.material);
-  readonly selectedAnchor = new Points(new BufferGeometry(), this.anchors.material);
+  readonly savedPulsePackets = new Points(new BufferGeometry(), pointMaterial(10, packetFragment));
+  readonly selectedAnchor = new Points(new BufferGeometry(), pointMaterial(SELECTED_ORBIT_ANCHOR_DIAMETER, planetFragment));
+  private readonly highlightPositions = new Float32Array(ORBIT_HIGHLIGHT_SEGMENTS * 6);
+  private readonly highlightGeometry = new LineSegmentsGeometry().setPositions(this.highlightPositions);
+  private readonly highlightBuffer = (this.highlightGeometry.attributes.instanceStart as InterleavedBufferAttribute).data.setUsage(DynamicDrawUsage);
+  readonly highlight = new LineSegments2(this.highlightGeometry, highlightMaterial());
+  readonly highlightHalo = new LineSegments2(this.highlightGeometry, highlightMaterial(true));
   private entries: OrbitEntry[] = [];
   private readonly byId = new Map<string, OrbitEntry>();
   private ranges: PathRange[] = [];
@@ -141,15 +221,27 @@ export class CareerOrbitVisuals {
     this.selectedAnchor.name = 'Selected orbit or stage anchor';
     this.savedPulseTethers.name = 'Transient saved-status membership tethers';
     this.savedPulsePackets.name = 'Saved-status packets - not inferred mastery';
+    this.highlight.name = 'Selected full orbit highlight';
+    this.highlightHalo.name = 'Selected full orbit halo';
     this.savedPulseTethers.visible = this.savedPulsePackets.visible = false;
     for (const item of [this.paths, this.primaryTethers, this.detailTethers, this.anchors, this.selectedAnchor, this.savedPulseTethers, this.savedPulsePackets]) {
       item.frustumCulled = false;
       item.renderOrder = item instanceof Points ? 4 : -1;
     }
     this.selectedAnchor.visible = false;
+    // One shared, reusable ring; draw only ribbon bodies to avoid overlapping soft endcaps.
+    this.highlightGeometry.setDrawRange(6, 6);
+    this.highlightGeometry.instanceCount = 0;
+    for (const item of [this.highlightHalo, this.highlight]) {
+      item.frustumCulled = false;
+      item.visible = false;
+    }
+    this.highlightHalo.renderOrder = 1.1;
+    this.highlight.renderOrder = 1.2;
     this.selectedAnchor.geometry.setAttribute('position', dynamicPositions(new Float32Array(3)));
     this.selectedAnchor.geometry.setAttribute('color', new BufferAttribute(new Float32Array([WHITE.r, WHITE.g, WHITE.b]), 3));
-    this.object.add(this.paths, this.primaryTethers, this.detailTethers, this.anchors, this.selectedAnchor, this.savedPulseTethers, this.savedPulsePackets);
+    this.selectedAnchor.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array([1]), 1));
+    this.object.add(this.paths, this.primaryTethers, this.detailTethers, this.anchors, this.selectedAnchor, this.savedPulseTethers, this.savedPulsePackets, this.highlightHalo, this.highlight);
     if (calm) {
       this.paths.material.uniforms.uOpacity.value = 0.38;
       this.primaryTethers.material.uniforms.uOpacity.value = 0.12;
@@ -161,10 +253,16 @@ export class CareerOrbitVisuals {
   get tetherCount(): number { return this.primary.length + this.details.length + this.savedPulses.active.length; }
   get savedPulseCount(): number { return this.savedPulses.active.length; }
   get detailTetherSegments(): number { return this.detailSegments; }
+  get highlightedOrbitId(): string | null { return !this.disposed && this.highlight.visible ? this.selection?.orbitId ?? null : null; }
+  get highlightVisible(): boolean {
+    return !this.disposed && this.object.visible && this.highlight.visible && this.highlightHalo.visible && this.highlightGeometry.instanceCount > 0;
+  }
   get tetherTargetIds(): readonly string[] {
     return [...this.primary, ...this.details].map(tether => tether.nodeId).concat(this.savedPulses.active.map(pulse => pulse.nodeId));
   }
-  get anchorInfo(): OrbitAnchorInfo[] { return this.entries.map(({ orbit, visibleMemberCount }) => ({ orbit, visibleMemberCount })); }
+  get anchorInfo(): OrbitAnchorInfo[] { return this.entries.map(({ orbit, motion, visibleMemberCount }) => ({ orbit, motion, visibleMemberCount })); }
+
+  getMotion(orbitId: string): CareerOrbitMotion | undefined { return this.byId.get(orbitId)?.motion; }
 
   setData(orbits: readonly CareerOrbit[], nodes: ReadonlyMap<string, CareerGraphNode>, center: Vector3, radius: number): void {
     if (this.disposed) return;
@@ -177,6 +275,7 @@ export class CareerOrbitVisuals {
     const positions: number[] = [];
     const colors: number[] = [];
     const anchorColors: number[] = [];
+    const rippleWeights: number[] = [];
     const addArc = (entry: OrbitEntry, from: number, to: number, offset: number, color: Color, selection: CareerOrbitSelection) => {
       if (to <= from) return;
       const start = positions.length / 3;
@@ -184,9 +283,10 @@ export class CareerOrbitVisuals {
       for (let sample = 0; sample < segments; sample++) {
         for (let endpoint = 0; endpoint < 2; endpoint++) {
           const angle = from + (to - from) * (sample + endpoint) / segments;
-          const r = CAREER_ORBIT_PLANES[entry.orbit.index].radius + offset;
+          const r = (CAREER_ORBIT_PLANES[entry.orbit.index].radius + offset) * entry.motion.radiusScale;
           positions.push(Math.cos(angle) * r, Math.sin(angle) * r, 0);
           colors.push(color.r, color.g, color.b);
+          rippleWeights.push(entry.motion.rippleWeight);
         }
       }
       this.ranges.push({ start, end: positions.length / 3, selection });
@@ -194,7 +294,7 @@ export class CareerOrbitVisuals {
     for (const orbit of orbits) {
       if (!Number.isInteger(orbit.index) || orbit.index < 0 || orbit.index >= 15 || this.byId.has(orbit.id)) continue;
       const entry: OrbitEntry = {
-        orbit, start: positions.length / 3, end: 0, segmentAngles: new Map(),
+        orbit, motion: careerOrbitMotion(orbit), start: positions.length / 3, end: 0, segmentAngles: new Map(),
         visibleMemberCount: orbit.memberIds.reduce((count, id) => count + Number(nodes.has(id)), 0),
       };
       this.byId.set(orbit.id, entry);
@@ -219,8 +319,8 @@ export class CareerOrbitVisuals {
             const start = from + (to - from) * index / segment.members.length;
             const end = from + (to - from) * (index + 1) / segment.members.length;
             const slotGap = Math.min(0.008, (end - start) * 0.12);
-            addArc(entry, start + slotGap, end - slotGap, 0.025, STATUS[member.status], selection);
-            if (member.current) addArc(entry, start + slotGap, end - slotGap, 0.037, WHITE, selection);
+            addArc(entry, start + slotGap, end - slotGap, 0.025, entry.motion.quiet ? color : STATUS[member.status], selection);
+            if (member.current) addArc(entry, start + slotGap, end - slotGap, 0.037, entry.motion.quiet ? color : WHITE, selection);
           });
         }
       }
@@ -231,9 +331,11 @@ export class CareerOrbitVisuals {
     this.paths.geometry.dispose();
     this.paths.geometry.setAttribute('position', dynamicPositions(this.local));
     this.paths.geometry.setAttribute('color', dynamicPositions(this.originalColors));
+    this.paths.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array(rippleWeights), 1));
     this.anchors.geometry.dispose();
     this.anchors.geometry.setAttribute('position', dynamicPositions(new Float32Array(this.entries.length * 3)));
     this.anchors.geometry.setAttribute('color', new BufferAttribute(new Float32Array(anchorColors), 3));
+    this.anchors.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array(this.entries.map(entry => entry.motion.rippleWeight)), 1));
     this.primary = this.entries.flatMap(entry => {
       const hub = nodes.get(entry.orbit.hubNodeId);
       return hub ? [{ entry, angle: CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle, offset: 0, target: hub.position, nodeId: hub.id }] : [];
@@ -267,6 +369,21 @@ export class CareerOrbitVisuals {
     this.allocateTethers(this.detailTethers.geometry, this.details, this.detailSegments);
     this.updatePathColors();
     this.selectedAnchor.visible = Boolean(this.selection);
+    this.highlight.visible = this.highlightHalo.visible = Boolean(entry);
+    this.highlightGeometry.instanceCount = entry ? ORBIT_HIGHLIGHT_SEGMENTS : 0;
+    // Keep original status ticks readable above the glow and real work markers above both.
+    this.paths.renderOrder = entry ? 1.3 : -1;
+    const markerColor = entry ? new Color(entry.orbit.color) : WHITE;
+    for (const material of [this.highlight.material, this.highlightHalo.material]) {
+      material.color.copy(markerColor).multiplyScalar(1.5);
+      material.uniforms.uRippleWeight.value = entry?.motion.rippleWeight ?? 0;
+    }
+    const colors = this.selectedAnchor.geometry.getAttribute('color');
+    colors.setXYZ(0, markerColor.r, markerColor.g, markerColor.b);
+    colors.needsUpdate = true;
+    const weights = this.selectedAnchor.geometry.getAttribute('aRippleWeight');
+    weights.setX(0, entry?.motion.rippleWeight ?? 1);
+    weights.needsUpdate = true;
     this.dirty = true;
     this.updateGeometry();
   }
@@ -277,11 +394,6 @@ export class CareerOrbitVisuals {
       const values = colors.array;
       values.set(this.originalColors);
       for (const range of this.ranges) {
-        const selected = range.selection.orbitId === this.selection?.orbitId
-          && (!this.selection.segmentId || range.selection.segmentId === this.selection.segmentId);
-        if (selected) {
-          for (let index = range.start * 3; index < range.end * 3; index++) values[index] *= 1.65;
-        }
         let emphasis = 0;
         for (const pulse of this.savedPulses.active) {
           if (pulse.orbitId === range.selection.orbitId && pulse.segmentId === range.selection.segmentId) {
@@ -306,26 +418,34 @@ export class CareerOrbitVisuals {
     if (!entry) return false;
     const angle = selection.segmentId ? entry.segmentAngles.get(selection.segmentId) : undefined;
     orbitPoint(entry.orbit.index, angle ?? CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle,
-      this.phase, this.center, this.radius, target, angle === undefined ? 0 : 0.012, this.calm);
+      this.phase, this.center, this.radius, target, angle === undefined ? 0 : 0.012, this.calm, entry.motion);
     return true;
   }
 
   getDisplayedAnchor(selection: CareerOrbitSelection, target: Vector3): boolean {
     if (!this.getAnchor(selection, target)) return false;
-    this.ripple?.deformWorld(target, target);
+    if (this.byId.get(selection.orbitId)?.motion.rippleWeight) this.ripple?.deformWorld(target, target);
     return true;
   }
 
   setRippleField(field: CareerRippleField): void {
     this.ripple = field;
-    for (const material of [this.paths.material, this.anchors.material, this.primaryTethers.material, this.detailTethers.material, this.savedPulseTethers.material]) {
+    for (const material of [this.paths.material, this.anchors.material, this.selectedAnchor.material, this.savedPulsePackets.material, this.primaryTethers.material, this.detailTethers.material, this.savedPulseTethers.material, this.highlight.material, this.highlightHalo.material]) {
       Object.assign(material.uniforms, field.uniforms);
     }
   }
 
   setVisible(value: boolean): void { this.object.visible = value; }
-  setRimOnly(value: boolean): void { this.paths.material.uniforms.uRimOnly.value = Number(value); }
-  resize(pixelRatio: number): void { this.anchors.material.uniforms.uPixelRatio.value = pixelRatio; }
+  setRimOnly(value: boolean): void {
+    for (const material of [this.paths.material, this.highlight.material, this.highlightHalo.material]) {
+      material.uniforms.uRimOnly.value = Number(value);
+    }
+  }
+  resize(pixelRatio: number): void {
+    for (const material of [this.anchors.material, this.selectedAnchor.material, this.savedPulsePackets.material]) {
+      material.uniforms.uPixelRatio.value = pixelRatio;
+    }
+  }
 
   setMotionAllowed(value: boolean): void {
     if (this.disposed) return;
@@ -350,8 +470,10 @@ export class CareerOrbitVisuals {
       this.pulseColorsDirty = true;
     }
     camera.updateMatrixWorld();
-    this.paths.material.uniforms.uCenterView.value.copy(this.center).applyMatrix4(camera.matrixWorldInverse);
-    this.paths.material.uniforms.uRadius.value = this.radius;
+    for (const material of [this.paths.material, this.highlight.material, this.highlightHalo.material]) {
+      material.uniforms.uCenterView.value.copy(this.center).applyMatrix4(camera.matrixWorldInverse);
+      material.uniforms.uRadius.value = this.radius;
+    }
     if (this.dirty) this.updateGeometry();
     if (this.pulseColorsDirty) this.updatePathColors();
     this.updatePulseGeometry();
@@ -364,7 +486,7 @@ export class CareerOrbitVisuals {
     const values = positions.array;
     this.entries.forEach((entry, anchorIndex) => {
       const plane = CAREER_ORBIT_PLANES[entry.orbit.index];
-      const angle = this.phase * plane.speed * (this.calm ? 0.4 : 1);
+      const angle = orbitRotation(entry.orbit.index, this.phase, this.calm, entry.motion.revolving);
       const cos = Math.cos(angle), sin = Math.sin(angle);
       for (let vertex = entry.start; vertex < entry.end; vertex++) {
         const index = vertex * 3;
@@ -374,7 +496,7 @@ export class CareerOrbitVisuals {
         values[index + 1] = this.center.y + plane.x.y * x + plane.y.y * y;
         values[index + 2] = this.center.z + plane.x.z * x + plane.y.z * y;
       }
-      orbitPoint(entry.orbit.index, plane.anchorAngle, this.phase, this.center, this.radius, this.scratch, 0, this.calm);
+      orbitPoint(entry.orbit.index, plane.anchorAngle, this.phase, this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
       anchors.setXYZ(anchorIndex, this.scratch.x, this.scratch.y, this.scratch.z);
     });
     positions.needsUpdate = true;
@@ -386,18 +508,40 @@ export class CareerOrbitVisuals {
     }
     this.updateTethers(this.primaryTethers.geometry, this.primary, this.primarySegments);
     this.updateTethers(this.detailTethers.geometry, this.details, this.detailSegments);
+    this.updateHighlightGeometry();
     this.dirty = false;
+  }
+
+  private updateHighlightGeometry(): void {
+    const entry = this.selection ? this.byId.get(this.selection.orbitId) : undefined;
+    if (!entry) return;
+    const angle = CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle;
+    for (let segment = 0; segment < ORBIT_HIGHLIGHT_SEGMENTS; segment++) {
+      orbitPoint(entry.orbit.index, angle + segment / ORBIT_HIGHLIGHT_SEGMENTS * TAU,
+        this.phase, this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
+      this.scratch.toArray(this.highlightPositions, segment * 6);
+      if (segment > 0) this.scratch.toArray(this.highlightPositions, (segment - 1) * 6 + 3);
+    }
+    this.highlightPositions.set(this.highlightPositions.subarray(0, 3), this.highlightPositions.length - 3);
+    this.highlightBuffer.needsUpdate = true;
   }
 
   private allocateTethers(geometry: BufferGeometry, tethers: Tether[], segments: number): void {
     geometry.dispose();
     geometry.setAttribute('position', dynamicPositions(new Float32Array(tethers.length * segments * 6)));
     const colors = new Float32Array(tethers.length * segments * 6);
+    const weights = new Float32Array(tethers.length * segments * 2);
     tethers.forEach((tether, index) => {
       const color = new Color(tether.entry.orbit.color);
-      for (let vertex = 0; vertex < segments * 2; vertex++) color.toArray(colors, (index * segments * 2 + vertex) * 3);
+      for (let vertex = 0; vertex < segments * 2; vertex++) {
+        const offset = index * segments * 2 + vertex;
+        color.toArray(colors, offset * 3);
+        // Pin quiet ring ends while sharing the exact work-node field at t=1.
+        weights[offset] = tether.entry.motion.quiet ? (Math.floor(vertex / 2) + vertex % 2) / segments : 1;
+      }
     });
     geometry.setAttribute('color', new BufferAttribute(colors, 3));
+    geometry.setAttribute('aRippleWeight', new BufferAttribute(weights, 1));
   }
 
   private rebuildPulseGeometry(): void {
@@ -416,6 +560,7 @@ export class CareerOrbitVisuals {
     this.savedPulsePackets.geometry.dispose();
     this.savedPulsePackets.geometry.setAttribute('position', dynamicPositions(new Float32Array(tethers.length * 3)));
     this.savedPulsePackets.geometry.setAttribute('color', dynamicPositions(new Float32Array(tethers.length * 3)));
+    this.savedPulsePackets.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array(tethers.length).fill(1), 1));
     this.updatePulseGeometry();
   }
 
@@ -450,7 +595,7 @@ export class CareerOrbitVisuals {
 
   private writeTether(values: ArrayLike<number> & { [index: number]: number }, tether: Tether, index: number, segments: number): void {
     const entry = tether.entry;
-    orbitPoint(entry.orbit.index, tether.angle, this.phase, this.center, this.radius, this.scratch, tether.offset, this.calm);
+    orbitPoint(entry.orbit.index, tether.angle, this.phase, this.center, this.radius, this.scratch, tether.offset, this.calm, entry.motion);
     this.end.fromArray(tether.target);
     this.middle.copy(this.scratch).add(this.end).multiplyScalar(0.5);
     // A shallow curve, not a fabricated intermediate node. Both ends remain exact.
@@ -490,10 +635,10 @@ export class CareerOrbitVisuals {
       return visible;
     };
     let best: CareerOrbitSelection | undefined;
-    let closest = 11;
+    let closest = Infinity;
     if (this.selection && this.getDisplayedAnchor(this.selection, this.projectedA) && project(this.projectedA)) {
       const distance = Math.hypot(x - this.projectedA.x, y - this.projectedA.y);
-      if (distance < closest) {
+      if (distance <= SELECTED_ORBIT_ANCHOR_DIAMETER / 2 + 2) {
         closest = distance;
         best = this.selection;
       }
@@ -502,10 +647,10 @@ export class CareerOrbitVisuals {
     if (!anchors) return undefined;
     this.entries.forEach((entry, index) => {
       this.projectedA.fromBufferAttribute(anchors, index);
-      this.ripple?.deformWorld(this.projectedA, this.projectedA);
+      if (entry.motion.rippleWeight) this.ripple?.deformWorld(this.projectedA, this.projectedA);
       if (!project(this.projectedA)) return;
       const distance = Math.hypot(x - this.projectedA.x, y - this.projectedA.y);
-      if (distance < closest) {
+      if (distance <= ORBIT_ANCHOR_DIAMETER / 2 + 2 && distance < closest) {
         closest = distance;
         best = { orbitId: entry.orbit.id };
       }
@@ -525,14 +670,15 @@ export class CareerOrbitVisuals {
     let best: CareerOrbitSelection | undefined;
     let closest = 6;
     const positions = this.paths.geometry.getAttribute('position');
+    const weights = this.paths.geometry.getAttribute('aRippleWeight');
     const masked = this.paths.material.uniforms.uRimOnly.value > 0.5;
     const centerView = this.paths.material.uniforms.uCenterView.value as Vector3;
     for (const range of this.ranges) {
       for (let index = range.start; index < range.end; index += 2) {
         this.projectedA.fromBufferAttribute(positions, index);
         this.projectedB.fromBufferAttribute(positions, index + 1);
-        this.ripple?.deformWorld(this.projectedA, this.projectedA);
-        this.ripple?.deformWorld(this.projectedB, this.projectedB);
+        if (weights.getX(index)) this.ripple?.deformWorld(this.projectedA, this.projectedA);
+        if (weights.getX(index + 1)) this.ripple?.deformWorld(this.projectedB, this.projectedB);
         if (masked) {
           this.scratch.copy(this.projectedA).add(this.projectedB).multiplyScalar(0.5)
             .applyMatrix4(camera.matrixWorldInverse).normalize().cross(centerView);
@@ -555,7 +701,8 @@ export class CareerOrbitVisuals {
     if (this.disposed) return;
     this.disposed = true;
     for (const item of [this.paths, this.anchors, this.primaryTethers, this.detailTethers, this.selectedAnchor, this.savedPulseTethers, this.savedPulsePackets]) item.geometry.dispose();
-    for (const material of [this.paths.material, this.anchors.material, this.primaryTethers.material, this.detailTethers.material, this.savedPulseTethers.material]) material.dispose();
+    this.highlightGeometry.dispose();
+    for (const material of [this.paths.material, this.anchors.material, this.selectedAnchor.material, this.savedPulsePackets.material, this.primaryTethers.material, this.detailTethers.material, this.savedPulseTethers.material, this.highlight.material, this.highlightHalo.material]) material.dispose();
     this.object.clear();
     this.entries = [];
     this.byId.clear();

@@ -74,7 +74,8 @@ test('the travelling mesh ripple changes rendered pixels without a separate ring
   const scene = await frozenMain(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
   await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Rings & sparks', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
   const heartbeat = page.getByRole('checkbox', { name: 'Core heartbeat', exact: true });
   await heartbeat.uncheck();
   await page.clock.runFor(50);
@@ -178,7 +179,8 @@ test('the core heartbeat toggle leaves orbit motion, connections and stored work
   await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(time);
   await heartbeat.check();
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'true');
-  await page.getByRole('checkbox', { name: 'Rings & sparks', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'true');
   await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'false');

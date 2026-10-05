@@ -3,7 +3,7 @@ import { PNG } from './png';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
-test('the white core and inner halo remain opaque over links with decoration on or off', async ({ page }, testInfo) => {
+test('the white core and inner halo remain opaque with every ring and spark visibility combination', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./#/home');
   const scene = page.locator('.career-graph-scene');
@@ -26,9 +26,11 @@ test('the white core and inner halo remain opaque over links with decoration on 
   await expect.poll(async () => Number(await marker.getAttribute('data-screen-x'))).toBeCloseTo(box.width / 2, 0);
   await expect.poll(async () => Number(await marker.getAttribute('data-screen-y'))).toBeCloseTo(box.height / 2, 0);
   await page.getByRole('button', { name: 'Close node details', exact: true }).click();
-  for (const visible of [false, true]) {
-    await page.getByRole('checkbox', { name: 'Rings & sparks', exact: true }).setChecked(visible);
-    await expect(scene).toHaveAttribute('data-decoration-visible', String(visible));
+  for (const [rings, sparks] of [[false, false], [true, false], [false, true], [true, true]]) {
+    await page.getByRole('checkbox', { name: 'Rings', exact: true }).setChecked(rings);
+    await page.getByRole('checkbox', { name: 'Sparks', exact: true }).setChecked(sparks);
+    await expect(scene).toHaveAttribute('data-rings-visible', String(rings));
+    await expect(scene).toHaveAttribute('data-sparks-visible', String(sparks));
     await canvas.scrollIntoViewIfNeeded();
     const currentBox = await canvas.boundingBox();
     if (!currentBox) throw new Error('The core canvas must stay visible when decoration changes.');
@@ -43,7 +45,7 @@ test('the white core and inner halo remain opaque over links with decoration on 
       }
     }
     expect(unfilled.slice(0, 10), 'Every inner-halo pixel must use the solid core ink, not reveal the scene underneath').toEqual([]);
-    await testInfo.attach(`opaque-core-decoration-${visible}`, { body: image, contentType: 'image/png' });
+    await testInfo.attach(`opaque-core-rings-${rings}-sparks-${sparks}`, { body: image, contentType: 'image/png' });
   }
   expect(await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'))).toBe(raw);
 });

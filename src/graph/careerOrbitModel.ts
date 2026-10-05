@@ -86,10 +86,16 @@ function missionOrbit(
     : ids.length && completed === ids.length ? 'All tracked checkpoints marked complete' : 'No current saved checkpoint';
   return {
     id, index, kind: 'mission', label: mission.name, href, hubNodeId: `mission:${mission.id}`,
-    missionId: mission.id, roadmapVersion: mission.roadmapVersion, color: colors[mission.color] ?? colors.gray,
+    missionId: mission.id, missionMode: progress.mode, roadmapVersion: mission.roadmapVersion,
+    color: progress.mode === 'active'
+      ? mission.color === 'gray' ? colors.magenta : colors[mission.color] ?? colors.teal
+      : '#657B83',
     summary: ids.length ? `${completed}/${ids.length} checkpoints marked complete · ${context}` : 'No tracked checkpoints · reference only',
     detail: [
       `Saved ${mission.name} roadmap v${mission.roadmapVersion} · ${progress.mode} · ${progress.status}.`,
+      progress.mode === 'active'
+        ? 'Active mission: a colored outer ring that revolves while animation is enabled.'
+        : 'Background or planned mission: a smaller gray ring near the core, with no independent animation.',
       ids.length
         ? `${completed} of ${ids.length} tracked checkpoints have user-recorded completion; this is not assessed mastery. ${context}.`
         : 'This saved definition is planned/reference material, with no tracked checkpoints or completion percentage.',

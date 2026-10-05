@@ -255,6 +255,10 @@ export class HolographicCore {
     this.rim.visible = value;
   }
 
+  setSparksVisible(value: boolean): void {
+    this.particles.visible = value;
+  }
+
   setHeartbeatStrength(value: number): void {
     this.heartbeatStrength = Math.max(0, Math.min(1, value));
     this.heart.scale.setScalar(this.radius * heartbeatCoreScale(this.heartbeatStrength, this.calm));

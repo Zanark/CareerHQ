@@ -52,21 +52,34 @@ notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orang
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
 their endpoints. The maximum push is 56 CSS pixels at the fitted view, tapering
 with the square root of relative camera distance as you zoom in.
-Nine mission orbits use the active saved roadmap's stages and checkpoint statuses;
+Nine mission orbits use the saved roadmap's stages and checkpoint statuses;
 six record/reference orbits show the appropriate collection groups and counts.
-The orbit's base hue identifies its view; mission checkpoint ticks use the saved
-green/orange/reference status colors. Stage marks stay together as each orbit turns.
+Active mission rings retain their content hues and saved green/orange/reference
+checkpoint ticks. Background/planned mission rings, ticks and tethers use muted
+DeepSeaFoam gray `#657B83`, smaller near-core radii and no independent animation.
+The formerly gray Algorithm view uses DeepSeaFoam magenta `#D33682` when active.
+Gray indicates mission focus mode, not lost completion: work-node and inspector
+statuses retain their true recorded colors. Stage marks stay together as active rings turn.
 Their moving anchors remain attached to genuine hubs or selected members by
 stretching membership tethers. These are derived views, excluded from work totals.
+Orbit identities are larger planet-like points with a solid shaded body and soft
+atmospheric edge (32 CSS pixels including the edge, 36 when selected). Selection
+retains the ring hue; quiet missions stay gray. Saved-status packets remain small.
+Selection adds a brighter, thicker full-circumference glow in the ring's hue,
+including when a single stage/group is selected. It follows the real ring geometry,
+retains quiet-ring stillness, and respects Rings visibility and Clear center.
 Full-shell projection is the default; **Clear center** masks ring paths rather
-than their data anchors. **Rings & sparks** hides the orbit overlay and particles
-without removing real work nodes, connection glow or the actual core-node aura.
+than their data anchors. **Rings** hides the orbit paths, anchors and tethers;
+**Sparks** independently hides the decorative particles. Both start enabled.
+Neither removes real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
 lines cannot show through; only the outer glow has a soft falloff.
 An optional ten-second core heartbeat sends a travelling radial displacement through
 the meshes from that same node. It does not draw a standalone white ring: the meshes
 move gently outward and return without layout drift. The core stays fixed and opaque,
-status colors stay unchanged, and labels/picking follow the displayed positions.
+work-node status colors stay unchanged, and labels/picking follow the displayed positions.
+Quiet mission rings remain fixed during the heartbeat, with tethers still attached
+to the displayed work nodes.
 Focus mode centers the camera on the core and removes viewport-dependent backdrop
 offsets, keeping the ripple source centered behind the frosted timer.
 Glow and sparks remain decorative; orbit motion is not evidence of a connected AI

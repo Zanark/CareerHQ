@@ -167,6 +167,27 @@ describe('outer-rim-only decoration', () => {
     core.dispose();
   });
 
+  it.each([false, true])('hides only sparks without changing the core, legacy rings or geometry (calm=%s)', calm => {
+    const core = new HolographicCore(calm);
+    core.setBounds(new Vector3(), 60, new Vector3());
+    const rim = core.object.getObjectByName('Decorative outer rim only')!;
+    const heart = core.object.getObjectByName('Existing core node aura')!;
+    const particles = rim.children.find((child): child is Points => child instanceof Points)!;
+    const geometry = particles.geometry;
+    const rings = rimLines(core);
+    core.setRimOnly(false);
+    for (const visible of [false, true, false, true]) {
+      core.setSparksVisible(visible);
+      expect(particles.visible).toBe(visible);
+      expect(particles.geometry).toBe(geometry);
+      expect(rim.visible).toBe(true);
+      expect(rings.visible).toBe(true);
+      expect(heart.visible).toBe(true);
+      expect(rimMaterial(core).uniforms.uRimOnly.value).toBe(0);
+    }
+    core.dispose();
+  });
+
   it('updates the silhouette mask from the real camera when rotating and panning', () => {
     const core = new HolographicCore();
     const center = new Vector3(8, -5, 2);

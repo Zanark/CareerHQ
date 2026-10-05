@@ -5,7 +5,7 @@ import { CareerOrbitSavedPulses, SAVED_STATUS_PULSE_SECONDS } from './careerOrbi
 
 function orbit(): CareerOrbit {
   return {
-    id: 'orbit:mission:example', index: 0, kind: 'mission', label: 'Example',
+    id: 'orbit:mission:example', index: 0, kind: 'mission', missionMode: 'active', label: 'Example',
     summary: '', detail: '', color: '#EDAE29', href: '/', hubNodeId: 'mission:example',
     roadmapVersion: '1.0.0', currentNodeId: 'checkpoint:current',
     memberIds: ['checkpoint:current', 'checkpoint:later'],
@@ -82,6 +82,48 @@ describe('saved-status pulse qualification', () => {
     expect(tracker.active).toHaveLength(1);
     tracker.observe([data], new Map());
     expect(tracker.active).toHaveLength(0);
+    tracker.observe([data], visible());
+    expect(tracker.active).toHaveLength(0);
+  });
+
+  it.each(['background', 'planned', undefined] as const)('keeps %s missions silent and never fabricates or replays pulses on mode changes', mode => {
+    const data = orbit(), tracker = new CareerOrbitSavedPulses(), nodes = visible();
+    tracker.setEnabled(true);
+    tracker.observe([data], nodes);
+    data.missionMode = mode;
+    tracker.observe([data], nodes);
+    expect(tracker.active).toHaveLength(0);
+    data.missionMode = 'active';
+    tracker.observe([data], nodes);
+    expect(tracker.active).toHaveLength(0);
+    complete(data);
+    tracker.observe([data], nodes);
+    expect(tracker.active).toHaveLength(1);
+    data.missionMode = mode;
+    tracker.observe([data], nodes);
+    expect(tracker.active).toHaveLength(0);
+    data.missionMode = 'active';
+    tracker.observe([data], nodes);
+    expect(tracker.active).toHaveLength(0);
+
+    const quiet = orbit();
+    quiet.missionMode = mode;
+    tracker.observe([quiet], nodes);
+    complete(quiet);
+    tracker.observe([quiet], nodes);
+    expect(tracker.active).toHaveLength(0);
+    quiet.missionMode = 'active';
+    tracker.observe([quiet], nodes);
+    expect(tracker.active).toHaveLength(0);
+  });
+
+  it.each(['background', 'planned'] as const)('does not present a mode transition from %s as a completion event', missionMode => {
+    const data = orbit(), tracker = new CareerOrbitSavedPulses();
+    data.missionMode = missionMode;
+    tracker.setEnabled(true);
+    tracker.observe([data], visible());
+    complete(data);
+    data.missionMode = 'active';
     tracker.observe([data], visible());
     expect(tracker.active).toHaveLength(0);
   });
