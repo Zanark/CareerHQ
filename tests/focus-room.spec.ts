@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createRequire } from 'node:module';
 import type { AppState } from '../src/domain/types';
 import { focusSessionSummary } from '../src/domain/focusSession';
 import { buildCareerGraph } from '../src/graph/careerGraphModel';
+
+// Reuse the locked Playwright PNG decoder outside the browser/GPU process.
+const { PNG }: {
+  PNG: { sync: { read(buffer: Buffer): { width: number; height: number; data: Buffer } } };
+} = createRequire(import.meta.url)('playwright-core/lib/utilsBundle');
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
@@ -310,33 +316,30 @@ test.describe('genuine calm 3D focus room', () => {
     // rather than competing with continuous WebGL while encoding/decoding PNGs.
     await ambient.uncheck();
     await expect(scene).toHaveAttribute('data-animation-state', 'paused');
-    const first = await room(page).screenshot();
+    const captureSession = await page.context().newCDPSession(page);
+    const capture = async () => {
+      // Retain the full visible composition but avoid expensive PNG compression
+      // on the shared software-GPU runner. Pixel comparison happens in Node.
+      const { data } = await captureSession.send('Page.captureScreenshot', {
+        format: 'png', optimizeForSpeed: true, captureBeyondViewport: false,
+      });
+      return Buffer.from(data, 'base64');
+    };
+    const first = await capture();
     const firstTime = Number(await scene.getAttribute('data-animation-time'));
     await ambient.check();
     await expect(scene).toHaveAttribute('data-animation-state', 'running');
     await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(firstTime + 1);
     await ambient.uncheck();
     await expect(scene).toHaveAttribute('data-animation-state', 'paused');
-    const second = await room(page).screenshot();
-    const visibleChanges = await page.evaluate(async ([first, second]) => {
-      const pixels = async (data: string) => {
-        const image = new Image();
-        image.src = `data:image/png;base64,${data}`;
-        await image.decode();
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const context = canvas.getContext('2d')!;
-        context.drawImage(image, 0, 0);
-        return context.getImageData(0, 0, canvas.width, canvas.height).data;
-      };
-      const a = await pixels(first), b = await pixels(second);
-      let changed = 0;
-      for (let index = 0; index < a.length; index += 4) {
-        if (Math.abs(a[index] - b[index]) + Math.abs(a[index + 1] - b[index + 1]) + Math.abs(a[index + 2] - b[index + 2]) > 12) changed++;
-      }
-      return changed;
-    }, [first.toString('base64'), second.toString('base64')]);
+    const second = await capture();
+    await captureSession.detach();
+    const a = PNG.sync.read(first), b = PNG.sync.read(second);
+    expect([b.width, b.height]).toEqual([a.width, a.height]);
+    let visibleChanges = 0;
+    for (let index = 0; index < a.data.length; index += 4) {
+      if (Math.abs(a.data[index] - b.data[index]) + Math.abs(a.data[index + 1] - b.data[index + 1]) + Math.abs(a.data[index + 2] - b.data[index + 2]) > 12) visibleChanges++;
+    }
     expect(visibleChanges, 'Motion must be visible through the real frosted-glass composition, not only in a counter').toBeGreaterThan(100);
     await testInfo.attach('focus-full-shell-moving', { body: second, contentType: 'image/png' });
     expect(await raw(page)).toBe(before);
