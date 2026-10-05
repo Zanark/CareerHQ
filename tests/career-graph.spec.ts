@@ -53,6 +53,24 @@ test('home is a genuine WebGL2 career network with default orange work, and Over
   expect(errors).toEqual([]);
 });
 
+test('theme changes preserve the real 3D renderer and recorded work', async ({ page }) => {
+  await page.goto('./#/home');
+  await ready(page);
+  const before = await page.evaluate(key => localStorage.getItem(key), key);
+  const scene = page.locator('.career-graph-scene');
+  const canvas = page.locator('.career-graph-stage canvas');
+  const count = await scene.getAttribute('data-node-count');
+  await canvas.evaluate(element => element.setAttribute('data-theme-check', 'original-canvas'));
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('switch', { name: 'Dark theme', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expect(scene).toHaveAttribute('data-scene-state', 'ready');
+    await expect(scene).toHaveAttribute('data-node-count', count!);
+    await expect(canvas).toHaveAttribute('data-theme-check', 'original-canvas');
+  }
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(before);
+});
+
 test('orbiting changes the 3D projection, actual point clicks select records, and drags do not complete work', async ({ page }) => {
   await page.goto('./');
   await ready(page);

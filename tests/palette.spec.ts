@@ -4,15 +4,28 @@ import { PALETTE_COVER_MS, PALETTE_FADE_MS } from '../src/paletteTransition';
 const key = 'careerhq.workspace.v1';
 const toggle = (page: Page) => page.getByRole('switch', { name: 'Dark theme', exact: true });
 
+async function holdPaletteAnimations(page: Page) {
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = animate.call(this, keyframes, options);
+      if (this.classList.contains('palette-veil')) animation.pause();
+      return animation;
+    };
+  });
+}
+
 async function pauseFade(page: Page, phase: 'cover' | 'reveal', time: number) {
   const veil = page.locator('.palette-veil');
   await expect(veil).toHaveAttribute('data-phase', phase);
-  return veil.evaluate((element, time) => {
+  const frame = await veil.evaluate((element, time) => {
     const animation = element.getAnimations()[0];
     animation.pause();
     animation.currentTime = time;
     return { opacity: Number(getComputedStyle(element).opacity), duration: animation.effect!.getComputedTiming().duration };
   }, time);
+  expect(frame.duration).toBe(phase === 'cover' ? PALETTE_COVER_MS : PALETTE_FADE_MS - PALETTE_COVER_MS);
+  return frame;
 }
 
 async function finishPhase(page: Page) {
@@ -22,7 +35,8 @@ async function finishPhase(page: Page) {
 for (const initial of ['dark', 'light'] as const) {
 test(`the ${initial} page changes palette behind an opaque layer and reveals it gradually`, async ({ page }, testInfo) => {
   await page.addInitScript(theme => localStorage.setItem('careerhq.theme.v1', theme), initial);
-  await page.goto('./');
+  await holdPaletteAnimations(page);
+  await page.goto('./#/hq');
   const before = await page.evaluate(key => localStorage.getItem(key), key);
   await toggle(page).click();
   const cover = await pauseFade(page, 'cover', PALETTE_COVER_MS / 2);
@@ -46,7 +60,8 @@ test(`the ${initial} page changes palette behind an opaque layer and reveals it 
 }
 
 test('the sun cutout and toggle stay clickable while a fade is in progress', async ({ page }) => {
-  await page.goto('./');
+  await holdPaletteAnimations(page);
+  await page.goto('./#/hq');
   await toggle(page).click();
   await pauseFade(page, 'cover', 100);
   await expect(page.locator('.palette-veil')).not.toHaveCSS('clip-path', 'none');
@@ -65,7 +80,8 @@ test('the sun cutout and toggle stay clickable while a fade is in progress', asy
 });
 
 test('a late change queues a new fade without abruptly removing the current layer', async ({ page }) => {
-  await page.goto('./');
+  await holdPaletteAnimations(page);
+  await page.goto('./#/hq');
   await toggle(page).click();
   await pauseFade(page, 'cover', 100);
   await finishPhase(page);
@@ -86,7 +102,7 @@ test('a late change queues a new fade without abruptly removing the current laye
 
 test('page fades do not require native view-transition support', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(document, 'startViewTransition', { value: undefined }));
-  await page.goto('./');
+  await page.goto('./#/hq');
   await toggle(page).click();
   await expect(page.locator('.palette-veil')).toHaveCount(1);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -95,7 +111,7 @@ test('page fades do not require native view-transition support', async ({ page }
 
 test('reduced motion bypasses page fades entirely', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('./');
+  await page.goto('./#/hq');
   await toggle(page).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('html')).not.toHaveAttribute('data-palette-transition');
@@ -104,7 +120,8 @@ test('reduced motion bypasses page fades entirely', async ({ page }) => {
 });
 
 test('leaving tutorial practice cancels its fade without applying a stale theme later', async ({ page }) => {
-  await page.goto('./');
+  await holdPaletteAnimations(page);
+  await page.goto('./#/hq');
   const before = await page.evaluate(key => localStorage.getItem(key), key);
   await page.locator('header').getByRole('button', { name: 'Start tutorial', exact: true }).click();
   await toggle(page).click();

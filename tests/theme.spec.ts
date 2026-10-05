@@ -94,6 +94,15 @@ async function noOverflow(page: Page) {
   ), { message: 'The themed document must not overflow horizontally' }).toBeLessThanOrEqual(0);
 }
 
+async function frozenMotionPage(page: Page, theme: Theme = 'dark') {
+  await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), { key: themeKey, theme });
+  // Freeze before application startup; a busy renderer must not turn pauseAt into a past deadline.
+  await page.clock.install({ time: new Date('2026-10-05T12:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-05T12:01:00Z'));
+  await page.goto('./#/hq');
+  await assertTheme(page, theme);
+}
+
 test('default dark and switched light use canonical colors without altering workspace data', async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('./#/hq');
@@ -238,11 +247,8 @@ async function animationFrame(toggle: Locator, milliseconds: number) {
 }
 
 test('the sun repeatedly rises on the east/right and sets on the west/left', async ({ page }, testInfo) => {
-  await page.goto('./');
-  await assertTheme(page, 'dark');
+  await frozenMotionPage(page);
   const before = await workspace(page);
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   const toggle = themeSwitch(page);
   let cycle = 0;
   for (const [motion, theme] of [['sunrise', 'light'], ['sunset', 'dark'], ['sunrise', 'light'], ['sunset', 'dark']] as const) {
@@ -283,9 +289,7 @@ test('the sun repeatedly rises on the east/right and sets on the west/left', asy
 });
 
 test('retargeting mid-flight preserves the current sun position instead of restarting', async ({ page }) => {
-  await page.goto('./');
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await frozenMotionPage(page);
   const toggle = themeSwitch(page);
   await toggle.click();
   await expect(toggle).toHaveAttribute('data-motion', 'sunrise');
@@ -301,10 +305,7 @@ test('retargeting mid-flight preserves the current sun position instead of resta
 });
 
 test('a late sunrise request continues past the west horizon and returns from the east', async ({ page }) => {
-  await page.goto('./');
-  await selectTheme(page, 'light');
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await frozenMotionPage(page, 'light');
   const toggle = themeSwitch(page);
   await toggle.click();
   const before = await animationFrame(toggle, THEME_MOTION_MS / 2);
@@ -340,11 +341,12 @@ test('theme motion uses only the tiny control and one page fade', async ({ page 
 });
 
 test('sunny mode has a bright blue sky instead of the night palette', async ({ page }, testInfo) => {
-  await page.goto('./');
+  await page.goto('./#/hq');
   const sky = page.locator('.theme-sky');
   await expect(sky).toHaveCSS('background-color', palette.dark.card);
   expect(await sky.evaluate(element => getComputedStyle(element, '::before').opacity)).toBe('0');
   await selectTheme(page, 'light');
+  await expect.poll(() => sky.evaluate(element => getComputedStyle(element, '::before').opacity)).toBe('1');
   const daytime = await sky.evaluate(element => {
     const style = getComputedStyle(element, '::before');
     const canvas = document.createElement('canvas');
@@ -486,10 +488,10 @@ test('blocked theme-only writes show a notice while workspace storage still work
 });
 
 test('theme preference syncs between tabs without creating workspace conflicts', async ({ page, context }) => {
-  await page.goto('./');
+  await page.goto('./#/hq');
   await assertTheme(page, 'dark');
   const other = await context.newPage();
-  await other.goto('./');
+  await other.goto('./#/hq');
   await assertTheme(other, 'dark');
   const before = await workspace(page);
   await selectTheme(page, 'light');
