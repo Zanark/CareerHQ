@@ -1,0 +1,10 @@
+.focus-timer .focus-room-launch { margin-top: 1rem; width: 100%; justify-content: center; }
+.focus-timer .focus-saved-count { font-size: 0.78rem; line-height: 1.6; }
+.focus-timer .focus-timer-error { color: var(--dsf-error); overflow-wrap: anywhere; }
+.focus-history { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); min-width: 0; }
+.focus-history > summary { display: flex; align-items: flex-start; gap: 0.45rem; font-weight: 600; cursor: pointer; line-height: 1.5; }
+.focus-history p, .focus-history li { font-size: 0.78rem; line-height: 1.6; overflow-wrap: anywhere; }
+.focus-history ol { padding-left: 1rem; }
+.focus-history ol > li { margin-block: 0.85rem; }
+.focus-history li summary { cursor: pointer; }
+.focus-history ul { padding-left: 1rem; }

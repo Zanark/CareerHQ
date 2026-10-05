@@ -60,7 +60,7 @@ export class HolographicCore {
   private phase = 0;
   private radius = 80;
 
-  constructor() {
+  constructor(private readonly calm = false) {
     const random = seededRandom();
     const positions: number[] = [];
     const colors: number[] = [];
@@ -173,7 +173,7 @@ export class HolographicCore {
     sparkGeometry.setAttribute('aSize', new Float32BufferAttribute(sparkSizes, 1));
     this.geometries.push(sparkGeometry);
     const sparkMaterial = new ShaderMaterial({
-      uniforms: { uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 } },
+      uniforms: { uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 }, uBrightness: { value: calm ? 0.45 : 1 } },
       vertexShader: `
         attribute float aSize;
         uniform float uScale;
@@ -191,6 +191,7 @@ export class HolographicCore {
       fragmentShader: `
         uniform float uDistance;
         uniform float uRadius;
+        uniform float uBrightness;
         varying vec3 vColor;
         varying float vDepth;
         void main() {
@@ -198,7 +199,7 @@ export class HolographicCore {
           if (r > 1.0) discard;
           float shape = exp(-r * r * 5.0);
           float depth = mix(1.0, 0.12, smoothstep(uDistance - uRadius, uDistance + uRadius, vDepth));
-          gl_FragColor = vec4(vColor, shape * depth);
+          gl_FragColor = vec4(vColor, shape * depth * uBrightness);
           #include <colorspace_fragment>
         }
       `,
@@ -209,7 +210,7 @@ export class HolographicCore {
     this.atmosphere.add(this.particles);
 
     const heartGeometry = new SphereGeometry(0.032, 24, 16);
-    const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(2.8), transparent: true, opacity: 0.88 });
+    const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(calm ? 1.35 : 2.8), transparent: true, opacity: 0.88 });
     this.geometries.push(heartGeometry);
     this.materials.push(heartMaterial);
     this.heart.add(new Mesh(heartGeometry, heartMaterial));
@@ -223,7 +224,7 @@ export class HolographicCore {
     geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
     const material = new ShaderMaterial({
       vertexShader: filamentVertex, fragmentShader: filamentFragment,
-      uniforms: { uDistance: { value: 300 }, uRadius: { value: 80 }, uOpacity: { value: opacity } },
+      uniforms: { uDistance: { value: 300 }, uRadius: { value: 80 }, uOpacity: { value: opacity * (this.calm ? 0.48 : 1) } },
       transparent: true, vertexColors: true, depthWrite: false, blending: AdditiveBlending,
     });
     this.geometries.push(geometry);
@@ -241,15 +242,17 @@ export class HolographicCore {
   resize(height: number, pixelRatio: number, compact: boolean): void {
     this.particles.material.uniforms.uScale.value = height * pixelRatio;
     this.particles.material.uniforms.uRatio.value = pixelRatio;
-    this.particles.geometry.setDrawRange(0, compact ? 4200 : 7600);
+    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 1400 : 2200) : (compact ? 4200 : 7600));
   }
 
   update(distance: number, delta: number): void {
     if (delta > 0) {
       this.phase += delta;
-      this.atmosphere.rotation.y = this.phase * 0.017;
-      this.heart.rotation.z = this.phase * -0.045;
-      this.heart.rotation.y = this.phase * 0.027;
+      const motionScale = this.calm ? 0.22 : 1;
+      this.atmosphere.rotation.y = this.phase * 0.017 * motionScale;
+      this.heart.rotation.z = this.phase * -0.045 * motionScale;
+      this.heart.rotation.y = this.phase * 0.027 * motionScale;
+      if (this.calm) this.object.scale.setScalar(this.radius * (1 + 0.012 * Math.sin(this.phase * TAU / 8)));
     }
     for (const material of [...this.filaments, this.particles.material]) {
       material.uniforms.uDistance.value = distance;

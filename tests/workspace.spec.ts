@@ -480,7 +480,11 @@ test('focus timer can pause, resume, and reset without recording mastery', async
   await expect(page.getByRole('timer')).toHaveText('09:57');
   await page.getByRole('button', { name: 'Reset focus timer', exact: true }).click();
   await expect(page.getByRole('timer')).toHaveText('10:00');
-  expect(await rawStored(page)).toBe(before);
+  const after = JSON.parse((await rawStored(page))!);
+  const original = JSON.parse(before!);
+  for (const field of ['missions', 'evidence', 'events', 'plans', 'readiness']) expect(after[field]).toEqual(original[field]);
+  expect(after.focusSessions).toHaveLength(1);
+  expect(after.focusSessions[0].events.map((event: { kind: string }) => event.kind)).toEqual(['pause', 'resume', 'reset']);
 });
 
 test('running focus timer survives mission and daily-plan navigation', async ({ page }) => {

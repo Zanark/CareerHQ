@@ -11,7 +11,8 @@ const MOBILE_WIDTH = 640;
 const PANEL_MARGIN = 24;
 
 function findOpenDialog(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('dialog[open]');
+  const dialog = document.querySelector<HTMLElement>('dialog[open]');
+  return dialog?.querySelector<HTMLElement>('[data-focus-room-stage]') ?? dialog;
 }
 
 function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): HTMLElement | null {
@@ -351,11 +352,13 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   }, dialogHost);
   const host = dialogHost ?? document.body;
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
+  const focusRoomHost = !!dialogHost?.matches('[data-focus-room-stage]');
 
-  if (dialogHost?.classList.contains('full-roadmap-modal') && step.chapter === 'full-map') return createPortal(
+  if ((dialogHost?.classList.contains('full-roadmap-modal') && step.chapter === 'full-map') ||
+      (focusRoomHost && step.chapter === 'focus-room')) return createPortal(
     <>
       <TutorialCue target={satisfied ? nextRef.current : targetElement} panel={panelRef.current} anchorRect={targetRect} />
-      <div ref={panelRef} data-step={step.id} className="tutorial-panel tutorial-map-guide tutorial-map-guided" role="region"
+      <div ref={panelRef} data-step={step.id} className={`tutorial-panel tutorial-map-guide ${focusRoomHost ? 'tutorial-focus-guide' : 'tutorial-map-guided'}`} role="region"
         aria-label={`Tutorial step ${stepIndex + 1} of ${total}: ${step.title}`}>
         <div className="tutorial-map-copy"><strong>{step.title}</strong><p>{satisfied && step.kind === 'action' ? 'Done. Click Next to continue.' : step.body}</p></div>
         <div className="tutorial-map-actions">
@@ -365,14 +368,14 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
           <button type="button" className="icon-button" aria-label="Exit tutorial" onClick={onExit}><X size={18} /></button>
         </div>
       </div>
-    </>, dialogHost);
+    </>, host);
 
-  if (dialogHost?.classList.contains('full-roadmap-modal')) return createPortal(
-    <div ref={panelRef} data-step={step.id} className="tutorial-panel tutorial-map-guide" role="region" aria-label="Tutorial roadmap practice">
+  if (dialogHost?.classList.contains('full-roadmap-modal') || focusRoomHost) return createPortal(
+    <div ref={panelRef} data-step={step.id} className={`tutorial-panel tutorial-map-guide ${focusRoomHost ? 'tutorial-focus-guide' : ''}`} role="region" aria-label="Tutorial view practice">
       <span>Practice only. Tutorial paused.</span>
       <button type="button" className="button secondary" onClick={() => onCommand('close-dialogs')}>Back to tutorial</button>
       <button type="button" className="icon-button" aria-label="Exit tutorial" onClick={onExit}><X size={18} /></button>
-    </div>, dialogHost);
+    </div>, host);
 
   const panel = (
     <>

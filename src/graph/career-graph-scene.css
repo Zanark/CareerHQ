@@ -147,3 +147,15 @@
 .career-graph-scene [hidden] {
   display: none;
 }
+
+.career-graph-scene[data-visual-profile="focus"] {
+  pointer-events: none;
+}
+
+.career-graph-scene[data-visual-profile="focus"] .career-graph-scene__canvas {
+  cursor: default;
+}
+
+.career-graph-scene[data-visual-profile="focus"] .career-graph-scene__status {
+  display: none;
+}

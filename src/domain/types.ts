@@ -168,6 +168,22 @@ export interface PersonalProof {
   url: string;
 }
 
+export type FocusEventKind = 'pause' | 'resume' | 'distraction' | 'complete' | 'reset';
+
+export interface FocusSessionEvent {
+  id: string;
+  kind: FocusEventKind;
+  at: string;
+  elapsedMs: number;
+}
+
+export interface FocusSessionRecord {
+  id: string;
+  startedAt: string;
+  plannedSeconds: number;
+  events: FocusSessionEvent[];
+}
+
 export interface AppState {
   schemaVersion: 2;
   roadmapVersion: '2.0.0';
@@ -187,6 +203,7 @@ export interface AppState {
   freelanceOpportunities: FreelanceOpportunity[];
   recalls: RecallEntry[];
   personalProof?: PersonalProof[];
+  focusSessions?: FocusSessionRecord[];
 }
 
 export interface EvidenceInput {

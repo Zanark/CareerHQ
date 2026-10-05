@@ -77,6 +77,35 @@ node list usable; it does not pretend a flat fallback is a 3D visualization.
 Use the built-in prompts with your editor, authorized lab or coach. Record actual results
 on the saved tracker. No reading, diagram click or elapsed time proves the work was done.
 
+### The focus room and distraction log
+
+Open **Daily plan -> Full screen focus**. The large timer sits in front of frosted
+glass, with a subdued, genuine 3D career core behind it. The background moves gently
+only while the timer runs and **Ambient motion** is enabled; reduced motion stops it.
+It is visual ambience, not an AI processing work. If browser fullscreen or WebGL is
+unavailable, the window-filling room still provides the timer and recording controls.
+
+**I got distracted** saves one self-reported button press immediately. Its session,
+timestamp and elapsed running-clock time are retained, including whether it was
+reported while paused. It does not infer the onset, duration or cause of a distraction.
+Only a successful write increases the saved count; storage failures are visible.
+
+The room and compact timer share one countdown. Closing the room does not stop it.
+Pause/continue preserve its length; a changed capacity applies to the next session.
+**Reset** resets the clock, not the saved reports. **Focus history** on Daily plan
+shows recent records, and normal **Export backup / Import backup** includes the full
+session/event log for later analysis, not just the displayed count.
+
+The countdown is tab-local. A reload starts a ready timer, while saved reports remain.
+An earlier record with no ending is labeled as such, not assumed completed or still
+running. A timer ending is not evidence of uninterrupted attention or checkpoint mastery.
+The log has bounded record limits and the same 5 MiB workspace limit; a full store
+rejects new writes explicitly rather than deleting old records.
+
+Tutorial focus records stay in the temporary practice workspace. A real timer can
+continue while the tutorial is open, but an automatic ending is saved only after
+leaving practice, subject to the normal storage/conflict protections.
+
 ### The complete mission workbooks
 
 Open **[Practice libraries](https://zanark.github.io/CareerHQ/#/practice)** from Missions
@@ -238,6 +267,7 @@ Use the **Chapter** menu to work on one area at a time:
 | System Design problems | Module practice sets, changing constraints, source gates, diagnostics and independently selectable case studies |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
 | Complete practice workbooks | Detailed source units, independent practice, exercise checks, shared learning guidance and evidence boundaries |
+| Focus room & distractions | Frosted fullscreen room, shared countdown, immediate self-reported distraction records and exported history |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
 | Opportunities | Optional application fields, saving a lead, moving its stage and finding the saved metadata |

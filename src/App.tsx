@@ -33,6 +33,10 @@ import { SystemPracticePage, SystemPracticeLink } from './system/SystemPractice'
 import { CareerGraphPage } from './graph/CareerGraphPage';
 import { PackPracticePage, PackPracticeLink } from './practice/PackPractice';
 import { searchRoadmapPacks } from './domain/roadmapPacks/registry';
+import { useFocusSession } from './focus/useFocusSession';
+import { FocusTimer } from './focus/FocusTimer';
+import FocusRoom from './focus/FocusRoom';
+import type { FocusRoomHandle } from './focus/focusTypes';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
@@ -65,20 +69,20 @@ export default function App() {
   const practice = usePracticeWorkspace();
   const workspace = useWorkspace(practice.active);
   const appearance = useTheme(practice.active);
-  const personalFocus = useFocusSession(workspace.state?.capacity ?? 'steady');
-  const practiceFocus = useFocusSession(practice.state?.capacity ?? 'steady');
+  const personalFocus = useFocusSession(workspace, practice.active);
+  const practiceFocus = useFocusSession(practice);
   const returnRoute = useRef('home');
   const startTutorial = useCallback(() => {
     if (!practice.active) returnRoute.current = routeNow();
-    practiceFocus.reset();
+    practiceFocus.discard();
     practice.begin();
     navigate('hq');
-  }, [practice.active, practice.begin, practiceFocus.reset]);
+  }, [practice.active, practice.begin, practiceFocus.discard]);
   const exitTutorial = useCallback(() => {
-    practiceFocus.reset();
+    practiceFocus.discard();
     practice.end();
     navigate(returnRoute.current);
-  }, [practice.end, practiceFocus.reset]);
+  }, [practice.end, practiceFocus.discard]);
   const visible = practice.active ? practice : workspace;
   if (!visible.state) {
     return <div className="recovery-screen"><div className="recovery-toolbar"><BrandMark /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
@@ -105,6 +109,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const [evidenceDialog, setEvidenceDialog] = useState<{ missionId: MissionId; action?: DailyAction } | null>(null);
   const [opportunityDialog, setOpportunityDialog] = useState(false);
   const [fullRoadmapOpen, setFullRoadmapOpen] = useState(false);
+  const focusRoom = useRef<FocusRoomHandle>(null);
   const closeFullRoadmap = useCallback(() => setFullRoadmapOpen(false), []);
   const [exportCount, setExportCount] = useState(0);
   const [importCount, setImportCount] = useState(0);
@@ -117,6 +122,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }, { id: 'system-concepts', label: 'System Design concepts', color: 'blue' }, { id: 'system-practice', label: 'System Design problems', color: 'blue' }, { id: 'practice', label: 'Practice libraries', color: 'violet' }].find(item => item.id === page);
   const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
+    focusRoom.current?.close();
     setEvidenceDialog(null);
     setOpportunityDialog(false);
     setFullRoadmapOpen(false);
@@ -125,6 +131,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     navigate(target);
   }, []);
   const commandTutorial = useCallback((command: TutorialCommand) => {
+    focusRoom.current?.close();
     setFullRoadmapOpen(command === 'open-roadmap');
     if (command === 'open-evidence') { setOpportunityDialog(false); setEvidenceDialog({ missionId: 'pattern' }); }
     else if (command === 'open-opportunity') { setEvidenceDialog(null); setOpportunityDialog(true); }
@@ -132,7 +139,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   }, []);
 
   useEffect(() => {
-    const onHash = () => { setRoute(routeNow()); setMenuOpen(false); setQuery(''); setFullRoadmapOpen(false); window.scrollTo(0, 0); };
+    const onHash = () => { focusRoom.current?.close(); setRoute(routeNow()); setMenuOpen(false); setQuery(''); setFullRoadmapOpen(false); window.scrollTo(0, 0); };
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); searchRef.current?.focus(); }
       if (event.key === 'Escape') { setMenuOpen(false); setQuery(''); searchRef.current?.blur(); }
@@ -251,7 +258,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
             change('Daily plan refreshed from your active missions', current => {
               const next = { ...current, plans: { ...current.plans } }; delete next.plans[date]; next.plans[date] = generatePlan(next, date); return next;
             });
-          }}><RotateCcw size={14} />Refresh plan</button></div><p className="muted small">Logging practice does not complete a checkpoint. Use its completion criteria to decide when to advance.</p></div><div className="right-rail"><FocusTimer session={focusSession} /><Blockers state={state} /><section className="panel"><label className="checkbox-label"><input data-tour="interview-mode" type="checkbox" checked={state.interviewMode} onChange={event => change(event.target.checked ? 'Interview mode enabled' : 'Interview mode disabled', current => ({ ...current, interviewMode: event.target.checked }))} /><span><strong>Interview mode</strong><small>Prioritize coding, design, and opportunity work in the next fresh plan.</small></span></label></section></div></div>
+          }}><RotateCcw size={14} />Refresh plan</button></div><p className="muted small">Logging practice does not complete a checkpoint. Use its completion criteria to decide when to advance.</p></div><div className="right-rail"><FocusTimer session={focusSession} state={state} onOpen={() => focusRoom.current?.open()} /><Blockers state={state} /><section className="panel"><label className="checkbox-label"><input data-tour="interview-mode" type="checkbox" checked={state.interviewMode} onChange={event => change(event.target.checked ? 'Interview mode enabled' : 'Interview mode disabled', current => ({ ...current, interviewMode: event.target.checked }))} /><span><strong>Interview mode</strong><small>Prioritize coding, design, and opportunity work in the next fresh plan.</small></span></label></section></div></div>
         </>}
         {page === 'evidence' && <EvidencePage state={state} selectedId={route.split('/')[1]} onAdd={() => openEvidence()} />}
         {page === 'history' && <HistoryPage state={state} />}
@@ -270,6 +277,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     {evidenceDialog && <EvidenceDialog state={state} initialMission={evidenceDialog.missionId} action={evidenceDialog.action} practice={practice} onClose={() => setEvidenceDialog(null)} onSave={input => { const ok = commit(current => recordEvidence(current, input)); if (ok) setToast(input.advance ? 'Checkpoint completed. Next checkpoint unlocked.' : practice ? 'Practice example saved in the tutorial only.' : 'Progress saved.'); return ok; }} />}
     {opportunityDialog && <OpportunityDialog practice={practice} onClose={() => setOpportunityDialog(false)} onSave={opportunity => change('Opportunity added', current => ({ ...current, opportunities: [...current.opportunities, opportunity] }), 'escape')} />}
     {fullRoadmapOpen && page === 'mission' && selected && <FullMissionRoadmap key={`${selected.id}-${selected.roadmapVersion}`} mission={selected} state={state} onClose={closeFullRoadmap} />}
+    <FocusRoom ref={focusRoom} state={state} session={focusSession} practice={practice} />
     {practice && <Tutorial state={state} route={route} signals={{ evidenceOpen: !!evidenceDialog, opportunityOpen: opportunityDialog, fullRoadmapOpen, focusRunning: focusSession.running, exportCount, importCount, searchQuery: query, theme: appearance.theme }} onNavigate={navigateTutorial} onCommand={commandTutorial} onExit={onExitTutorial} onRestart={onStartTutorial} />}
   </div>;
 }
@@ -300,32 +308,6 @@ function PlanList({ actions, state, onEvidence, onResume }: { actions: DailyActi
     const unavailable = progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
     return <article key={action.id} className={`plan-item ${mission.color} ${action.completed ? 'done' : ''}`}><span className="plan-number">{action.completed ? <Check size={17} /> : `0${index + 1}`}</span><div className="plan-content"><div className="plan-meta"><span className={`mission-tag ${mission.color}`}>{mission.name}</span><span><Clock3 size={12} />{action.minutes} min</span></div><h3>{action.title}</h3><p>{action.reason}</p>{!action.completed && !!unavailable && <p className="attention-text">This mission changed. Open it to inspect the current checkpoint.</p>}<div className="plan-item-footer">{action.completed ? <span className="done-label"><CircleCheck size={14} />Evidence recorded</span> : <><button className="text-link" data-tour={`plan-open-${mission.id}`} onClick={() => onResume(action.missionId)}>Open checkpoint<ArrowUpRight size={14} /></button><button className="complete-button" disabled={!!unavailable} onClick={() => onEvidence(action)}><Plus size={13} />Log progress</button></>}</div></div></article>;
   })}</div>;
-}
-
-function useFocusSession(capacity: Capacity) {
-  const duration = capacity === 'gentle' ? 10 : capacity === 'deep' ? 50 : 25;
-  const [remaining, setRemaining] = useState(duration * 60);
-  const [running, setRunning] = useState(false);
-  const target = useRef(0);
-  useEffect(() => { if (!running) setRemaining(duration * 60); }, [duration]);
-  useEffect(() => {
-    if (!running) return;
-    const tick = () => { const left = Math.max(0, Math.ceil((target.current - Date.now()) / 1000)); setRemaining(left); if (left === 0) setRunning(false); };
-    const timer = window.setInterval(tick, 250);
-    return () => window.clearInterval(timer);
-  }, [running]);
-  function toggle() {
-    if (!running) target.current = Date.now() + (remaining || duration * 60) * 1000;
-    setRunning(!running);
-  }
-  const reset = useCallback(() => { setRunning(false); setRemaining(duration * 60); }, [duration]);
-  return { remaining, running, duration, toggle, reset };
-}
-
-function FocusTimer({ session }: { session: ReturnType<typeof useFocusSession> }) {
-  const { remaining, running, duration, toggle, reset } = session;
-  const display = `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`;
-  return <section className="focus-timer panel" data-tour="focus-timer"><div className="focus-top"><span className="eyebrow"><span className={`status-dot ${running ? 'pulsing' : ''}`} />FOCUS TIMER</span><span className="timer-tab-note">THIS TAB</span></div><div className="timer-time" role="timer" aria-label={`${Math.floor(remaining / 60)} minutes ${remaining % 60} seconds remaining`}>{display}</div><p>{remaining === 0 ? 'Session finished. Log your work separately.' : 'The timer does not automatically record progress.'}</p><div className="timer-buttons"><button className="button primary" data-tour="focus-start" onClick={toggle}>{running ? <Pause size={15} /> : <Play size={15} />}{running ? 'Pause session' : remaining === duration * 60 || remaining === 0 ? 'Start focus session' : 'Continue session'}</button><button className="icon-button" aria-label="Reset focus timer" onClick={reset}><RotateCcw size={16} /></button></div></section>;
 }
 
 function Blockers({ state }: { state: AppState }) {

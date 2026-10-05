@@ -23,6 +23,8 @@ plan as proof of capability.
 | `src/domain/roadmapPacks/*`, `src/practice/*` | Typed outlines generate 377 new-edition checkpoints; seven lazy study chunks preserve 806 source units and 5,944 exercise occurrences. Reference/practice roles stay outside required checkpoint identity. |
 | `src/roadmaps/useMapViewport.ts` | Shared fit/zoom, pointer panning, focus/centering, resize measurement and lifecycle cleanup for both tracked and concept maps. |
 | `src/graph/*` | Read-only career graph model, stable 3D positions and Three.js rendering. Recorded statuses drive colors; context/archives are not silently promoted to current mastery. |
+| `src/domain/focusSession.ts`, focus operations in `engine.ts` | Optional, bounded focus-session event records, strict chronology/state/ID validation and conditional ownership checks before appending reports. |
+| `src/focus/*` | One tab-local controller shared by compact/fullscreen timers, immediately persisted self-reports, retained history, and an inert calm-profile 3D backdrop. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
 | `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
@@ -95,13 +97,33 @@ is a snapshot, not a synchronization channel. Storage-event checks and a pre-wri
 snapshot comparison catch stale tabs; localStorage does not provide an atomic
 multi-writer transaction. Use one editing tab at a time.
 
-Focus-session state belongs to the app shell, so navigating between routes does
-not cancel its deadline. A page reload ends that tab-local session. An evidence draft
+The focus countdown belongs to the app shell, so navigating between routes or closing
+the focus room does not cancel it. Its length is fixed once begun. A page reload does
+not resume the old countdown, but its saved session/distraction records remain.
+An unended record is not assumed completed. An evidence draft
 left open across midnight keeps its text and becomes standalone checkpoint evidence;
 it does not silently complete an action in yesterday's plan.
 
 Completion criteria and interview readiness are self-attested. Neither proves mastery
 externally. The focus timer belongs to the current tab and does not award progress.
+
+### Focus records and failure boundaries
+
+`focusSessions` is optional and absent in older workspace serialization. Each record
+has an ID, start timestamp, planned seconds and ordered events. Pause, resume,
+distraction, complete and reset events carry a globally unique ID, timestamp and
+elapsed running-clock milliseconds. Source records can support later charts without
+inventing an attention score or treating elapsed time as learning evidence.
+
+Every report is committed before acknowledgment. The controller's monotonic clock
+excludes pauses and writes only on events, not every tick. Timer reset retains
+history. Failed saves do not increment counts; failed natural endings remain visibly
+pending with an explicit retry. A replaced record stops its previous timer. The
+record signature is checked inside the commit transaction, not only in a later effect.
+
+The room snapshots the actual career graph when opened, so logging does not rebuild
+the background on every press. Its optional focus visual profile suppresses labels
+and picking, lowers render cost and keeps motion subdued. Closing releases the scene.
 
 ## Practice isolation
 
@@ -112,6 +134,9 @@ imports and resets never call the real model's writer. Exiting switches models r
 than writing an old snapshot back, so it cannot overwrite a newer tab's data.
 
 The practice workspace has its own focus timer. The real timer remains mounted.
+Real automatic focus-ending writes are deferred while practice is active; practice
+events use only the temporary model. Exiting can then persist the real timer's own
+ending without copying any practice reports.
 `useTheme(preview)` changes appearance without writing the preference; exit restores the
 current stored preference. Workspace subtrees remount across the boundary so practice
 dialogs and drafts cannot accidentally carry into a real save.

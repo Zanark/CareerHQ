@@ -139,6 +139,21 @@ for (const width of [1440, 390, 320]) {
         case 'plan-open-pattern':
           await page.locator('[data-tour="plan-open-pattern"]').click();
           break;
+        case 'focus-room-open':
+          await page.locator('[data-tour="focus-room-open"]').click();
+          break;
+        case 'focus-room-run':
+          if (!/pause/i.test(await page.locator('[data-tour="focus-room-toggle"]').innerText())) await page.locator('[data-tour="focus-room-toggle"]').click();
+          break;
+        case 'focus-room-report':
+          await page.locator('[data-tour="focus-room-distraction"]').click();
+          break;
+        case 'focus-room-close':
+          await page.locator('[data-tour="focus-room-close"]').click();
+          break;
+        case 'focus-room-history':
+          await page.locator('[data-tour="focus-history"] > summary').click();
+          break;
         case 'mission-list':
           await page.getByRole('button', { name: /^Planned/ }).click();
           await expect(page.locator('.mission-card')).toHaveCount(0);
@@ -317,6 +332,8 @@ for (const width of [1440, 390, 320]) {
           expect(sample.opportunities[0]).toMatchObject({ lane: 'ats', resumeVariant: 'Tutorial variant', effortMinutes: 5, frictionScore: 2 });
           expect(sample.freelanceOpportunities).toHaveLength(10);
           expect(sample.recalls).toHaveLength(2);
+          expect(sample.focusSessions?.flatMap((session: { events: { kind: string }[] }) => session.events)
+            .filter((event: { kind: string }) => event.kind === 'distraction')).toHaveLength(1);
           expect(sample.archives).toHaveLength(1);
           expect(sample.archives[0].missionId).toBe('fabric');
           expect(sample.missions.fabric.roadmapVersion).toBe('3.0.0');

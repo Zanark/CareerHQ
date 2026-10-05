@@ -49,6 +49,7 @@ export interface CareerGraphSceneProps {
   autoRotate: boolean;
   onInteraction?: () => void;
   onStatusChange?: (status: SceneStatus, message?: string) => void;
+  visualProfile?: 'career' | 'focus';
 }
 
 interface SceneCallbacks {
@@ -276,7 +277,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly selection = new Points(this.selectedGeometry, this.selectionMaterial);
   private readonly edges = new LineSegments(this.edgeGeometry, this.edgesMaterial);
   private readonly selectedEdges = new LineSegments(this.selectedEdgeGeometry, this.selectedEdgesMaterial);
-  private readonly hologram = new HolographicCore();
+  private readonly hologram: HolographicCore;
   private readonly composer: EffectComposer;
   private readonly renderPass: RenderPass;
   private readonly bloomPass = new UnrealBloomPass(new Vector2(256, 256), 0.72, 0.08, 0.9);
@@ -322,7 +323,9 @@ class CareerScene implements CareerGraphSceneHandle {
     private readonly missionLabelLayer: HTMLDivElement,
     private readonly renderer: WebGLRenderer,
     private readonly callbacks: SceneCallbacks,
+    private readonly visualProfile: 'career' | 'focus',
   ) {
+    this.hologram = new HolographicCore(visualProfile === 'focus');
     this.scene.background = new Color('#000F13');
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.camera.position.copy(HOME_DIRECTION).multiplyScalar(340);
@@ -334,7 +337,8 @@ class CareerScene implements CareerGraphSceneHandle {
     this.controls.maxDistance = 1800;
     this.controls.rotateSpeed = 0.65;
     this.controls.zoomSpeed = 0.8;
-    this.controls.autoRotateSpeed = 0.3;
+    this.controls.autoRotateSpeed = visualProfile === 'focus' ? 0.06 : 0.3;
+    this.controls.enabled = visualProfile !== 'focus';
     this.controls.mouseButtons = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN };
     this.controls.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
     this.controls.addEventListener('change', this.onCameraChange);
@@ -346,6 +350,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(this.outputPass);
     this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.55, 0.2, 0.06, 0.01];
+    if (visualProfile === 'focus') this.bloomPass.strength = 0.35;
     this.root.dataset.ambience = 'procedural-unpickable';
     this.root.dataset.postprocessing = 'gpu-bloom';
     this.points.frustumCulled = false;
@@ -410,7 +415,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.hoveredId = null;
     this.labelId = null;
     this.missionLabelLayer.replaceChildren();
-    this.missionLabels = graph.nodes.filter(node => node.kind === 'mission').slice(0, 9).map(node => {
+    this.missionLabels = graph.nodes.filter(node => this.visualProfile === 'career' && node.kind === 'mission').slice(0, 9).map(node => {
       const element = document.createElement('span');
       element.className = 'career-graph-scene__mission-label';
       element.dataset.nodeId = node.id;
@@ -513,14 +518,15 @@ class CareerScene implements CareerGraphSceneHandle {
     this.width = Math.max(1, this.viewport.clientWidth);
     this.height = Math.max(1, this.viewport.clientHeight);
     const compact = this.width < 700;
-    this.pixelRatio = Math.min(window.devicePixelRatio || 1, compact ? 1.25 : 1.5);
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.visualProfile === 'focus' ? 1 : compact ? 1.25 : 1.5);
     this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.setSize(this.width, this.height, false);
     this.composer.setPixelRatio(this.pixelRatio);
     this.composer.setSize(this.width, this.height);
     // UnrealBloomPass starts its first mip at half this size, then halves four
     // more times; mobile bloom is therefore one-quarter of canvas resolution.
-    this.bloomPass.setSize(this.width * this.pixelRatio * (compact ? 0.5 : 0.7), this.height * this.pixelRatio * (compact ? 0.5 : 0.7));
+    const bloomScale = compact || this.visualProfile === 'focus' ? 0.5 : 0.7;
+    this.bloomPass.setSize(this.width * this.pixelRatio * bloomScale, this.height * this.pixelRatio * bloomScale);
     this.hologram.resize(this.height, this.pixelRatio, compact);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
@@ -562,8 +568,10 @@ class CareerScene implements CareerGraphSceneHandle {
     this.renderer.render(this.workScene, this.camera);
     this.renderer.autoClear = true;
     this.lastDraw = time;
-    this.updateLabels();
-    this.updateMissionLabels();
+    if (this.visualProfile === 'career') {
+      this.updateLabels();
+      this.updateMissionLabels();
+    }
     if (!this.reportedReady) {
       this.reportedReady = true;
       this.callbacks.onStatusChange('ready');
@@ -591,6 +599,7 @@ class CareerScene implements CareerGraphSceneHandle {
   };
 
   private onPointerDown = (event: PointerEvent): void => {
+    if (this.visualProfile === 'focus') return;
     this.pointers.add(event.pointerId);
     this.clearHover();
     if (this.pointers.size === 1) {
@@ -604,6 +613,7 @@ class CareerScene implements CareerGraphSceneHandle {
   };
 
   private onPointerMove = (event: PointerEvent): void => {
+    if (this.visualProfile === 'focus') return;
     if (this.gesture && Math.hypot(event.clientX - this.gesture.x, event.clientY - this.gesture.y) > 5) {
       this.gesture.moved = true;
     }
@@ -653,6 +663,7 @@ class CareerScene implements CareerGraphSceneHandle {
   }
 
   private pick(clientX: number, clientY: number): GraphNode | undefined {
+    if (this.visualProfile === 'focus') return undefined;
     if (!this.graph?.nodes.length) return undefined;
     const rect = this.canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return undefined;
@@ -774,6 +785,7 @@ class CareerScene implements CareerGraphSceneHandle {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    if (this.visualProfile === 'focus') return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const directions: Record<string, Direction | undefined> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
     const direction = directions[event.key];
@@ -816,7 +828,7 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private onContextRestored = (): void => {
     this.lost = false;
-    this.controls.enabled = true;
+    this.controls.enabled = this.visualProfile !== 'focus';
     this.pointers.clear();
     this.gesture = null;
     this.resize();
@@ -862,7 +874,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, autoRotate, onInteraction, onStatusChange }, ref,
+  { graph, selectedId, onSelect, autoRotate, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -896,9 +908,11 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
     // A fresh canvas also makes StrictMode's setup/cleanup/setup safe after forceContextLoss.
     const canvas = document.createElement('canvas');
     canvas.className = 'career-graph-scene__canvas';
-    canvas.tabIndex = 0;
-    canvas.setAttribute('aria-label', 'Interactive 3D career graph');
-    canvas.setAttribute('aria-describedby', instructionsId);
+    canvas.tabIndex = visualProfile === 'focus' ? -1 : 0;
+    if (visualProfile === 'career') {
+      canvas.setAttribute('aria-label', 'Interactive 3D career graph');
+      canvas.setAttribute('aria-describedby', instructionsId);
+    } else canvas.setAttribute('aria-hidden', 'true');
     canvas.dataset.renderer = 'webgl';
     canvas.dataset.contextApi = 'webgl2';
     canvas.dataset.viewRevision = '0';
@@ -908,7 +922,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
       renderer = createRenderer(canvas);
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'The browser could not initialize 3D graphics.';
-      const message = `3D view unavailable. ${reason} Use the accessible node list to explore the same career data.`;
+      const message = `3D view unavailable. ${reason} ${visualProfile === 'focus' ? 'The timer and distraction recording remain available.' : 'Use the accessible node list to explore the same career data.'}`;
       setState({ status: 'unavailable', message });
       callbacks.current.onStatusChange?.('unavailable', message);
       canvas.remove();
@@ -921,20 +935,20 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         setState({ status, message });
         callbacks.current.onStatusChange?.(status, message);
       },
-    });
+    }, visualProfile);
     runtimeRef.current = runtime;
     return () => {
       runtimeRef.current = null;
       runtime.dispose();
     };
-  }, [instructionsId]);
+  }, [instructionsId, visualProfile]);
 
-  useEffect(() => { runtimeRef.current?.setGraph(graph); }, [graph]);
-  useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId]);
-  useEffect(() => { runtimeRef.current?.setAutoRotate(autoRotate); }, [autoRotate]);
+  useEffect(() => { runtimeRef.current?.setGraph(graph); }, [graph, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setAutoRotate(autoRotate); }, [autoRotate, visualProfile]);
 
   return (
-    <div ref={rootRef} className="career-graph-scene" data-scene-state={state.status} data-view-revision="0" role="region" aria-label="Career graph in 3D">
+    <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
       <div ref={viewportRef} className="career-graph-scene__viewport" />
       <div ref={missionLabelLayerRef} className="career-graph-scene__mission-labels" aria-hidden="true" hidden />
       <div ref={markerRef} className="career-graph-scene__selected-marker" data-screen-visible="false" aria-hidden="true" hidden />
@@ -950,7 +964,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && <span className="career-graph-scene__space-note" aria-hidden="true">Ringed nodes: your work · Filaments: visual ambience</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">Ringed nodes: your work · Filaments: visual ambience</span>}
     </div>
   );
 });

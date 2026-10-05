@@ -8,9 +8,10 @@ import {
 } from './legacyState';
 import { freelanceVerdicts, missionIds, opportunityStages, readinessKeys } from './types';
 import { personalProofListSchema } from './personalProofSchema';
+import { focusDurationSchema, focusEventInputSchema, focusRecordSignature, FocusRecordReplacedError, focusSessionsSchema } from './focusSession';
 import type {
   AppState, Checkpoint, CheckpointStatus, DailyAction, Evidence, EvidenceInput,
-  Mission, MissionId, MissionProgress, RecallEntry, RoadmapVersion,
+  FocusEventKind, Mission, MissionId, MissionProgress, RecallEntry, RoadmapVersion,
 } from './types';
 
 export const STORAGE_KEY = 'careerhq.workspace.v1';
@@ -139,6 +140,7 @@ const stateSchema = z.object({
   freelanceOpportunities: z.array(freelanceSchema).max(MAX_RECORDS),
   recalls: z.array(recallSchema).max(MAX_RECORDS),
   personalProof: personalProofListSchema.optional(),
+  focusSessions: focusSessionsSchema.optional(),
 }).strict();
 
 const evidenceInputSchema = z.object({
@@ -341,6 +343,10 @@ function validateV2Relations(state: AppState): AppState {
   for (const opportunity of state.opportunities) unique(opportunity.id);
   for (const freelance of state.freelanceOpportunities) unique(freelance.id);
   for (const proof of state.personalProof ?? []) unique(proof.id);
+  for (const session of state.focusSessions ?? []) {
+    unique(session.id);
+    for (const event of session.events) unique(event.id);
+  }
 
   for (const recall of state.recalls) {
     unique(recall.id);
@@ -384,7 +390,8 @@ export function parseState(value: unknown): AppState {
 function nextTimestamp(state: AppState): string {
   // A moved-back system clock must not reorder an imported event history.
   return new Date(Math.max(Date.now(), Date.parse(state.updatedAt) + 1,
-    ...state.events.map((event) => Date.parse(event.createdAt) + 1))).toISOString();
+    ...state.events.map((event) => Date.parse(event.createdAt) + 1),
+    ...(state.focusSessions ?? []).map(session => Date.parse(session.events.at(-1)?.at ?? session.startedAt) + 1))).toISOString();
 }
 
 function nextId(state: AppState, prefix: string): string {
@@ -395,11 +402,45 @@ function nextId(state: AppState, prefix: string): string {
     ...state.freelanceOpportunities.map((entry) => entry.id),
     ...state.recalls.map((entry) => entry.id),
     ...(state.personalProof ?? []).map((entry) => entry.id),
+    ...(state.focusSessions ?? []).flatMap(session => [session.id, ...session.events.map(event => event.id)]),
     ...Object.values(state.plans).flat().map((entry) => entry.id),
   ]);
-  let sequence = state.evidence.length + state.events.length + state.freelanceOpportunities.length + state.recalls.length + 1;
+  let sequence = state.evidence.length + state.events.length + state.freelanceOpportunities.length + state.recalls.length +
+    (state.focusSessions ?? []).reduce((count, session) => count + 1 + session.events.length, 0) + 1;
   while (existing.has(`${prefix}-${sequence}`)) sequence += 1;
   return `${prefix}-${sequence}`;
+}
+
+export function startFocusSession(state: AppState, plannedSeconds: number): AppState {
+  const duration = focusDurationSchema.parse(plannedSeconds);
+  const now = nextTimestamp(state);
+  return parseState({
+    ...state, updatedAt: now,
+    focusSessions: [...(state.focusSessions ?? []), {
+      id: nextId(state, 'focus-session'), startedAt: now, plannedSeconds: duration, events: [],
+    }],
+  });
+}
+
+export function recordFocusSessionEvent(
+  state: AppState,
+  input: { sessionId: string; kind: FocusEventKind; elapsedMs: number },
+  expectedSignature?: string,
+): AppState {
+  const value = focusEventInputSchema.parse(input);
+  const sessions = state.focusSessions ?? [];
+  const current = sessions.find(session => session.id === value.sessionId);
+  if (expectedSignature !== undefined && (!current || focusRecordSignature(current) !== expectedSignature)) {
+    throw new FocusRecordReplacedError();
+  }
+  ensure(current, 'That focus session does not exist.');
+  const now = nextTimestamp(state);
+  const event = { id: nextId(state, 'focus-event'), kind: value.kind, at: now, elapsedMs: value.elapsedMs };
+  return parseState({
+    ...state, updatedAt: now,
+    focusSessions: sessions.map(session => session.id === value.sessionId
+      ? { ...session, events: [...session.events, event] } : session),
+  });
 }
 
 function sampleSummary(mission: Mission, checkpoint: Checkpoint): string {

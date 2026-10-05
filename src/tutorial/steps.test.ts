@@ -25,6 +25,7 @@ describe('current tutorial curriculum', () => {
       'system-practice-intro', 'system-practice-select', 'system-practice-transfer',
       'career-graph-intro', 'career-graph-search', 'career-graph-select',
       'pack-open', 'pack-reference', 'pack-exercises', 'pack-guide', 'pack-gate',
+      'focus-room-open', 'focus-room-run', 'focus-room-report', 'focus-room-data', 'focus-room-close', 'focus-room-history',
     ]) expect(ids.has(id), id).toBe(true);
   });
 });

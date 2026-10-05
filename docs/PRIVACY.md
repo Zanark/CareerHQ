@@ -38,12 +38,24 @@ private record text.
 
 Progress, evidence text and links, plans, history, readiness, and opportunities are
 stored under `careerhq.workspace.v1` in **localStorage**. Evidence is text/links, not
-an uploaded file archive. The focus timer is tab-local.
+an uploaded file archive. The focus countdown is tab-local; its saved event log is not.
 The compatible storage key now holds data format v2, including previous-roadmap archives,
 private freelance leads, optional application effort fields, and recall records.
 An optional `personalProof` collection holds user-supplied past accomplishments and
 their sources. It is included in ordinary unencrypted workspace backups. Existing
 workspaces without this collection are left unchanged until history is explicitly added.
+
+An optional `focusSessions` collection records starts, planned durations and ordered
+pause/resume/distraction/ending events. A distraction timestamp is the time of the
+button report, not an automatically detected onset. Elapsed milliseconds describe the
+running timer, not measured attention. No keystrokes, applications, browsing activity,
+distraction causes or inferred mental-health scores are collected.
+
+These personal activity records travel in ordinary unencrypted workspace exports.
+Resetting the timer preserves them; explicitly replacing/resetting the whole workspace
+can remove them, with the same backup warnings as other records. A missing ending
+after a closed tab is not reconstructed as completed work. Tutorial reports remain
+in the isolated practice workspace.
 
 **localStorage is not encrypted or a secure vault.** Saved work is ordinary browser
 data. Anyone with suitable access to the browser,
