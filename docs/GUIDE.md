@@ -104,6 +104,11 @@ Zooming, dragging and inspecting do not pause automatic motion. **Pause animatio
 is a separate control; **Auto-rotate** controls the camera orbit. Reduced motion
 starts paused, and manual navigation remains available.
 
+**Core heartbeat** sends an outward ripple from the actual white CareerOS node
+every three seconds, with a gentle core throb. Its toggle affects only that visual
+rhythm, not the rotating data orbits or saved-status completion pulses. Pause animation
+and reduced motion stop it; it is not an attention measure or evidence of AI activity.
+
 **Shared skill links** connect specifically related checkpoints across the
 roadmaps. Select a node and expand **Connections** to see the reason, the two
 curriculum citations, and a button to inspect its neighbor. These are curated
@@ -125,11 +130,14 @@ on the saved tracker. No reading, diagram click or elapsed time proves the work 
 ### The focus room and distraction log
 
 Open **Daily plan -> Full screen focus**. The large timer sits in front of frosted
-glass, with the current full-shell 3D career graph behind it. The background moves
+glass, with the current full-shell 3D career graph centered on its white core behind it. The background moves
 gently as soon as the room opens, independently of the timer; **Ambient motion**
 can stop it without pausing your session. Reduced motion starts it still, with
 an explicit opt-in through that checkbox. The room uses finer orange connections,
 subdued glow and fewer particles to keep the timer readable.
+The room's **Core heartbeat** toggle controls the same three-second outward ripple.
+Turning **Ambient motion** off stops all background motion, including the heartbeat,
+without changing the timer or saved distraction reports.
 It is visual ambience, not an AI processing work. If browser fullscreen or WebGL is
 unavailable, the window-filling room still provides the timer and recording controls.
 

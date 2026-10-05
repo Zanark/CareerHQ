@@ -44,13 +44,12 @@
 .focus-room__background {
   opacity: 0.72;
   filter: blur(2px);
-  transform: translateY(-14%);
 }
 
 .focus-room__stage::before {
   content: "";
   z-index: -1;
-  background: radial-gradient(ellipse at 50% 48%, rgb(10 24 44 / 12%) 10%, rgb(0 27 34 / 38%) 48%, rgb(0 15 19 / 92%) 100%),
+  background: radial-gradient(ellipse at 50% 50%, rgb(10 24 44 / 12%) 10%, rgb(0 27 34 / 38%) 48%, rgb(0 15 19 / 92%) 100%),
     linear-gradient(135deg, rgb(38 139 210 / 9%), transparent 44%, rgb(108 113 196 / 12%));
 }
 
@@ -61,6 +60,7 @@
   gap: 0.5rem;
   min-width: 0;
 }
+.focus-room__header-actions { display: flex; align-items: center; gap: 0.35rem; }
 
 :root[data-theme] .focus-room .focus-room__header h2 {
   margin: 0;
@@ -277,7 +277,6 @@
 
 @media (max-width: 480px) {
   .focus-room__stage { padding: 10px; gap: 0.15rem; }
-  .focus-room__background { transform: translateY(-22%); }
   .focus-room__glass { padding: 18px 14px; border-radius: 18px; }
   .focus-room__time { font-size: clamp(3rem, 21vw, 4rem); }
   .focus-room__time[data-long-time="true"] { font-size: clamp(2.4rem, 16vw, 3rem); }
@@ -285,12 +284,12 @@
   .focus-room__report { margin-top: 0.75rem; padding-top: 0.75rem; }
   .focus-room__preferences { gap: 0.2rem 0.5rem; }
   .focus-room__utility, .focus-room__ambient { font-size: 0.56rem; }
+  .focus-room__fullscreen-label { display: none; }
   .focus-room__record-note { margin-top: 0.3rem; }
 }
 
 @media (max-height: 520px) and (min-width: 560px) {
   .focus-room__stage { padding: 6px 12px; gap: 0; }
-  .focus-room__background { transform: translate(-20%, -7%); }
   .focus-room__center { padding: 0; }
   .focus-room__glass { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 0.8rem; width: min(100%, 42rem); padding: 6px 18px; border-radius: 16px; }
   .focus-room__time { font-size: clamp(2.4rem, 17vh, 4rem); }

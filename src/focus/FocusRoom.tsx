@@ -53,6 +53,7 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState('');
   const [ambientMotion, setAmbientMotion] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [heartbeat, setHeartbeat] = useState(true);
   const [motionOptIn, setMotionOptIn] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [graphics, setGraphics] = useState<'loading' | 'ready' | 'unavailable' | 'lost'>('loading');
@@ -226,14 +227,20 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
               <Suspense fallback={null}>
                 <CareerGraphScene graph={snapshot} selectedId={null} onSelect={ignoreSelection}
                   autoRotate={motionActive} animate={motionActive} allowReducedMotion={motionOptIn}
-                  rimOnly={false} visualProfile="focus" onStatusChange={onGraphics} />
+                  rimOnly={false} heartbeat={heartbeat} visualProfile="focus" onStatusChange={onGraphics} />
               </Suspense>
             </BackgroundBoundary>
           )}
         </div>
         <header className="focus-room__header">
           <div><h2 id={titleId}>Focus room</h2>{practice && <span className="focus-room__practice">Tutorial practice</span>}</div>
-          <button type="button" className="focus-room__utility" data-tour="focus-room-close" onClick={closeRoom} aria-label="Close focus room" autoFocus><X size={18} /><span>Close</span></button>
+          <div className="focus-room__header-actions">
+            <button type="button" className="focus-room__utility" data-tour="focus-room-fullscreen" onClick={fullscreen ? leaveFullscreen : enterFullscreen}
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}<span className="focus-room__fullscreen-label">{fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}</span>
+            </button>
+            <button type="button" className="focus-room__utility" data-tour="focus-room-close" onClick={closeRoom} aria-label="Close focus room" autoFocus><X size={18} /><span>Close</span></button>
+          </div>
         </header>
         <div className="focus-room__center">
           <section className="focus-room__glass" aria-label="Focus timer and self-reported distractions">
@@ -279,9 +286,9 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
               setAmbientMotion(event.target.checked);
               setMotionOptIn(event.target.checked && reducedMotion);
             }} />Ambient motion</label>
-            <button type="button" className="focus-room__utility" data-tour="focus-room-fullscreen" onClick={fullscreen ? leaveFullscreen : enterFullscreen}>
-              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}{fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            </button>
+            <label className="focus-room__ambient" title="A visual ripple from the white core every 3 seconds. Requires Ambient motion.">
+              <input type="checkbox" data-tour="focus-room-heartbeat" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
+            </label>
           </div>
           <p className="focus-room__ambient-note">Ambient visuals, not live AI.{motionDescription}</p>
           {(graphics === 'unavailable' || graphics === 'lost') && <p className="focus-room__notice" role="status">

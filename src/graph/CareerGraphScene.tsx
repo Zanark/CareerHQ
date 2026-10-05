@@ -32,6 +32,9 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
+import { CoreHeartbeat } from './CoreHeartbeat';
+import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
+import { coreCenteredBounds } from './careerCoreFraming';
 import { CareerOrbitVisuals } from './CareerOrbitVisuals';
 import type { OrbitAnchorInfo } from './CareerOrbitVisuals';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
@@ -70,6 +73,8 @@ export interface CareerGraphSceneProps {
   rimOnly?: boolean;
   /** Show derived orbit views and decorative particles without changing node glow. */
   showDecoration?: boolean;
+  /** Independent visual rhythm from the actual core; still respects ambient motion preferences. */
+  heartbeat?: boolean;
   onInteraction?: () => void;
   onStatusChange?: (status: SceneStatus, message?: string) => void;
   visualProfile?: 'career' | 'focus';
@@ -101,6 +106,7 @@ const pointVertexShader = `
   uniform float uHeight;
   uniform float uPixelRatio;
   uniform float uSizeScale;
+  uniform float uCoreScale;
   varying vec3 vColor;
   varying float vKind;
   varying float vDepth;
@@ -110,7 +116,8 @@ const pointVertexShader = `
     vKind = aKind;
     vDepth = -viewPosition.z;
     gl_Position = projectionMatrix * viewPosition;
-    gl_PointSize = clamp(aSize * uHeight / max(1.0, vDepth), 7.0 * uPixelRatio, 90.0 * uPixelRatio) * uSizeScale;
+    float coreScale = aKind > 2.5 ? uCoreScale : 1.0;
+    gl_PointSize = clamp(aSize * uHeight / max(1.0, vDepth), 7.0 * uPixelRatio, 90.0 * uPixelRatio) * uSizeScale * coreScale;
   }
 `;
 
@@ -165,6 +172,7 @@ const nodeAuraFragmentShader = `
   uniform float uNear;
   uniform float uFar;
   uniform float uOpacity;
+  uniform float uCoreGlow;
   varying vec3 vColor;
   varying float vKind;
   varying float vDepth;
@@ -174,7 +182,8 @@ const nodeAuraFragmentShader = `
     float depth = mix(1.0, 0.25, smoothstep(uNear, uFar, vDepth));
     float glow = exp(-5.0 * r * r) * (1.0 - smoothstep(0.7, 1.0, r));
     float emphasis = vKind > 1.5 ? 1.0 : 0.18;
-    gl_FragColor = vec4(vColor * 3.2, glow * uOpacity * depth * emphasis);
+    float coreGlow = vKind > 2.5 ? uCoreGlow : 1.0;
+    gl_FragColor = vec4(vColor * 3.2 * coreGlow, glow * uOpacity * depth * emphasis);
     #include <colorspace_fragment>
   }
 `;
@@ -195,6 +204,8 @@ function pointMaterial(selected = false, aura = false): ShaderMaterial {
       uHeight: { value: 1 },
       uPixelRatio: { value: 1 },
       uSizeScale: { value: aura ? 1.35 : 1 },
+      uCoreScale: { value: 1 },
+      uCoreGlow: { value: 1 },
       uNear: { value: 100 },
       uFar: { value: 500 },
       uOpacity: { value: 0.5 },
@@ -310,6 +321,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly edgeGlow = new LineSegments2(this.edgeGeometry, this.edgeGlowMaterial);
   private readonly selectedEdgeGlow = new LineSegments2(this.selectedEdgeGeometry, this.selectedEdgeGlowMaterial);
   private readonly hologram: HolographicCore;
+  private readonly heartbeat: CoreHeartbeat;
   private readonly orbits: CareerOrbitVisuals;
   private readonly composer: EffectComposer;
   private readonly renderPass: RenderPass;
@@ -319,6 +331,9 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly pointer = new Vector2();
   private readonly projected = new Vector3();
   private readonly bounds = new Sphere(new Vector3(), 100);
+  private readonly focusBounds = new Sphere(new Vector3(), 124);
+  private readonly corePosition = new Vector3();
+  private coreNode: GraphNode | null = null;
   private readonly resizeObserver: ResizeObserver;
   private readonly intersectionObserver: IntersectionObserver;
   private readonly motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -386,6 +401,7 @@ class CareerScene implements CareerGraphSceneHandle {
     private readonly visualProfile: 'career' | 'focus',
   ) {
     this.hologram = new HolographicCore(visualProfile === 'focus', false);
+    this.heartbeat = new CoreHeartbeat(visualProfile === 'focus');
     this.orbits = new CareerOrbitVisuals(visualProfile === 'focus');
     this.scene.background = new Color('#000F13');
     this.scene.fog = this.fog;
@@ -445,7 +461,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.edges.renderOrder = 0;
     this.points.renderOrder = 2;
     this.selectedEdges.renderOrder = 1;
-    this.scene.add(this.hologram.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
+    this.scene.add(this.hologram.object, this.heartbeat.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
     this.workScene.add(this.orbits.object, this.edges, this.points, this.selectedEdges, this.selection);
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown, true);
@@ -499,7 +515,15 @@ class CareerScene implements CareerGraphSceneHandle {
       this.bounds.set(new Vector3(), 60);
     }
     const core = graph.nodes.find(node => node.kind === 'core');
-    this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? new Vector3().fromArray(core.position) : undefined);
+    this.coreNode = core ?? null;
+    if (core) this.corePosition.fromArray(core.position);
+    const previousFocusBounds = this.focusBounds.clone();
+    coreCenteredBounds(this.bounds, core ? this.corePosition : undefined, this.focusBounds);
+    const focusBoundsChanged = previousFocusBounds.radius !== this.focusBounds.radius
+      || !previousFocusBounds.center.equals(this.focusBounds.center);
+    this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? this.corePosition : undefined);
+    this.heartbeat.setSource(core ? this.corePosition : undefined, this.focusBounds.radius, this.bounds.radius * 0.032);
+    this.refreshHeartbeat();
     this.hologram.object.visible = graph.nodes.length > 0;
     this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
     this.root.dataset.orbitCount = String(this.orbits.orbitCount);
@@ -534,8 +558,9 @@ class CareerScene implements CareerGraphSceneHandle {
       return { ...info, element, width: 0, height: 0 };
     });
     this.setOrbitSelection(this.selectedOrbit, true);
-    if (!this.framed && (graph.nodes.length > 0 || graph.orbits.length > 0)) {
-      this.frameAll();
+    if ((!this.framed || (this.visualProfile === 'focus' && focusBoundsChanged))
+      && (graph.nodes.length > 0 || graph.orbits.length > 0)) {
+      this.frameAll(this.framed && this.visualProfile === 'focus');
       this.framed = true;
     }
     this.requestFrame();
@@ -589,6 +614,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.lastReducedMotion = this.motionPreference.matches;
     this.allowReducedMotion = allowReducedMotion && (autoRotate || animate);
     this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
+    this.refreshHeartbeat();
     this.controls.autoRotate = false;
     // Start from the resumed frame, never from time spent paused or hidden.
     this.lastDraw = performance.now();
@@ -609,6 +635,56 @@ class CareerScene implements CareerGraphSceneHandle {
     if (!value) this.hoveredOrbit = null;
     this.root.dataset.decorationVisible = String(value);
     this.requestFrame();
+  }
+
+  setHeartbeat(value: boolean): void {
+    this.heartbeat.setEnabled(value);
+    this.refreshHeartbeat();
+    this.requestFrame();
+  }
+
+  private refreshHeartbeat(now = performance.now()): void {
+    const allowed = this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost;
+    this.heartbeat.update(now, allowed);
+    this.hologram.setHeartbeatStrength(this.heartbeat.strength);
+    this.nodesMaterial.uniforms.uCoreScale.value = this.heartbeat.coreScale;
+    this.selectionMaterial.uniforms.uCoreScale.value = this.heartbeat.coreScale;
+    this.nodeAuraMaterial.uniforms.uCoreScale.value = this.heartbeat.coreScale;
+    this.nodeAuraMaterial.uniforms.uCoreGlow.value = this.heartbeat.coreGlow;
+    this.updateHeartbeatAttributes();
+  }
+
+  private updateHeartbeatAttributes(): void {
+    const projectedCore = this.coreNode ? this.projectNode(this.coreNode) : false;
+    const coreVisible = projectedCore && !this.lost && this.intersecting && !document.hidden;
+    const coreX = this.projected.x.toFixed(2), coreY = this.projected.y.toFixed(2);
+    for (const element of [this.root, this.canvas]) {
+      element.dataset.heartbeatEnabled = String(this.heartbeat.isEnabled);
+      element.dataset.heartbeatRunning = String(this.heartbeat.running);
+      element.dataset.heartbeatPeriodMs = String(HEARTBEAT_PERIOD_MS);
+      element.dataset.heartbeatPhase = (Math.floor(this.heartbeat.phase * 1000) / 1000).toFixed(3);
+      element.dataset.heartbeatCycle = String(this.heartbeat.cycle);
+      element.dataset.heartbeatRadius = this.heartbeat.radius.toFixed(4);
+      element.dataset.heartbeatWaveVisible = String(this.heartbeat.object.visible);
+      element.dataset.heartbeatCoreScale = this.heartbeat.coreScale.toFixed(4);
+      element.dataset.coreScreenVisible = String(coreVisible);
+      if (this.heartbeat.hasSource) {
+        element.dataset.heartbeatSourceX = String(this.heartbeat.object.position.x);
+        element.dataset.heartbeatSourceY = String(this.heartbeat.object.position.y);
+        element.dataset.heartbeatSourceZ = String(this.heartbeat.object.position.z);
+      } else {
+        delete element.dataset.heartbeatSourceX;
+        delete element.dataset.heartbeatSourceY;
+        delete element.dataset.heartbeatSourceZ;
+      }
+      if (this.coreNode) {
+        element.dataset.coreScreenX = coreX;
+        element.dataset.coreScreenY = coreY;
+      } else {
+        delete element.dataset.coreScreenX;
+        delete element.dataset.coreScreenY;
+      }
+    }
   }
 
   resetView = (): void => {
@@ -669,16 +745,19 @@ class CareerScene implements CareerGraphSceneHandle {
   private fittedDistance(): number {
     const halfFov = MathUtils.degToRad(this.camera.fov / 2);
     const limitingFov = Math.min(halfFov, Math.atan(Math.tan(halfFov) * this.camera.aspect));
-    return this.bounds.radius * 1.32 / Math.sin(limitingFov);
+    const radius = this.visualProfile === 'focus' ? this.focusBounds.radius * 1.08 : this.bounds.radius * 1.32;
+    return radius / Math.sin(limitingFov);
   }
 
-  private frameAll(): void {
+  private frameAll(preserveDirection = false): void {
+    const center = this.visualProfile === 'focus' ? this.focusBounds.center : this.bounds.center;
+    const direction = preserveDirection ? this.camera.position.clone().sub(this.controls.target).normalize() : HOME_DIRECTION;
     const distance = this.fittedDistance();
     this.controls.maxDistance = Math.max(1800, distance * 4);
     this.camera.far = Math.max(3000, this.controls.maxDistance + this.bounds.radius * 3);
     this.camera.updateProjectionMatrix();
-    this.controls.target.copy(this.bounds.center);
-    this.camera.position.copy(this.bounds.center).addScaledVector(HOME_DIRECTION, distance);
+    this.controls.target.copy(center);
+    this.camera.position.copy(center).addScaledVector(direction, distance);
     this.controls.update();
     this.requestFrame();
   }
@@ -702,6 +781,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.orbits.resize(this.pixelRatio);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
+    if (this.visualProfile === 'focus' && this.framed) this.frameAll(true);
     for (const label of this.missionLabels) label.width = 0;
     for (const label of this.orbitLabels) label.width = 0;
     for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial]) {
@@ -748,6 +828,8 @@ class CareerScene implements CareerGraphSceneHandle {
       material.uniforms.uFar.value = distance + this.bounds.radius * 1.3;
     }
     this.hologram.update(this.camera, ambient ? delta : 0);
+    // The heartbeat reads the monotonic RAF timestamp, never the capped ring-motion delta.
+    this.refreshHeartbeat(time);
     this.orbits.setMotionAllowed(ambient);
     this.orbits.update(this.camera, ambient ? delta : 0);
     const orbitTetherCount = String(this.orbits.tetherCount);
@@ -952,7 +1034,8 @@ class CareerScene implements CareerGraphSceneHandle {
       if (!node || !this.projectNode(node)) continue;
       const distance = Math.hypot(this.projected.x - x, this.projected.y - y);
       const depth = -new Vector3().fromArray(node.position).applyMatrix4(this.camera.matrixWorldInverse).z;
-      const visibleRadius = MathUtils.clamp(nodeSize(node) * this.height / Math.max(1, depth), 7, 90) * 0.42;
+      const coreScale = node.kind === 'core' ? this.heartbeat.coreScale : 1;
+      const visibleRadius = MathUtils.clamp(nodeSize(node) * this.height / Math.max(1, depth), 7, 90) * 0.42 * coreScale;
       if (distance <= Math.max(8, visibleRadius + 3) && distance < closest) {
         closest = distance;
         picked = node;
@@ -1162,6 +1245,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.controls.autoRotate = false;
     }
     this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
+    this.refreshHeartbeat();
   }
 
   private onMotionChange = (): void => {
@@ -1172,6 +1256,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private onVisibilityChange = (): void => { this.syncVisibility(); };
 
   private syncVisibility(): void {
+    this.refreshHeartbeat();
     if (!this.intersecting || document.hidden) {
       this.orbits.setMotionAllowed(false);
       cancelAnimationFrame(this.frame);
@@ -1189,6 +1274,7 @@ class CareerScene implements CareerGraphSceneHandle {
     event.preventDefault();
     this.lost = true;
     this.orbits.setMotionAllowed(false);
+    this.refreshHeartbeat();
     this.reportedReady = false;
     this.controls.enabled = false;
     cancelAnimationFrame(this.frame);
@@ -1238,6 +1324,7 @@ class CareerScene implements CareerGraphSceneHandle {
     for (const geometry of [this.nodeGeometry, this.edgeGeometry, this.selectedGeometry, this.selectedEdgeGeometry]) geometry.dispose();
     for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial, this.edgesMaterial, this.selectedEdgesMaterial, this.edgeGlowMaterial, this.selectedEdgeGlowMaterial]) material.dispose();
     this.hologram.dispose();
+    this.heartbeat.dispose();
     this.orbits.dispose();
     this.renderPass.dispose();
     this.bloomPass.dispose();
@@ -1255,7 +1342,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1345,9 +1432,10 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
   useEffect(() => { runtimeRef.current?.setMotion(autoRotate, animateAmbient, allowReducedMotion); }, [autoRotate, animateAmbient, allowReducedMotion, visualProfile]);
   useEffect(() => { runtimeRef.current?.setRimOnly(maskInterior); }, [maskInterior, visualProfile]);
   useEffect(() => { runtimeRef.current?.setDecorationVisible(showDecoration); }, [showDecoration, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setHeartbeat(heartbeat); }, [heartbeat, visualProfile]);
 
   return (
-    <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" data-animation-state="loading" data-animation-revision="0" data-animation-time="0.000" data-cursor-strength="0.0000" data-cursor-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
+    <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" data-animation-state="loading" data-animation-revision="0" data-animation-time="0.000" data-cursor-strength="0.0000" data-cursor-revision="0" data-heartbeat-enabled={heartbeat} data-heartbeat-running="false" data-heartbeat-period-ms={HEARTBEAT_PERIOD_MS} data-heartbeat-phase="0.000" data-heartbeat-cycle="0" data-heartbeat-radius="0.0000" data-core-screen-visible="false" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
       <div ref={viewportRef} className="career-graph-scene__viewport" />
       <div ref={missionLabelLayerRef} className="career-graph-scene__mission-labels" aria-hidden="true" hidden />
       <div ref={orbitLabelLayerRef} className="career-graph-scene__orbit-labels" aria-hidden="true" hidden />

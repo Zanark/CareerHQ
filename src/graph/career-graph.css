@@ -26,7 +26,7 @@
 .career-graph-stage-label { position: absolute; left: 20px; top: 16px; display: flex; align-items: center; gap: 8px; color: #93A1A1; font-size: .4375rem; letter-spacing: .18em; pointer-events: none; opacity: .8; }
 .career-graph-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 13px 20px 0; border-top: 1px solid #268BD22B; }
 .career-graph-controls .button { font-size: .5625rem; padding: 7px 10px; }
-.career-graph-controls .graph-checkbox { margin-left: auto; }
+.career-graph-controls .graph-checkbox:last-child { margin-left: auto; }
 .career-graph-stage-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; padding: 10px 20px 0; }
 .career-graph-hint { font-size: .5625rem; color: #93A1A1; }
 .career-graph-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-left: auto; }
@@ -161,7 +161,7 @@
   .career-graph-stage { height: min(65dvh, 580px); min-height: 360px; }
   .career-graph-controls { padding-inline: 14px; }
   .career-graph-stage-footer { padding-inline: 14px; }
-  .career-graph-controls .graph-checkbox, .career-graph-legend { margin-left: 0; }
+  .career-graph-controls .graph-checkbox:last-child, .career-graph-legend { margin-left: 0; }
   .career-graph-inspector { top: 38px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 50px); }
   .career-graph-node-detail { max-height: 110px; }
   .career-graph-node-list, .career-orbit-list { grid-template-columns: 1fr; }

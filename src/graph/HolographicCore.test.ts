@@ -99,6 +99,33 @@ describe('outer-rim-only decoration', () => {
     core.dispose();
   });
 
+  it.each([false, true])('throbs only the actual opaque core and restores its exact baseline (calm=%s)', calm => {
+    const core = new HolographicCore(calm, false);
+    const position = new Vector3(7, -4, 2);
+    core.setBounds(new Vector3(25, 10, 5), 60, position);
+    const heart = core.object.getObjectByName('Existing core node aura')!;
+    const mesh = heart.children.find(child => child instanceof Mesh)!;
+    const baselineColor = mesh.material.color.clone();
+    const rim = core.object.getObjectByName('Decorative outer rim only')!;
+    const rimScale = rim.scale.clone();
+    core.setHeartbeatStrength(1);
+    expect(heart.scale.x).toBeCloseTo(60 * (calm ? 1.1 : 1.14));
+    expect(heart.position).toEqual(position);
+    expect(mesh.material).toMatchObject({ transparent: false, opacity: 1, depthWrite: true });
+    expect(mesh.material.color.r).toBeGreaterThan(baselineColor.r);
+    expect(rim.scale).toEqual(rimScale);
+    core.setDecorationVisible(false);
+    expect(heart.visible).toBe(true);
+    core.update(new PerspectiveCamera(), 12);
+    expect(heart.scale.x).toBeCloseTo(60 * (calm ? 1.1 : 1.14));
+    core.setHeartbeatStrength(0);
+    expect(heart.scale.x).toBe(60);
+    expect(mesh.material.color).toEqual(baselineColor);
+    core.update(new PerspectiveCamera(), 2);
+    expect(heart.scale.x).toBe(60);
+    core.dispose();
+  });
+
   it('hides rings and particles together without removing the real core aura or rebuilding geometry', () => {
     const core = new HolographicCore();
     core.setBounds(new Vector3(0, 0, 0), 60, new Vector3(0, 0, 0));

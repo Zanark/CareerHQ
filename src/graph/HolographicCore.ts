@@ -3,6 +3,7 @@ import {
   LineSegments, Mesh, MeshBasicMaterial, PerspectiveCamera, Points, Quaternion, ShaderMaterial,
   SphereGeometry, Vector3,
 } from 'three';
+import { heartbeatCoreScale, heartbeatGlow } from './coreHeartbeatTiming';
 
 const TAU = Math.PI * 2;
 const GOLD = new Color('#EDAE29');
@@ -76,10 +77,13 @@ export class HolographicCore {
   private readonly particles: Points<BufferGeometry, ShaderMaterial>;
   private readonly rim = new Group();
   private readonly heart = new Group();
+  private readonly heartMaterial: MeshBasicMaterial;
+  private readonly heartColor: Color;
   private readonly center = new Vector3();
   private readonly centerView = new Vector3();
   private phase = 0;
   private radius = 80;
+  private heartbeatStrength = 0;
 
   constructor(private readonly calm = false, decorativeRings = true) {
     const random = seededRandom();
@@ -198,6 +202,8 @@ export class HolographicCore {
 
     const heartGeometry = new SphereGeometry(0.032, 24, 16);
     const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(calm ? 1.35 : 2.8) });
+    this.heartMaterial = heartMaterial;
+    this.heartColor = heartMaterial.color.clone();
     this.geometries.push(heartGeometry);
     this.materials.push(heartMaterial);
     this.heart.add(new Mesh(heartGeometry, heartMaterial));
@@ -232,7 +238,7 @@ export class HolographicCore {
     this.rim.scale.setScalar(radius);
     this.heart.visible = !!corePosition;
     if (corePosition) this.heart.position.copy(corePosition);
-    this.heart.scale.setScalar(radius);
+    this.setHeartbeatStrength(this.heartbeatStrength);
   }
 
   setRimOnly(value: boolean): void {
@@ -243,6 +249,12 @@ export class HolographicCore {
 
   setDecorationVisible(value: boolean): void {
     this.rim.visible = value;
+  }
+
+  setHeartbeatStrength(value: number): void {
+    this.heartbeatStrength = Math.max(0, Math.min(1, value));
+    this.heart.scale.setScalar(this.radius * heartbeatCoreScale(this.heartbeatStrength, this.calm));
+    this.heartMaterial.color.copy(this.heartColor).multiplyScalar(heartbeatGlow(this.heartbeatStrength, this.calm));
   }
 
   get animationTime(): number { return this.phase; }
@@ -260,7 +272,6 @@ export class HolographicCore {
       for (const material of this.filaments) material.uniforms.uPhase.value = this.phase * (this.calm ? 0.4 : 1);
       this.particles.rotation.y = this.phase * 0.012 * motionScale;
       this.particles.rotation.z = this.phase * 0.004 * motionScale;
-      if (this.calm) this.heart.scale.setScalar(this.radius * (1 + 0.012 * Math.sin(this.phase * TAU / 8)));
     }
     camera.updateMatrixWorld();
     this.centerView.copy(this.center).applyMatrix4(camera.matrixWorldInverse);

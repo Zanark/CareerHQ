@@ -59,6 +59,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const [listCount, setListCount] = useState(40);
   const [autoRotate, setAutoRotate] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [animationPaused, setAnimationPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [heartbeat, setHeartbeat] = useState(true);
   const [motionOptIn, setMotionOptIn] = useState(false);
   const [rimOnly, setRimOnly] = useState(false);
   const [sceneStatus, setSceneStatus] = useState<'loading' | 'ready' | 'unavailable' | 'lost'>('loading');
@@ -257,7 +258,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
               <CareerGraphScene ref={controls} graph={visible} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
-                rimOnly={rimOnly} showDecoration={includeDecoration} onStatusChange={onSceneStatus} />
+                rimOnly={rimOnly} showDecoration={includeDecoration} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
           <div className="career-graph-stage-label"><Network size={15} /><span>{practice ? 'PRACTICE NETWORK' : 'CAREER NETWORK'}</span></div>
@@ -291,6 +292,9 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
             onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>{animationPaused ? <Play size={15} /> : <Pause size={15} />}{animationPaused ? 'Resume animation' : 'Pause animation'}</button>
+          <label className="graph-checkbox" title="A visual ripple from the white core every 3 seconds; paused with animation.">
+            <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
+          </label>
           <button className="button secondary" disabled={!sceneReady || !includeDecoration} aria-pressed={rimOnly}
             title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
             onClick={() => setRimOnly(value => !value)}>Clear center</button>
@@ -342,7 +346,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
       {!filtered.length && <p className="career-graph-empty">No nodes match this view. Change the mission, layers or search text.</p>}
       {filtered.length > listCount && <button className="button secondary" onClick={() => setListCount(count => count + 80)}>Show more nodes</button>}
     </section>
-    <footer className="career-graph-footer"><p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks and glow remain visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
+    <footer className="career-graph-footer"><p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks, glow and the core heartbeat are visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
       {copied && <p role="status">Career brief copied to your clipboard.</p>}{copyError && <p role="alert" className="form-error">{copyError}</p>}
     </footer>
   </div>;

@@ -72,7 +72,7 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-intro', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-summary'],
     title: 'Your career in a 3D view',
-    body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and reference nodes do not count as extra tasks. Drag the 3D network to rotate, scroll to zoom, or use the keyboard controls. This tutorial shows only its temporary practice workspace.',
+    body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and references are not extra tasks. Drag to rotate or scroll to zoom. Core heartbeat controls a visual ripple from the white center every three seconds, not work or AI activity. This tutorial shows only temporary practice data.',
   },
   {
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
@@ -294,7 +294,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'focus-room-run', chapter: 'focus-room', kind: 'action',
     targets: ['focus-room-toggle'], title: 'Start or continue the same timer',
-    body: 'Use Start or Continue if the timer is not running. The room and compact timer share one countdown. Ambient motion is optional, quiet, and not a claim that an AI is processing work.',
+    body: 'Use Start or Continue if the timer is not running. The room and compact timer share one countdown. Ambient motion and Core heartbeat control only the quiet background visuals, independently of the timer. They do not claim that an AI is processing work or record distractions for you.',
     check: ({ signals }) => signals.focusRunning,
   },
   {

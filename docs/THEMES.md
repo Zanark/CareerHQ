@@ -63,6 +63,10 @@ than their data anchors. **Rings & sparks** hides the orbit overlay and particle
 without removing real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
 lines cannot show through; only the outer glow has a soft falloff.
+An optional three-second core heartbeat uses a gentle throb and expanding 3D ripple
+from that same node. It never fades the opaque core or changes status colors.
+Focus mode centers the camera on the core and removes viewport-dependent backdrop
+offsets, keeping the ripple source centered behind the frosted timer.
 Glow and sparks remain decorative; orbit motion is not evidence of a connected AI
 or progress by itself. **Pause animation** is separate from camera orbit and inspection.
 Reduced motion starts paused, while direct pointer/keyboard navigation remains available.

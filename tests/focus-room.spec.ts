@@ -110,6 +110,25 @@ test('every distraction press saves immediately, including paused reports, and s
   for (const field of ['missions', 'evidence', 'events', 'plans', 'readiness'] as const) expect(after[field]).toEqual(initial[field]);
 });
 
+test('heartbeat controls do not reset the timer or add, remove or duplicate focus reports', async ({ page }) => {
+  await prepare(page);
+  await startRoom(page);
+  await page.clock.runFor(1000);
+  await room(page).locator('[data-tour="focus-room-distraction"]').click();
+  const before = await raw(page);
+  const heartbeat = room(page).getByRole('checkbox', { name: 'Core heartbeat', exact: true });
+  await heartbeat.uncheck();
+  await heartbeat.check();
+  await expect(room(page).locator('[data-tour="focus-room-stage"]')).toHaveAttribute('data-phase', 'running');
+  expect(await raw(page)).toBe(before);
+  await page.clock.runFor(6000);
+  await room(page).locator('[data-tour="focus-room-distraction"]').click();
+  const events = current(await stored(page)).events;
+  expect(events.map(event => event.kind)).toEqual(['distraction', 'distraction']);
+  expect(events.map(event => event.elapsedMs)).toEqual([1000, 7000]);
+  await expect(room(page).locator('[data-tour="focus-room-count"] strong')).toHaveText('2');
+});
+
 test('the full distraction log exports and imports into an independent browser workspace', async ({ page, browser, baseURL }) => {
   await prepare(page);
   await startRoom(page);
