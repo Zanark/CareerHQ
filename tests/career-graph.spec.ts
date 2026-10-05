@@ -244,6 +244,13 @@ for (const width of [1440, 390, 320]) {
     await ready(page);
     await selectNamedNode(page, 'HashMap Fundamentals');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const summary = page.locator('.career-graph-summary');
+    const summaryBox = await summary.boundingBox();
+    for (const item of await summary.locator('strong, div > span').all()) {
+      const box = await item.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(summaryBox!.x - 1);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(summaryBox!.x + summaryBox!.width + 1);
+    }
     await page.evaluate(() => window.scrollTo(0, 0));
     await testInfo.attach('real-3D-career-home', { body: await page.screenshot(), contentType: 'image/png' });
     expect(external).toEqual([]);

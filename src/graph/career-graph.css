@@ -108,7 +108,8 @@
 @media (max-width: 1100px) { .career-graph-node-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 650px) {
   .career-graph-commandbar { padding: 12px 14px; gap: 10px; }
-  .career-graph-summary { width: 100%; gap: 22px; }
+  .career-graph-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 12px; }
+  .career-graph-summary > div { flex-direction: column; align-items: flex-start; gap: 4px; }
   .career-graph-summary > div > span { max-width: none; }
   .career-graph-filters { gap: 8px 12px; }
   .career-graph-filters > label:first-child { width: 100%; }
