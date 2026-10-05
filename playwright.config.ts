@@ -12,7 +12,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: ci,
   retries: ci ? 2 : 0,
-  workers: ci ? 2 : undefined,
+  // Hosted SwiftShader and screenshot workloads share the runner's CPU.
+  // Serialize cases instead of relaxing their deadlines or assertions.
+  workers: ci ? 1 : undefined,
   timeout: 30_000,
   expect: { timeout: 7_000 },
   reporter: [['list'], ['html', { open: 'never' }]],

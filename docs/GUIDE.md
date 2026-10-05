@@ -458,6 +458,9 @@ the browser tests should exercise the shipped content-security policy.
 Local E2E tests use installed Microsoft Edge (`msedge`); CI uses Playwright
 Chromium. If the required browser is genuinely absent, install it before testing:
 `npx playwright install chromium` for CI, or install Microsoft Edge for local runs.
+CI runs browser cases one at a time so concurrent software-WebGL captures do not
+starve each other. Cross-tab scenarios still exercise their multiple pages within
+one case; assertion timeouts and coverage are unchanged.
 If port `4173` belongs to another process, leave it alone and set `CAREERHQ_E2E_PORT`
 to a free port before running the tests (PowerShell: `$env:CAREERHQ_E2E_PORT='4174'`).
 
