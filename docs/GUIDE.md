@@ -67,6 +67,8 @@ references and untracked expanded curriculum remain distinct reference nodes.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
+Interior lines represent actual graph connections. Decorative arcs stay on the outer
+rim of the spherical view, including as the camera rotates; they are not extra links.
 
 **Copy brief for AI** copies a local snapshot for you to review and paste into your
 chosen assistant. CareerHQ does not send it to an AI service or automatically make

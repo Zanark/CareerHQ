@@ -37,6 +37,9 @@ the selected workbook. Loading failures are explicit and offer a reload without
 replacing workspace data. Search/filter/navigation remain read-only.
 The Three.js renderer is loaded separately for the Career graph route. The named
 node list remains available while loading or when WebGL is unavailable.
+Only `graph.edges` supplies interior line geometry. Decorative arcs/particles sit
+outside the enclosing data sphere and use a camera-space silhouette mask, preventing
+front/back shell segments from appearing as invented interior connections after orbit/pan.
 
 There is no backend, authentication layer, remote database, agent execution service,
 or model call. All nine latest missions now have documented tracking units, totaling

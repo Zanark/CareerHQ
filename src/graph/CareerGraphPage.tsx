@@ -230,7 +230,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
       {!filtered.length && <p className="career-graph-empty">No nodes match this view. Change the mission, layers or search text.</p>}
       {filtered.length > listCount && <button className="button secondary" onClick={() => setListCount(count => count + 80)}>Show more nodes</button>}
     </section>
-    <footer className="career-graph-footer"><p>Colored work nodes come from your records; the luminous core, particles and filaments are visual atmosphere, not extra tasks or live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
+    <footer className="career-graph-footer"><p>Colored work nodes come from your records. Interior lines are graph connections; decorative arcs stay on the outer rim. The core glow is visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
       {copied && <p role="status">Career brief copied to your clipboard.</p>}{copyError && <p role="alert" className="form-error">{copyError}</p>}
     </footer>
   </div>;

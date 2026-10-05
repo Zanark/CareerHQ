@@ -45,10 +45,13 @@ tile and canonical seafoam, ivory and yellow stay consistent in both themes;
 the surrounding wordmark follows the current theme's heading and muted roles.
 
 The home graph is a real WebGL 3D scene with an original procedural core, layered
-filaments and luminous depth. Its stage remains deep-water in both themes.
+outer-rim arcs and luminous depth. Its stage remains deep-water in both themes.
 Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
-notes do not award mastery. The ambient core, filaments and particles are decorative,
+notes do not award mastery. Interior lines come only from graph relationships. Decorative
+arcs and fine particles stay outside the data sphere and are masked to its projected rim
+when the camera turns or pans; front/back arcs cannot masquerade as interior connections.
+The compact core aura and outer-rim accents are decorative,
 not additional tasks, relationships or evidence of a connected AI. Reduced motion
 suppresses automatic motion, while direct pointer/keyboard navigation remains available.
 The Three.js runtime is distributed with its [MIT notice](../public/licenses/Three-MIT.txt).

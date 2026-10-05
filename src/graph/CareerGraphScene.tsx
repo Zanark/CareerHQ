@@ -352,6 +352,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.55, 0.2, 0.06, 0.01];
     if (visualProfile === 'focus') this.bloomPass.strength = 0.35;
     this.root.dataset.ambience = 'procedural-unpickable';
+    this.root.dataset.decorationMode = 'outer-rim-only';
     this.root.dataset.postprocessing = 'gpu-bloom';
     this.points.frustumCulled = false;
     this.selection.frustumCulled = false;
@@ -408,7 +409,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.bounds.set(new Vector3(), 60);
     }
     const core = graph.nodes.find(node => node.kind === 'core');
-    this.hologram.setBounds(core ? new Vector3().fromArray(core.position) : this.bounds.center, this.bounds.radius);
+    this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? new Vector3().fromArray(core.position) : undefined);
     this.hologram.object.visible = graph.nodes.length > 0;
     this.root.dataset.nodeCount = String(graph.nodes.length);
     this.root.dataset.edgeCount = String(graph.edges.filter(edge => this.nodeMap.has(edge.source) && this.nodeMap.has(edge.target)).length);
@@ -559,7 +560,7 @@ class CareerScene implements CareerGraphSceneHandle {
       material.uniforms.uNear.value = Math.max(1, distance - this.bounds.radius);
       material.uniforms.uFar.value = distance + this.bounds.radius * 1.3;
     }
-    this.hologram.update(distance, rotating ? Math.min((time - this.lastDraw) / 1000, 0.05) : 0);
+    this.hologram.update(this.camera, rotating ? Math.min((time - this.lastDraw) / 1000, 0.05) : 0);
     this.composer.render();
     // Work markers bypass bloom: decorative brightness must not bleach status
     // colors, hide selection, or become an apparent completion indicator.
@@ -956,7 +957,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
       <p id={instructionsId} className="career-graph-scene__sr-only">
         Drag to rotate. Scroll or pinch to zoom. Use two fingers or the right mouse button to pan.
         With the canvas focused, arrow keys rotate, plus and minus zoom, and Home fits the graph.
-        Select a ringed point to inspect real work. The luminous filaments and fine particles are decorative ambience, not work or relationships.
+        Select a ringed point to inspect real work. Interior lines represent graph connections; the outer rim is decorative, not an additional relationship.
         The accessible node list offers the same selections without the canvas.
       </p>
       <div className="career-graph-scene__status" role="status" aria-live="polite" aria-atomic="true">
@@ -964,7 +965,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">Ringed nodes: your work · Filaments: visual ambience</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">Interior lines: connections · Outer rim: decoration</span>}
     </div>
   );
 });
