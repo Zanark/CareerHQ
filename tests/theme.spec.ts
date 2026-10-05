@@ -96,7 +96,7 @@ async function noOverflow(page: Page) {
 
 test('default dark and switched light use canonical colors without altering workspace data', async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto('./');
+  await page.goto('./#/hq');
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   const before = await workspace(page);
   await assertTheme(page, 'dark');

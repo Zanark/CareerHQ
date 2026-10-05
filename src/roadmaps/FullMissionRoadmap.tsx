@@ -13,6 +13,8 @@ import { SystemConceptMap } from '../system/SystemConcepts';
 import { systemConceptGroups, systemConcepts } from '../system/concepts';
 import { systemPracticeFor } from '../domain/operations/systemPracticeStudy';
 import { systemPracticeCases } from '../domain/operations/systemPracticeContent';
+import { MapInspector } from './MapInspector';
+import { getPackOutline, packUnitForCheckpoint, packUnitHref } from '../domain/roadmapPacks/registry';
 
 const stageNodeId = (id: string) => `full-stage-${id}`;
 const caseNodeId = (id: string) => `practice-${id}`;
@@ -21,15 +23,16 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
   mission: Mission; state: AppState; onClose: () => void;
 }) {
   const latest = getLatestMission(mission.id);
-  const hasExpanded = ['pattern', 'system'].includes(mission.id) && mission.roadmapVersion !== latest.roadmapVersion;
+  const hasExpanded = mission.roadmapVersion !== latest.roadmapVersion;
   const [mode, setMode] = useState<'complete' | 'saved' | 'concepts'>('complete');
+  const [inspectorExpanded, setInspectorExpanded] = useState<boolean | null>(null);
   const showSaved = mode === 'saved';
   const concepts = mission.id === 'system' && mode === 'concepts';
   const preview = hasExpanded && !showSaved && !concepts;
   const displayed = preview ? latest : mission;
   const groupCount = roadmapGroups(displayed).length;
   const subtitle = concepts ? `${systemConceptGroups.length} sections · ${systemConcepts.length} concept nodes`
-    : `${groupCount} stages · ${displayed.checkpoints.length} ${preview ? 'checkpoints' : 'tracked checkpoints'} · ${preview ? 'Preview' : 'Tracker'} v${displayed.roadmapVersion}`;
+    : `${groupCount} ${displayed.roadmapVersion === '3.0.0' && getPackOutline(displayed.id) ? 'curriculum groups' : 'stages'} · ${displayed.checkpoints.length} ${preview ? 'checkpoints' : 'tracked checkpoints'} · ${preview ? 'Preview' : 'Tracker'} v${displayed.roadmapVersion}`;
 
   return <Modal title={`${mission.name} full roadmap`} subtitle={subtitle}
     eyebrow={mission.operation} className={`full-roadmap-modal ${preview || concepts ? 'full-roadmap-preview' : ''}`} onClose={onClose} restoreFocus>
@@ -43,13 +46,16 @@ export function FullMissionRoadmap({ mission, state, onClose }: {
       <span>{preview || concepts ? `Saved: v${mission.roadmapVersion}` : 'Your saved progress'}</span>
       <a className="text-link" href={`#/sources/${mission.id}`}>{mission.id === 'system' ? 'Source and tracker' : 'Review tracker update'}</a>
     </div>}
-    {concepts ? <SystemConceptMap onClose={onClose} /> : <RoadmapCanvas key={`${displayed.id}-${displayed.roadmapVersion}`} mission={displayed}
-      savedMission={mission} preview={preview} state={state} onClose={onClose} />}
+    {concepts ? <SystemConceptMap onClose={onClose} inspectorExpanded={inspectorExpanded} onInspectorExpandedChange={setInspectorExpanded} /> :
+      <RoadmapCanvas key={`${displayed.id}-${displayed.roadmapVersion}`} mission={displayed}
+        savedMission={mission} preview={preview} state={state} onClose={onClose}
+        inspectorExpanded={inspectorExpanded} onInspectorExpandedChange={setInspectorExpanded} />}
   </Modal>;
 }
 
-function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
+function RoadmapCanvas({ mission, savedMission, preview, state, onClose, inspectorExpanded, onInspectorExpandedChange }: {
   mission: Mission; savedMission: Mission; preview: boolean; state: AppState; onClose: () => void;
+  inspectorExpanded: boolean | null; onInspectorExpandedChange: (expanded: boolean) => void;
 }) {
   const progress = preview ? undefined : getProgressForVersion(state, mission.id, mission.roadmapVersion);
   const savedProgress = state.missions[savedMission.id];
@@ -78,12 +84,23 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
 
   const { viewport, graph, size, view, fit, zoom, dragging, changeZoom, registerNode, panProps } = useMapViewport(onClose);
   const [selectedId, setSelectedId] = useState<string | undefined>(current?.id ?? mission.checkpoints[0]?.id);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-  const cases = mission.id === 'system' && mission.roadmapVersion === '3.0.0' ? systemPracticeCases : [];
-  const selectedCase = cases.find(unit => unit.id === selectedCaseId);
+  const [selectedReferenceId, setSelectedReferenceId] = useState<string | null>(null);
+  const references = useMemo(() => {
+    if (mission.roadmapVersion !== '3.0.0') return [];
+    if (mission.id === 'system') return systemPracticeCases.map(unit => ({
+      id: unit.id, title: unit.title, summary: unit.summary, sourceId: `Case ${unit.letter}`,
+      stageId: 'system-practice-i', href: `#/system-practice/${unit.id}`,
+    }));
+    return getPackOutline(mission.id)?.units.filter(unit => unit.role !== 'checkpoint').map(unit => ({
+      id: unit.id, title: unit.title, summary: unit.summary, sourceId: unit.sourceId,
+      stageId: `${mission.id}-pack-${unit.phaseId}`, href: packUnitHref(mission.id, unit.id),
+    })) ?? [];
+  }, [mission]);
+  const selectedReference = references.find(unit => unit.id === selectedReferenceId);
   const selected = mission.checkpoints.find(checkpoint => checkpoint.id === selectedId);
   const studySection = mission.id === 'pattern' ? dsaStudySectionFor(selected) : undefined;
   const systemPractice = mission.id === 'system' ? systemPracticeFor(selected) : undefined;
+  const packPractice = packUnitForCheckpoint(mission.id, selected);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   function statusOf(checkpoint: Checkpoint) {
@@ -96,32 +113,32 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
     <div className="full-roadmap-toolbar">
       <button className="button secondary" data-tour="full-map-fit" onClick={() => changeZoom(null, 'fit')} aria-pressed={view.zoom === null}><Maximize2 size={17} />Fit all</button>
       {!preview && <button className="button primary" data-tour="full-map-current" aria-label="Current checkpoint" disabled={!current} onClick={() => {
-        setSelectedCaseId(null);
+        setSelectedReferenceId(null);
         setSelectedId(current?.id);
         setDetailsOpen(false);
         if (current) changeZoom(1, { nodeId: current.id });
       }}><Focus size={17} /><span className="full-roadmap-current-label">Current checkpoint</span></button>}
-      {['pattern', 'system'].includes(mission.id) && <select className="full-roadmap-topic-finder" aria-label="Find a roadmap topic" value=""
+      {(mission.checkpoints.length > 0 || references.length > 0) && <select className="full-roadmap-topic-finder" aria-label="Find a roadmap topic" value=""
         onChange={event => {
-          const practiceCase = cases.find(unit => caseNodeId(unit.id) === event.target.value);
-          if (practiceCase) {
-            setSelectedCaseId(practiceCase.id);
+          const reference = references.find(unit => caseNodeId(unit.id) === event.target.value);
+          if (reference) {
+            setSelectedReferenceId(reference.id);
             setSelectedId(undefined);
             setDetailsOpen(true);
-            changeZoom(1, { nodeId: caseNodeId(practiceCase.id) });
+            changeZoom(1, { nodeId: caseNodeId(reference.id) });
             return;
           }
           const checkpoint = mission.checkpoints.find(candidate => candidate.id === event.target.value);
           if (!checkpoint) return;
-          setSelectedCaseId(null);
+          setSelectedReferenceId(null);
           setSelectedId(checkpoint.id);
           setDetailsOpen(true);
           changeZoom(1, { nodeId: checkpoint.id });
         }}>
         <option value="" disabled>{mission.id === 'system' ? 'Find a module/case...' : 'Find a topic...'}</option>
         {mission.checkpoints.map(checkpoint => <option key={checkpoint.id} value={checkpoint.id}>{checkpoint.title}</option>)}
-        {cases.length > 0 && <optgroup label="Case studies - practice bank">
-          {cases.map(unit => <option key={unit.id} value={caseNodeId(unit.id)}>Case {unit.letter}: {unit.title}</option>)}
+        {references.length > 0 && <optgroup label={mission.id === 'system' ? 'Case studies - practice bank' : 'Practice and supporting references'}>
+          {references.map(unit => <option key={unit.id} value={caseNodeId(unit.id)}>{unit.sourceId}: {unit.title}</option>)}
         </optgroup>}
       </select>}
       <div className="full-roadmap-zoom" role="group" aria-label="Roadmap zoom">
@@ -154,7 +171,7 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
                         data-full-checkpoint={checkpoint.id} data-full-current={status === 'current' ? 'true' : undefined}
                         data-tour={checkpoint.id === mission.checkpoints.at(-1)?.id ? 'full-map-last-node' : undefined}
                         aria-current={status === 'current' ? 'step' : undefined} aria-pressed={selected?.id === checkpoint.id}
-                        onClick={() => { setSelectedCaseId(null); setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
+                        onClick={() => { setSelectedReferenceId(null); setSelectedId(checkpoint.id); setDetailsOpen(true); }}>
                         <span className="full-roadmap-state">{status === 'complete' ? <Check size={16} /> : status === 'current' ? <Flag size={16} /> : status === 'reference' ? <BookOpen size={16} /> : <LockKeyhole size={16} />}
                           {status === 'complete' ? 'Completed' : status === 'current' ? 'Current checkpoint' : status === 'available' ? 'Available' : status === 'reference' ? 'Not tracked' : 'Locked'}</span>
                         <strong>{checkpoint.sourceId && !checkpoint.title.startsWith(checkpoint.sourceId) ? `${checkpoint.sourceId} · ` : ''}{checkpoint.title}</strong>
@@ -162,17 +179,19 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
                       </button>;
                     })}
                   </div>)}
-                  {!group.checkpoints.length && <div className="full-roadmap-reference" data-full-reference>
+                  {!group.checkpoints.length && !references.some(unit => unit.stageId === group.id) && <div className="full-roadmap-reference" data-full-reference>
                     <p>{group.summary}</p>
                     <ul>{group.topics.map(topic => <li key={topic}>{topic}</li>)}</ul>
                     <strong>Reference only; no completion credit.</strong>
                   </div>}
-                  {group.id === 'system-practice-i' && cases.length > 0 && <div className="full-roadmap-case-bank">
-                    <h4>15 case-study exercises</h4><p>Choose independently. These are practice references, not required serial checkpoints.</p>
-                    {cases.map(unit => <button key={unit.id} className="full-roadmap-case-node" data-system-case={unit.id}
-                      ref={node => registerNode(caseNodeId(unit.id), node)} aria-pressed={selectedCaseId === unit.id}
-                      onClick={() => { setSelectedId(undefined); setSelectedCaseId(unit.id); setDetailsOpen(true); }}>
-                      <span className="full-roadmap-state"><BookOpen size={16} />Case {unit.letter} / Practice</span><strong>{unit.title}</strong>
+                  {references.some(unit => unit.stageId === group.id) && <div className="full-roadmap-case-bank">
+                    <h4>{mission.id === 'system' ? '15 case-study exercises' : 'Practice and reference material'}</h4><p>Choose independently. These are practice references, not required serial checkpoints.</p>
+                    {references.filter(unit => unit.stageId === group.id).map(unit => <button key={unit.id} className="full-roadmap-case-node"
+                      data-system-case={mission.id === 'system' ? unit.id : undefined}
+                      data-pack-reference={mission.id !== 'system' ? unit.id : undefined}
+                      ref={node => registerNode(caseNodeId(unit.id), node)} aria-pressed={selectedReferenceId === unit.id}
+                      onClick={() => { setSelectedId(undefined); setSelectedReferenceId(unit.id); setDetailsOpen(true); }}>
+                      <span className="full-roadmap-state"><BookOpen size={16} />{unit.sourceId} / Reference</span><strong>{unit.title}</strong>
                     </button>)}
                   </div>}
                 </section>)}
@@ -183,29 +202,31 @@ function RoadmapCanvas({ mission, savedMission, preview, state, onClose }: {
         </div>
       </div>
     </div>
-    <div className="full-roadmap-inspector">
+    <MapInspector title={selectedReference?.title ?? selected?.title ?? 'Roadmap details'}
+      expanded={inspectorExpanded ?? detailsOpen} onExpandedChange={onInspectorExpandedChange}>
       {preview ? <p className="full-roadmap-summary">
         {savedProgress.status === 'completed' ? `Your saved v${savedMission.roadmapVersion} tracker is complete.` : <>Saved v{savedMission.roadmapVersion} checkpoint: <strong>{savedCheckpoint?.title}</strong>.</>}
         {' '}Progress unchanged.
       </p> : !current && <p className="full-roadmap-summary">{progress?.status === 'completed' ? 'All tracked checkpoints complete. Your saved work is preserved.' : 'Planning / reference material only. There is no current checkpoint.'}</p>}
-      {selected && <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
-        <summary><span>{selected.id === current?.id ? 'Your current checkpoint' : 'Inspect checkpoint'}</span><strong>{selected.title}</strong><span>Details</span></summary>
+      {selected && <div>
+        <div className="full-roadmap-selection"><span>{selected.id === current?.id ? 'Your current checkpoint' : 'Inspect checkpoint'}</span><strong>{selected.title}</strong></div>
         <div className="full-roadmap-details"><p>{selected.action}</p><h4>Completion criteria</h4><ul>{selected.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul>
           {prerequisitesFor(mission, selected).length > 0 && <p><strong>Requires: </strong>{prerequisitesFor(mission, selected).map(id => mission.checkpoints.find(checkpoint => checkpoint.id === id)?.title).join(', ')}</p>}
           {!!selected.topics?.length && <><h4>Topics</h4><ul>{selected.topics.map(topic => <li key={topic}>{topic}</li>)}</ul></>}
           {studySection && <p><a className="text-link" href={`#/dsa/${studySection.number}`}>Open this topic's practice set</a></p>}
           {systemPractice && <p><a className="text-link" href={`#/system-practice/${systemPractice.id}`}>Open these design exercises</a></p>}
+          {packPractice && <p><a className="text-link" href={packUnitHref(mission.id, packPractice.id)}>Open this checkpoint's study material and exercises</a></p>}
           <p>View only. Record evidence from the mission page to update progress.</p>
         </div>
-      </details>}
-      {selectedCase && <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
-        <summary><span>Case-study practice</span><strong>{selectedCase.title}</strong><span>Details</span></summary>
-        <div className="full-roadmap-details"><p>{selectedCase.summary}</p>
+      </div>}
+      {selectedReference && <div>
+        <div className="full-roadmap-selection"><span>Independent practice / reference</span><strong>{selectedReference.title}</strong></div>
+        <div className="full-roadmap-details"><p>{selectedReference.summary}</p>
           <p>Independently selectable practice, not a required serial checkpoint. This inspection records no completion.</p>
-          <a className="text-link" href={`#/system-practice/${selectedCase.id}`}>Open this case-study exercise</a>
+          <a className="text-link" href={selectedReference.href}>{mission.id === 'system' ? 'Open this case-study exercise' : 'Open this practice or reference unit'}</a>
         </div>
-      </details>}
+      </div>}
       {mission.roadmapVersion !== getLatestMission(mission.id).roadmapVersion && <p className="full-roadmap-summary">This is your saved v{mission.roadmapVersion} roadmap. <a href={`#/sources/${mission.id}`}>Review the newer operation documents</a> before adopting a different version.</p>}
-    </div>
+    </MapInspector>
   </>;
 }

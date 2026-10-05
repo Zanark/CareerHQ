@@ -31,17 +31,27 @@ Theme switches during the tutorial are temporary and do not overwrite that prefe
 If preference storage is unavailable, switching still works for the current tab
 and the interface explains that it could not save the choice.
 
-## Career and life OS identity
+## Career OS identity
 
-The logo joins two rounded loops, representing career and life, around one shared
-core. The wordmark keeps **CareerHQ** with the descriptor **Career & life OS**.
-This is a visual identity, not a change to the available tracking tools.
+CareerHQ is a **Career OS**, not a general life-management operating system.
+The logo is an original connected network sphere around a luminous core,
+using DeepSeaFoam seafoam, blue, violet and warm light. It replaces the earlier
+interlocking-loop mark. Film-reference images are not used as application assets.
 
 [`src/assets/careerhq-mark.svg`](../src/assets/careerhq-mark.svg) is the single
 editable source for navigation, safe recovery and the favicon. Vite emits a
 content-hashed asset so updated tabs and the app use the same mark. Its deep-water
 tile and canonical seafoam, ivory and yellow stay consistent in both themes;
 the surrounding wordmark follows the current theme's heading and muted roles.
+
+The home graph is a real WebGL 3D scene with an original procedural core, layered
+filaments and luminous depth. Its stage remains deep-water in both themes.
+Green work points mark recorded completion, orange unfinished work, and blue
+reference context. A mission hub summarizes that mission's saved checkpoint status;
+notes do not award mastery. The ambient core, filaments and particles are decorative,
+not additional tasks, relationships or evidence of a connected AI. Reduced motion
+suppresses automatic motion, while direct pointer/keyboard navigation remains available.
+The Three.js runtime is distributed with its [MIT notice](../public/licenses/Three-MIT.txt).
 
 ## Roles and integration
 

@@ -4,7 +4,7 @@ const storageKey = 'careerhq.workspace.v1';
 
 for (const theme of ['dark', 'light']) {
   for (const width of [1440, 390, 320]) {
-    test(`career and life identity fits ${theme} navigation at ${width}px`, async ({ page }, testInfo) => {
+    test(`career OS network identity fits ${theme} navigation at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem('careerhq.theme.v1', value), theme);
       await page.goto('./#/missions');
@@ -12,10 +12,10 @@ for (const theme of ['dark', 'light']) {
       const before = await page.evaluate(key => localStorage.getItem(key), storageKey);
       if (width < 761) await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
 
-      const brand = page.getByRole('link', { name: 'CareerHQ - Career and life operating system', exact: true });
+      const brand = page.getByRole('link', { name: 'CareerHQ - Career operating system', exact: true });
       await expect(brand).toBeVisible();
       await expect(page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Overview' })).toHaveCount(1);
-      await expect(brand.locator('.brand-tagline')).toHaveText('Career & life OS');
+      await expect(brand.locator('.brand-tagline')).toHaveText('Career OS');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       const mark = brand.locator('img');
       await expect(mark).toHaveAttribute('alt', '');
@@ -33,10 +33,10 @@ for (const theme of ['dark', 'light']) {
       expect(await page.locator('.sidebar').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
       const path = testInfo.outputPath(`identity-${theme}-${width}.png`);
       await page.screenshot({ path });
-      await testInfo.attach('career-and-life-identity', { path, contentType: 'image/png' });
+      await testInfo.attach('career-os-identity', { path, contentType: 'image/png' });
 
       await brand.click();
-      await expect(page.getByRole('heading', { name: 'Overview', exact: true, level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Career graph', exact: true, level: 1 })).toBeVisible();
       if (width < 761) await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toHaveAttribute('aria-expanded', 'false');
       expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe(before);
     });

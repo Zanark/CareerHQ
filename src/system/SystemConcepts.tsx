@@ -5,6 +5,7 @@ import { PageHeading } from '../components';
 import { Diagram } from '../roadmaps/Diagram';
 import type { DiagramEdge } from '../roadmaps/Diagram';
 import { useMapViewport } from '../roadmaps/useMapViewport';
+import { MapInspector } from '../roadmaps/MapInspector';
 import {
   matchingConceptGroups, SYSTEM_CONCEPT_SOURCE, SYSTEM_PATTERN_GUIDANCE,
   systemConceptGroups, systemConcepts, systemRelatedTracks,
@@ -70,7 +71,9 @@ const conceptEdges: DiagramEdge[] = [
   })),
 ];
 
-export function SystemConceptMap({ onClose }: { onClose: () => void }) {
+export function SystemConceptMap({ onClose, inspectorExpanded, onInspectorExpandedChange }: {
+  onClose: () => void; inspectorExpanded: boolean | null; onInspectorExpandedChange: (expanded: boolean) => void;
+}) {
   const map = useMapViewport(onClose);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = systemConcepts.find(concept => concept.id === selectedId);
@@ -119,10 +122,11 @@ export function SystemConceptMap({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
-    <div className="full-roadmap-inspector system-concept-inspector">
+    <MapInspector title={selected?.title ?? 'Concept map details'} expanded={inspectorExpanded ?? selectedId !== null}
+      onExpandedChange={onInspectorExpandedChange} contentClassName="system-concept-inspector">
       {selected && group ? <><strong>{selected.path.join(' / ')}</strong><p>{group.summary}</p></> : <p>{SYSTEM_PATTERN_GUIDANCE}</p>}
       {group && <a className="text-link" href={`#/system-practice/concept/${group.id}`}>Practice related design problems<ArrowRight size={14} /></a>}
       <p className="system-concept-source">Source: {SYSTEM_CONCEPT_SOURCE.document}, p.1 / {SYSTEM_CONCEPT_SOURCE.attribution}. <a className="text-link" href="#/system-concepts">Read the concepts and source notes<ArrowRight size={14} /></a></p>
-    </div>
+    </MapInspector>
   </>;
 }

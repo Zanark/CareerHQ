@@ -67,8 +67,8 @@ describe('v2 catalog and initial workspace', () => {
         expect(checkpoint.minutes).toBeGreaterThan(0);
       });
     }
-    expect(getMission('algorithm').checkpoints).toEqual([]);
-    expect(getMission('algorithm').planned).toBe(true);
+    expect(getMissionVersion('algorithm', '2.0.0').checkpoints).toEqual([]);
+    expect(getMissionVersion('algorithm', '2.0.0').planned).toBe(true);
     expect(() => getMission('missing' as MissionId)).toThrow('roadmap exists');
   });
 
@@ -115,10 +115,12 @@ describe('v2 catalog and initial workspace', () => {
     expect(state.missions.credential.completedCheckpointIds).toEqual([]);
     expect(state.missions.income.completedCheckpointIds).toEqual([]);
     expect(Object.values(state.readiness)).not.toContain('ready');
-    // Escape has exactly one defined checkpoint, so one evidenced advance finishes it: a
-    // genuine terminal edge case, not an array-index overrun.
-    expect(state.missions.escape.status).toBe('completed');
-    expect(state.missions.escape.checkpointId).toBe(getMission('escape').checkpoints[0].id);
+    expect(state.missions.escape.completedCheckpointIds).toHaveLength(1);
+    expect(state.missions.escape.status).toBe('not-started');
+    expect(state.missions.escape.checkpointId).toBe(getMission('escape').checkpoints[1].id);
+    const previous = createInitialState(true, '2.0.0');
+    expect(previous.missions.escape.status).toBe('completed');
+    expect(previous.missions.escape.checkpointId).toBe(getMissionVersion('escape', '2.0.0').checkpoints[0].id);
   });
 
   it.each([false, true])('has exactly one current checkpoint per available mission (sample=%s)', (sample) => {
@@ -150,7 +152,7 @@ describe('v2 catalog and initial workspace', () => {
     state.missions.pattern.blocker = 'Need a smaller example';
     expect(getSaveState(mission, state).next).toBe(mission.checkpoints[1].title);
     expect(getSaveState(mission, state).checkpoint?.action).toBe(mission.checkpoints[0].action);
-    expect(getSaveState(getMission('algorithm'), state)).toEqual({
+    expect(getSaveState(getMissionVersion('algorithm', '2.0.0'), createInitialState(false, '2.0.0'))).toEqual({
       stage: 'Planned', checkpoint: undefined, status: 'not-started',
       next: 'Awaiting canonical roadmap', completed: 0, total: 0,
     });
@@ -571,7 +573,7 @@ describe('checkpoint branching, explicit activation, and locked-evidence rules',
     state = advance(state);
     expect(() => activateCheckpoint(state, 'pattern', fundamentals.id)).toThrow('already completed');
     expect(() => activateCheckpoint(state, 'pattern', 'invented-checkpoint')).toThrow('Unknown checkpoint');
-    expect(() => activateCheckpoint(state, 'algorithm', 'anything')).toThrow('planned mission');
+    expect(() => activateCheckpoint(createInitialState(false, '2.0.0'), 'algorithm', 'anything')).toThrow('planned mission');
   });
 
   it('lets prior practice evidence remain valid after the active checkpoint is switched elsewhere', () => {
@@ -814,7 +816,7 @@ describe('strict v2 import validation and relational integrity', () => {
   });
 
   it('rejects any progress on a planned mission and planned mode on an available mission', () => {
-    const state = createInitialState(false);
+    const state = createInitialState(false, '2.0.0');
     state.missions.algorithm.mode = 'active';
     expect(() => parseState(state)).toThrow('is planned');
     state.missions.algorithm.mode = 'planned';

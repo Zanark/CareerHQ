@@ -159,7 +159,8 @@ test('Fabric opens beside the mission title with all 5 stages and 32 checkpoints
   await expect(dialog.locator('.full-roadmap-inspector')).toContainText(last.action);
   for (const criterion of last.criteria) await expect(dialog.locator('.full-roadmap-details')).toContainText(criterion);
   await expect(dialog.locator('.full-roadmap-details')).toContainText(/view only/i);
-  await expect(dialog.locator('input, textarea, select')).toHaveCount(0);
+  await expect(dialog.locator('input, textarea')).toHaveCount(0);
+  await expect(dialog.getByLabel('Find a roadmap topic', { exact: true })).toHaveCount(1);
   await expect(dialog.getByRole('button', { name: /Record evidence|Make current|Complete & unlock/i })).toHaveCount(0);
   await expectCurrent(dialog, state.missions.fabric.checkpointId);
   expect(await storage(page)).toEqual(before);
@@ -231,12 +232,13 @@ test('Pattern shows the real late-branch current checkpoint even when background
   expect(await storage(page)).toEqual(before);
 });
 
-test('Credential includes 9 stages, only 6 tracked nodes, and three explicit optional references', async ({ page }) => {
-  const state = createInitialState(false);
+test('saved Credential v2 includes 9 stages, 6 tracked nodes, and three explicit optional references', async ({ page }) => {
+  const state = createInitialState(false, '2.0.0');
   const mission = getMission('credential', state);
   await loadMission(page, state, mission.id);
   const before = await storage(page);
   const dialog = await openRoadmap(page, mission);
+  await dialog.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expectMap(dialog, mission, 9, 6);
   await expectConnections(dialog, mission);
   const optional = mission.stages!.filter(stage => stage.optional);
@@ -253,12 +255,13 @@ test('Credential includes 9 stages, only 6 tracked nodes, and three explicit opt
   expect(await storage(page)).toEqual(before);
 });
 
-test('Algorithm fits all four forecast stages without inventing tracked nodes or a current checkpoint', async ({ page }) => {
-  const state = createInitialState(false);
+test('saved Algorithm v2 fits all four forecast stages without inventing tracked nodes or a current checkpoint', async ({ page }) => {
+  const state = createInitialState(false, '2.0.0');
   const mission = getMission('algorithm', state);
   await loadMission(page, state, mission.id);
   const before = await storage(page);
   const dialog = await openRoadmap(page, mission);
+  await dialog.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expectMap(dialog, mission, 4, 0);
   await expectCurrent(dialog);
   await expect(dialog.locator('.diagram-edge')).toHaveCount(0);
@@ -282,6 +285,7 @@ test('saved v1 stages stay v1 and a completed legacy mission has no fake current
   const before = await storage(page);
   const fabric = getMissionVersion('fabric', '1.0.0');
   let dialog = await openRoadmap(page, fabric);
+  await dialog.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await expectMap(dialog, fabric, 3, 5);
   await expectConnections(dialog, fabric);
   await expect(dialog).toContainText('Tracker v1.0.0');

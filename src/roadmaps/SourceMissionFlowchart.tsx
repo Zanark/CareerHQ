@@ -6,6 +6,7 @@ import { Badge } from '../components';
 import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
 import { checkpointLevels } from './roadmapGraph';
+import { packUnitForCheckpoint, packUnitHref } from '../domain/roadmapPacks/registry';
 
 const completionEdges: DiagramEdge[] = [
   { from: 'rule-current', to: 'rule-decision' },
@@ -67,7 +68,10 @@ export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }
         })}</div>)}
         <div className={`flow-terminal ${checkpoints.every(checkpoint => completed.has(checkpoint.id)) ? 'complete' : ''}`} data-diagram-node="stage-finish">All tracked nodes in this stage complete</div>
       </Diagram> : <div className="source-stage-tree"><ol>{selected.topics.map(topic => <li key={topic}><div className="source-reference-topic">{topic}</div></li>)}</ol><p className="source-privacy">These are reference topics or planning estimates, not invented checkpoint IDs or recorded achievements.</p></div>}
-      {checkpoints.length > 0 && <details className="source-stage-topics" data-tour="roadmap-stage-topics"><summary>Topics and completion criteria in this stage</summary>{checkpoints.map(checkpoint => <section key={checkpoint.id}><h4>{checkpoint.title}</h4><ul>{checkpoint.topics?.map(topic => <li key={topic}>{topic}</li>)}</ul><strong className="small">Completion evidence</strong><ul>{checkpoint.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul></section>)}</details>}
+      {checkpoints.length > 0 && <details className="source-stage-topics" data-tour="roadmap-stage-topics"><summary>Topics and completion criteria in this stage</summary>{checkpoints.map(checkpoint => {
+        const unit = packUnitForCheckpoint(mission.id, checkpoint);
+        return <section key={checkpoint.id}><h4>{checkpoint.title}</h4><ul>{checkpoint.topics?.map(topic => <li key={topic}>{topic}</li>)}</ul><strong className="small">Completion evidence</strong><ul>{checkpoint.criteria.map(criterion => <li key={criterion}>{criterion}</li>)}</ul>{unit && <a className="text-link" href={packUnitHref(mission.id, unit.id)}>Open study material and exercises</a>}</section>;
+      })}</details>}
     </>}
     {checkpoints.length > 0 && <details className="source-flow-rule"><summary>How checkpoint completion works</summary>
       <Diagram edges={completionEdges} className="flow-canvas">

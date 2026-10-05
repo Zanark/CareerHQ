@@ -34,15 +34,18 @@ The supplied operation documents define nine missions. Tracking granularity is e
 | --- | --- |
 | Pattern Forge | 48 checkpoints: the unchanged 5-checkpoint HashMap start plus 43 DSA topic reviews, across 14 stages |
 | System Forge | 72 modules across 9 phases, plus 15 independently selectable case-study references and a separate concepts map |
-| Escape Velocity | 1 ongoing workflow; application and rehabilitation workstreams are parallel |
-| Fabric Core | 32 numbered checkpoints across 5 stages |
-| Blueprint | 5 phase-level milestones; no invented fine-grained numbering |
-| Credential Forge | 6 main milestones, with optional credentials kept outside hard gates |
-| Neural Edge | 7 phase-level milestones and a 9-project reference ladder |
-| Algorithm Forge | Planning forecast; detailed checkpoints remain **pending** |
-| Side Income | 3-step starting search sprint and a private freelance ledger |
+| Escape Velocity | 34 checkpoints, plus 45 independent labs, cases, diagnostics and capstones |
+| Fabric Core | 32 canonical checkpoints across 5 stages, with detailed study material and 20 additional lab playbooks |
+| Blueprint | 91 numbered modules plus Day 0; supplemental AI/SF practice and eight capstones stay outside the required chain |
+| Credential Forge | 53 core study modules; the Data learning branch is optional and paid exams are separate decisions |
+| Neural Edge | 28 modules across 7 source phases, plus cases, transfer drills and portfolio choices |
+| Algorithm Forge | 34 checkpoints across the complete 6-stage contest curriculum; older forecast versions remain available |
+| Side Income | 104 modules across 13 stages, with cases, templates and the separate private freelance ledger |
 
-These are source-aligned tracking definitions, not complete courses or imported personal achievements.
+The latest editions contain **497 tracked checkpoints**. The seven expanded mission workbooks
+also provide **806 browsable source units and 5,944 practice, transfer and diagnostic prompts**.
+Repeated source exercise contexts are retained; this is not a claim of 5,944 distinct autograded problems.
+Study material and tracking definitions are not imported personal achievements.
 The original PDFs and private progress/biographical sections are not published. See the source notes
 for conflicts, granularity choices and unverified certification availability.
 There is no actual AI agent, cloud workspace, authentication, or multi-device sync.
@@ -50,9 +53,48 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 
 ## Start using it
 
-**CareerHQ is the tracker, not the teacher.** Use your learning material, editor, lab,
-or coach to do the work. Come back here to record the result and keep your place.
-The built-in data describes what to work on; it does not claim you have already done it.
+### Your 3D career view
+
+The website now opens **[Career graph](https://zanark.github.io/CareerHQ/#/home)**.
+Drag to rotate the network in genuine 3D, scroll or pinch to zoom, and select a
+node for its record. **Frame all** restores the whole view; **Focus node** centers
+the selected item. **Full screen** expands the scene and its controls; Escape returns.
+The named list and keyboard rotation controls provide another
+way to navigate. **Overview** remains the compact tracker at `#/hq`.
+
+Green means recorded completion; orange means not marked complete. Notes, source
+references and untracked expanded curriculum remain distinct reference nodes.
+Archived completions retain their version context, and the preserved DSA prefix
+is not double-counted. Daily actions and past accomplishments do not automatically
+complete their associated checkpoints. Mission and layer filters only affect the view.
+
+**Copy brief for AI** copies a local snapshot for you to review and paste into your
+chosen assistant. CareerHQ does not send it to an AI service or automatically make
+career decisions. If WebGL is unavailable, the page says so and keeps the named
+node list usable; it does not pretend a flat fallback is a 3D visualization.
+
+**CareerHQ provides study material and tracks evidence; it is not an autonomous teacher or grader.**
+Use the built-in prompts with your editor, authorized lab or coach. Record actual results
+on the saved tracker. No reading, diagram click or elapsed time proves the work was done.
+
+### The complete mission workbooks
+
+Open **[Practice libraries](https://zanark.github.io/CareerHQ/#/practice)** from Missions
+or Operation documents. Each expanded mission has its own source-based library with
+mental models, worked reasoning, concepts, exercises, transfer tasks, diagnostics,
+mastery evidence and recovery guidance.
+
+Search the full selected workbook, filter by stage/reference group or material type,
+then choose a module, case, lab bank or reference. Source page numbers remain visible.
+Shared learning rules are factored into **How to use this roadmap**. Missing source
+fixtures, inconsistent labels and other limitations are stated rather than filled with
+invented source content. The app does not run labs, grade answers or verify credentials.
+
+The seven new editions are v3. An older tracker remains unchanged until you explicitly
+**Adopt documented roadmap**; export a backup first. Adoption archives the exact old
+position and preserves saved records, but does not guess that a broader old milestone
+proves a different detailed module. DSA's verified append remains its separate exception.
+Independent references are available even before adoption and never become fake progress.
 
 ### The appended DSA roadmap
 
@@ -124,9 +166,9 @@ are deepened when an exercise needs them.
 3. Read **Sources, scope and supporting material**, then use **Roadmap stage** to
    browse its stages. Expand **Topics and completion criteria in this stage** for the detail.
 4. Compare **Documented roadmap** with **Active tracker**. If the active tracker is
-   still v1, export a backup, review the new definition, then select **Adopt documented
+   older than the documented edition, export a backup, review the new definition, then select **Adopt documented
    roadmap** only when you want to switch. Old progress is archived, not transferred as
-   completion credit. If both versions are v2, no adoption is needed.
+   completion credit. If the versions match, no adoption is needed.
 5. Select **Open current tracker** to work on that mission.
 
 On a mission page, **Full roadmap** beside its name opens every stage together.
@@ -135,7 +177,9 @@ your saved tracker is still v1 or v2. **Roadmap view → My saved tracker** show
 older position; **Complete curriculum** is a read-only preview until you explicitly
 adopt it. Previewing never resets, remaps or awards progress. **System Design**
 opens the complete problem curriculum, with Concepts and the saved tracker available separately.
-Other missions open their saved version as before.
+All seven expanded missions also open the complete current curriculum, with the genuine
+saved version separately selectable. Independent practice/reference nodes link to their
+full study pages without adding completion gates.
 
 It starts at **Fit all**, not a stage filter. Use **Find a topic** to jump directly
 to DFS, BFS, DP or another DSA topic at readable size, with its requirements and
@@ -146,6 +190,10 @@ Use **Current checkpoint** for a readable close-up, **+ / -** or **100%** to cha
 and drag, scroll or swipe to explore. Select a node for its action and completion criteria;
 this only inspects it and never changes the current checkpoint. **Escape** or **Close dialog**
 returns to the mission. Reduced-motion settings keep the highlight static.
+**Hide details** collapses the entire bottom section to a small bar and gives that
+space back to the graph. **Show details** restores it. A manual choice stays in
+effect while selecting other nodes or switching roadmap views, without changing
+zoom, progress or your backup. This applies to checkpoint, case-study and concepts views.
 During the **Full mission roadmap** lesson, a compact coach guides the map controls.
 If you open the map from another tutorial chapter, a **Back to tutorial** bar pauses
 that lesson without changing its step. Both layouts leave room for the map.
@@ -183,11 +231,13 @@ Use the **Chapter** menu to work on one area at a time:
 
 | Chapter | What you practice |
 | --- | --- |
+| 3D career graph | Real-data colors, graph navigation, named-node search and inspection without awarding progress |
 | Keep going | Your own past accomplishments, completed work versus practice, and private history that never awards checkpoint credit |
 | DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
 | System Design concepts | The supplied concepts map, source grouping, pattern-overview guidance and contextual search |
 | System Design problems | Module practice sets, changing constraints, source gates, diagnostics and independently selectable case studies |
 | PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
+| Complete practice workbooks | Detailed source units, independent practice, exercise checks, shared learning guidance and evidence boundaries |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
 | Opportunities | Optional application fields, saving a lead, moving its stage and finding the saved metadata |
@@ -241,10 +291,12 @@ estimates, not measured learning time.
 
 | Page | Use it for | What it does not do |
 | --- | --- | --- |
-| Keep going | Read your own source-linked past accomplishments and actual saved work; load private history after reviewing it | No research quotes, generic motivation, invented wins, or automatic checkpoint credit; Overview remains the default |
+| Career graph | Rotate and inspect your career work in 3D, filter missions and records, or copy a private AI brief | No invented progress, automatic AI decisions, or completion from clicking a node |
+| Keep going | Read your own source-linked past accomplishments and actual saved work; load private history after reviewing it | No research quotes, generic motivation, invented wins, or automatic checkpoint credit |
 | DSA practice library | Browse all 50 expanded DSA sections and curated problem links | No automatic solve tracking, completion credit, or requirement to clear every listed problem |
 | System Design concepts | Browse or search the attached one-page roadmap and its repeated pattern contexts | No automatic mastery claims, new required checkpoint gates, or changes to the saved System Forge tracker |
 | System Design problems | Work through the 72-module source progression and browse 15 cases, prompts, transfer tasks and diagnostics | No AI assessment, automatic adoption, or mandatory case-to-case completion chain |
+| Practice libraries | Browse the seven expanded workbooks, search full study content and open individual modules, labs or references | No automatic completion, execution of source instructions, exam booking or guaranteed outcomes |
 | Roadmap | Browse the goal, mission tree and stage flowcharts | Clicking a diagram does not complete work |
 | Recall practice | Revisit saved DSA/System Design work from memory | No AI grading or automatic insertion into Daily plan |
 | Opportunities | Record roles, application stages and optional effort/resume details | No job search, application submission or resume evaluation |
@@ -252,11 +304,11 @@ estimates, not measured learning time.
 | Interview readiness | Self-assess five interview skill areas | Ratings are not computed from evidence or completion |
 | Settings & data | Change the goal, export and restore private records | Goal text does not instruct an AI planner |
 
-The Side Income mission completes a **starting research sprint**, not an income target.
-Escape Velocity's completion criteria concern the **transition outcome**, not finishing
-one application. AI Engineering's nine projects are a reference ladder, not nine tracked
-builds; the six certification milestones do not mean six earned certifications.
-Competitive programming currently provides a **forecast only**.
+The expanded missions measure source-defined capabilities, not guaranteed income,
+employment, contest ratings or professional credentials. AI portfolio choices and
+independent case banks are not automatically completed builds. Required certification
+study does not imply a required paid exam. Older sprint, phase-review and forecast-only
+definitions remain valid for their saved versions and archives.
 
 ### A small first review
 

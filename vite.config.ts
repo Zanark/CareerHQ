@@ -6,7 +6,9 @@ export default defineConfig(({ command }) => ({
   build: {
     rollupOptions: {
       output: { manualChunks: id => {
+        if (/[\\/]node_modules[\\/]three[\\/]/.test(id)) return 'career-3d';
         if (id.includes('node_modules')) return 'vendor';
+        if (/[\\/]roadmapPacks[\\/]outlines\.ts$/.test(id)) return 'roadmap-pack-outlines';
         if (/(?:dsaProblemSets|systemPracticeContent)\.ts$/.test(id)) return 'practice-reference-data';
         return undefined;
       } },

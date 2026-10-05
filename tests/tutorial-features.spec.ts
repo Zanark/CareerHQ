@@ -5,7 +5,7 @@ async function snapshot(page: Page) {
 }
 
 async function begin(page: Page, chapter: string) {
-  await page.goto('./');
+  await page.goto('./#/hq');
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   const before = await snapshot(page);
   await page.locator('header').getByRole('button', { name: 'Start tutorial', exact: true }).click();
@@ -38,7 +38,7 @@ test('source adoption needs confirmation and never changes the real roadmap', as
   await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
   page.once('dialog', dialog => dialog.accept());
   await page.locator('[data-tour="source-adopt"]').click();
-  await expect(page.locator('.source-heading')).toContainText('Active tracker v2.0.0');
+  await expect(page.locator('.source-heading')).toContainText('Active tracker v3.0.0');
   await next(page, 'source-archive');
   await page.locator('[data-tour="source-archive"] > summary').click();
   await expect(page.locator('[data-tour="source-archive"]')).toContainText('0/5 completed');
@@ -65,6 +65,19 @@ test('jumping to review can create a fictional recall example without completion
   for (const check of await page.locator('[data-tour="recall-checks"] input[data-required="true"]').all()) await check.check();
   await page.locator('[data-tour="recall-save"]').click();
   await expect(page.locator('.recall-card')).not.toContainText('Retained');
+  await finish(page, before);
+});
+
+test('opening a workbook keeps its module chooser available on the next lesson', async ({ page }) => {
+  const before = await begin(page, 'pack-practice');
+  await page.locator('[data-tour="pack-library-open"]').click();
+  await expect(page).toHaveURL(/#\/practice\/fabric$/);
+  await next(page, 'pack-reference');
+  await expect(page).toHaveURL(/#\/practice\/fabric$/);
+  const select = page.locator('[data-tour="pack-unit-select"]');
+  const reference = select.locator('option').filter({ hasText: /\((practice|reference)\)$/ }).first();
+  await select.selectOption((await reference.getAttribute('value'))!);
+  await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
   await finish(page, before);
 });
 
@@ -100,7 +113,8 @@ test('the compact full-map chapter guides controls without silently adopting a r
   const before = await begin(page, 'full-map');
   await page.locator('[data-tour="full-roadmap-open"]').click();
   await expect(page.locator('.tutorial-map-guided')).toBeVisible();
-  await expect(page.locator('.full-roadmap-modal')).toContainText('Tracker v1.0.0');
+  await expect(page.locator('.full-roadmap-modal')).toContainText('Preview v3.0.0');
+  await expect(page.locator('[data-full-current="true"]')).toHaveCount(0);
   await next(page, 'full-map-zoom');
   await expect(page.locator('.tutorial-map-copy > strong')).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.tutorial-map-actions').getByRole('button', { name: 'Next', exact: true })).toBeInViewport({ ratio: 1 });
@@ -110,6 +124,7 @@ test('the compact full-map chapter guides controls without silently adopting a r
   await expect(page.locator('.full-roadmap-details')).toContainText('View only');
   await expect.poll(() => page.locator('.full-roadmap-viewport').evaluate(element => element.clientHeight)).toBeGreaterThan(80);
   await next(page, 'full-map-current');
+  await page.getByLabel('Roadmap view', { exact: true }).selectOption('saved');
   await page.locator('[data-tour="full-map-current"]').click();
   await next(page, 'full-map-pan');
   await next(page, 'full-map-fit');
@@ -124,7 +139,7 @@ test('Show this step reopens a roadmap after returning from a different route', 
   const before = await begin(page, 'full-map');
   await page.locator('[data-tour="full-roadmap-open"]').click();
   await next(page, 'full-map-zoom');
-  await page.getByRole('link', { name: 'Review the newer operation documents', exact: true }).click();
+  await page.locator('.full-roadmap-modal').getByRole('link', { name: 'Review tracker update', exact: true }).click();
   await expect(page).toHaveURL(/#\/sources\/fabric$/);
   await page.getByRole('button', { name: 'Show this step', exact: true }).click();
   await expect(page).toHaveURL(/#\/mission\/fabric$/);
@@ -143,7 +158,9 @@ for (const viewport of [{ width: 568, height: 320 }, { width: 640, height: 360 }
     await page.locator('header').getByRole('button', { name: 'Start tutorial', exact: true }).click();
     await expect.poll(() => page.locator('.tutorial-content').evaluate(element => element.clientHeight)).toBeGreaterThanOrEqual(80);
     await expect(page.locator('.tutorial-body')).toBeInViewport();
-    await next(page, 'perspective-intro');
+    await next(page, 'career-graph-intro');
+    await page.getByLabel('Tutorial chapter', { exact: true }).selectOption('perspective');
+    await expect(page.locator('.tutorial-panel')).toHaveAttribute('data-step', 'perspective-intro');
     await next(page, 'overview-today');
     await finish(page, before);
   });

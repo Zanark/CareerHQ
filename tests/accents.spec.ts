@@ -42,7 +42,7 @@ async function readable(page: Page, selector: string, minimum = 4.5) {
 for (const theme of ['dark', 'light']) {
   test(`${theme} uses visible multi-hue identities even with zero progress and readable navigation`, async ({ page }, testInfo) => {
     await page.addInitScript(theme => localStorage.setItem('careerhq.theme.v1', theme), theme);
-    await page.goto('./');
+    await page.goto('./#/hq');
     const before = await page.evaluate(key => localStorage.getItem(key), key);
     const metricColors = await page.locator('.overview-summary > a').evaluateAll(elements => elements.map(element => getComputedStyle(element).borderTopColor));
     expect(new Set(metricColors).size).toBe(3);

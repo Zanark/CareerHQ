@@ -46,7 +46,7 @@ export interface RoadmapStage {
 export interface ReferenceGroup {
   title: string;
   kind: 'optional' | 'future' | 'parallel' | 'projects' | 'forecast';
-  items: { title: string; detail: string }[];
+  items: { title: string; detail: string; href?: string }[];
 }
 
 export interface Mission {

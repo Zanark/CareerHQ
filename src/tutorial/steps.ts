@@ -1,6 +1,6 @@
 import type { AppState } from '../domain/types';
 import type { TutorialCommand, TutorialSignals } from './types';
-import { fullMapSteps, sourceSteps } from './featureSteps';
+import { fullMapSteps, packPracticeSteps, sourceSteps } from './featureSteps';
 import type { Theme } from '../useTheme';
 
 export interface CheckContext {
@@ -37,6 +37,7 @@ export interface TutorialChapter {
 
 export const chapters: TutorialChapter[] = [
   { id: 'welcome', title: 'Welcome' },
+  { id: 'career-graph', title: '3D career graph' },
   { id: 'perspective', title: 'Keep going' },
   { id: 'overview', title: 'Overview' },
   { id: 'plan', title: 'Plan & focus' },
@@ -45,6 +46,7 @@ export const chapters: TutorialChapter[] = [
   { id: 'review', title: 'Review & roadmap' },
   { id: 'control', title: 'Mission control' },
   { id: 'sources', title: 'PDFs & roadmap updates' },
+  { id: 'pack-practice', title: 'Complete practice workbooks' },
   { id: 'dsa-practice', title: 'DSA practice library' },
   { id: 'system-concepts', title: 'System Design concepts' },
   { id: 'system-practice', title: 'System Design problems' },
@@ -64,6 +66,26 @@ export const steps: TutorialStep[] = [
     id: 'welcome-intro', chapter: 'welcome', kind: 'explain',
     title: 'Welcome to the practice tutorial',
     body: 'Follow the glow and hand. Try the action, then click Next. If this window blocks your view, use Drag to move at the top; Reset position restores automatic placement. Use Chapter to jump between features. Practice is temporary; your real progress stays untouched.',
+  },
+  {
+    id: 'career-graph-intro', chapter: 'career-graph', kind: 'explain', route: 'home',
+    targets: ['career-graph-summary'],
+    title: 'Your career in a 3D view',
+    body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and reference nodes do not count as extra tasks. Drag the 3D network to rotate, scroll to zoom, or use the keyboard controls. This tutorial shows only its temporary practice workspace.',
+  },
+  {
+    id: 'career-graph-search', chapter: 'career-graph', kind: 'action',
+    targets: ['career-graph-search'],
+    title: 'Find a real checkpoint',
+    body: 'Type HashMap in Find your work. The named node list is also available if this browser cannot display WebGL. Searching and inspecting a node never completes it.',
+    checkUi: root => root.querySelector<HTMLInputElement>('[aria-label="Search career graph nodes"]')?.value.trim().toLowerCase() === 'hashmap',
+  },
+  {
+    id: 'career-graph-select', chapter: 'career-graph', kind: 'action',
+    targets: ['career-graph-list'],
+    title: 'Inspect the work behind a node',
+    body: 'Choose a named HashMap node in the list. Its saved status and related page appear beside the graph. Record actual work through the normal mission controls; a graph click does not turn a checkpoint green.',
+    checkUi: root => !!root.querySelector('[data-tour="career-graph-list"] button[aria-pressed="true"]'),
   },
   {
     id: 'perspective-intro', chapter: 'perspective', kind: 'explain', route: 'perspective',
@@ -148,7 +170,7 @@ export const steps: TutorialStep[] = [
     id: 'mission-list', chapter: 'mission', kind: 'explain', route: 'missions',
     targets: ['mission-list'],
     title: 'Find all learning areas',
-    body: 'Missions lists every area. Use In focus, Background, or Planned to filter it, then open a card for its checkpoint. Planned areas have no invented progress or working roadmap yet.',
+    body: 'Missions lists every area. Use In focus, Background, or Planned to filter it, then open a card for its checkpoint. All nine latest curricula are available; Planned can contain older forecast-only trackers until their updates are adopted.',
   },
   // Evidence
   {
@@ -257,6 +279,7 @@ export const steps: TutorialStep[] = [
     check: ({ state }) => state.missions.fabric.mode === 'background',
   },
   ...sourceSteps,
+  ...packPracticeSteps,
   {
     id: 'dsa-library', chapter: 'dsa-practice', kind: 'explain', route: 'dsa/5', command: 'close-dialogs',
     targets: ['dsa-library'],

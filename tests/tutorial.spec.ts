@@ -37,7 +37,7 @@ async function confirm(page: Page, action: () => Promise<unknown>) {
 
 test('overview is a compact tracker without accounts, streak copy, or assumed progress', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('./');
+  await page.goto('./#/hq');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
   const words = (await page.locator('main').innerText()).trim().split(/\s+/).length;
   expect(words).toBeLessThanOrEqual(180);
@@ -76,10 +76,10 @@ test('overview stays bounded when all configured missions are active', async ({ 
   }
   state.focusMissionId = 'neural';
   await page.addInitScript(({ key, state }) => localStorage.setItem(key, JSON.stringify(state)), { key, state });
-  await page.goto('./');
+  await page.goto('./#/hq');
   await expect(page.locator('.overview-checkpoint')).toHaveCount(3);
   await expect(page.locator('.overview-checkpoint').first()).toContainText('AI');
-  await expect(page.getByRole('link', { name: '5 more active missions' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '6 more active missions' })).toBeVisible();
 });
 
 for (const width of [1440, 390, 320]) {
@@ -105,6 +105,12 @@ for (const width of [1440, 390, 320]) {
       await expect(coach).toHaveAttribute('data-step', step.id);
       visited.push(step.id);
       switch (step.id) {
+        case 'career-graph-search':
+          await page.getByLabel('Search career graph nodes', { exact: true }).fill('HashMap');
+          break;
+        case 'career-graph-select':
+          await page.locator('[data-tour="career-graph-list"] button').first().click();
+          break;
         case 'system-concepts-search':
           await page.getByLabel('Search System Design concepts', { exact: true }).fill('Circuit Breaker');
           break;
@@ -135,7 +141,7 @@ for (const width of [1440, 390, 320]) {
           break;
         case 'mission-list':
           await page.getByRole('button', { name: /^Planned/ }).click();
-          await expect(page.locator('.mission-card')).toHaveCount(1);
+          await expect(page.locator('.mission-card')).toHaveCount(0);
           await page.getByRole('button', { name: /^All missions/ }).click();
           break;
         case 'evidence-open':
@@ -200,6 +206,18 @@ for (const width of [1440, 390, 320]) {
         }
         case 'source-forecast':
           await page.locator('[data-tour="source-mission"]').selectOption('algorithm');
+          break;
+        case 'pack-open':
+          await page.locator('[data-tour="pack-library-open"]').click();
+          break;
+        case 'pack-reference': {
+          const select = page.locator('[data-tour="pack-unit-select"]');
+          const reference = select.locator('option').filter({ hasText: /\((practice|reference)\)$/ }).first();
+          await select.selectOption((await reference.getAttribute('value'))!);
+          break;
+        }
+        case 'pack-guide':
+          await page.locator('[data-tour="pack-shared-guide"] > summary').click();
           break;
         case 'full-map-open':
           await page.locator('[data-tour="full-roadmap-open"]').click();
@@ -301,7 +319,7 @@ for (const width of [1440, 390, 320]) {
           expect(sample.recalls).toHaveLength(2);
           expect(sample.archives).toHaveLength(1);
           expect(sample.archives[0].missionId).toBe('fabric');
-          expect(sample.missions.fabric.roadmapVersion).toBe('2.0.0');
+          expect(sample.missions.fabric.roadmapVersion).toBe('3.0.0');
           expect(sample.missions.fabric.completedCheckpointIds).toEqual([]);
           expect(sample.objective).toBe('Temporary tutorial goal only.');
           break;

@@ -3,8 +3,8 @@
 ## What is public
 
 The published static app ships source-aligned roadmap definitions, public problem-reference
-links, authored source summaries, and clearly labeled fictional sample records only.
-The original PDFs, including the separately supplied expanded DSA document, are excluded.
+links, authored study material and exercise prompts, and clearly labeled fictional sample records only.
+The original PDFs, including all documents in the expanded roadmap pack, are excluded.
 Private source documents and personal baseline information must not be copied into the
 site, repository, screenshots, or tests.
 
@@ -22,6 +22,17 @@ only when clicked, without a referrer.
 The DSA practice library also uses bundled references. Browsing sections and filtering
 problems sends no progress to LeetCode. Clicking a problem link opens LeetCode in a new
 tab without a referrer; that destination may have its own login or subscription rules.
+
+The seven expanded practice workbooks load static study chunks from the same host.
+These requests contain no workspace records. Search, filters, source-unit links and
+reference inspection do not upload work or alter progress. Source save-state examples
+and personal baseline material are not used as seed data.
+
+The 3D career graph is rendered locally from the visible workspace. It does not
+upload nodes, records or progress. **Copy brief for AI** writes to the local
+clipboard only after you click it; review the contents before sharing elsewhere.
+The application has no connected AI backend. Renderer diagnostics must not include
+private record text.
 
 ## What stays in this browser
 

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate, recordEvidence } from '../src/domain/engine';
-import { getMissionVersion } from '../src/domain/catalog';
+import { getLatestMission, getMissionVersion } from '../src/domain/catalog';
 import { legacyMissionIds } from '../src/domain/legacyState';
 import type { AppState } from '../src/domain/types';
 
@@ -75,7 +75,7 @@ test('v1 migration preserves records and adopting a roadmap requires confirmatio
   }
 });
 
-test('documented phases, optional references and forecast-only missions are visible', async ({ page }) => {
+test('documented phases, optional references and the expanded contest curriculum are visible', async ({ page }) => {
   await page.goto('./#/sources');
   await expect(page.getByRole('heading', { name: 'Operation documents', level: 1, exact: true })).toBeVisible();
   const selector = page.locator('.source-selector select');
@@ -86,17 +86,17 @@ test('documented phases, optional references and forecast-only missions are visi
   await page.getByRole('combobox', { name: 'Roadmap stage' }).selectOption({ index: 4 });
   await expect(page.locator('.source-flow-canvas .flow-checkpoint')).toHaveCount(7);
   await selector.selectOption('credential');
-  await expect(page.locator('.source-counts')).toContainText('6 tracked nodes');
+  await expect(page.locator('.source-counts')).toContainText('53 tracked nodes');
   const stages = page.getByRole('combobox', { name: 'Roadmap stage' });
   const optional = await stages.locator('option').filter({ hasText: '(optional)' }).all();
-  expect(optional).toHaveLength(3);
+  expect(optional).toHaveLength(getLatestMission('credential').stages!.filter(stage => stage.optional).length);
   await stages.selectOption(await optional[0].getAttribute('value') ?? '');
   await expect(page.locator('.source-flow-canvas')).toHaveCount(0);
   await selector.selectOption('algorithm');
-  await expect(page.locator('.source-counts')).toContainText('0 tracked nodes');
-  await expect(page.getByRole('combobox', { name: 'Roadmap stage' }).locator('option')).toHaveCount(4);
-  await expect(page.locator('.source-panel')).toContainText('estimates');
-  await expect(page.locator('.flow-checkpoint')).toHaveCount(0);
+  await expect(page.locator('.source-counts')).toContainText('34 tracked nodes');
+  await expect(page.getByRole('combobox', { name: 'Roadmap stage' }).locator('option')).toHaveCount(6);
+  await expect(page.locator('.source-panel')).toContainText('Operation_Algorithm_Forge_Complete_Roadmap.pdf');
+  await expect(page.locator('.flow-checkpoint')).not.toHaveCount(0);
 });
 
 test('source-defined HashMap branches remain selectable with one current checkpoint', async ({ page }) => {

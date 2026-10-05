@@ -78,7 +78,8 @@ describe('independently versioned System problem curriculum', () => {
     expect(latest.checkpoints.some(checkpoint => previous.checkpoints.some(old => old.id === checkpoint.id))).toBe(false);
     expect(missions.map(mission => mission.id)).toEqual([...missionIds]);
     for (const mission of v2Missions.filter(mission => !['pattern', 'system'].includes(mission.id))) {
-      expect(getLatestMission(mission.id)).toBe(mission);
+      expect(getMissionVersion(mission.id, '2.0.0')).toBe(mission);
+      expect(getLatestMission(mission.id).roadmapVersion).toBe('3.0.0');
     }
   });
 
@@ -103,7 +104,7 @@ describe('independently versioned System problem curriculum', () => {
       mode: 'active', completedCheckpointIds: [], blocker: '',
     });
     for (const id of missionIds) {
-      expect(state.missions[id].roadmapVersion).toBe(['pattern', 'system'].includes(id) ? '3.0.0' : '2.0.0');
+      expect(state.missions[id].roadmapVersion).toBe(getLatestMission(id).roadmapVersion);
       expect(hasRoadmapUpdate(id, state)).toBe(false);
       expect(getMission(id, state)).toBe(getLatestMission(id));
     }
@@ -151,8 +152,7 @@ describe('independently versioned System problem curriculum', () => {
 
   it('rejects unsupported exact mission/version pairs instead of returning another version', () => {
     for (const id of missionIds) {
-      if (['pattern', 'system'].includes(id)) expect(getMissionVersion(id, '3.0.0').roadmapVersion).toBe('3.0.0');
-      else expect(() => getMissionVersion(id, '3.0.0')).toThrow('roadmap exists');
+      expect(getMissionVersion(id, '3.0.0').roadmapVersion).toBe('3.0.0');
     }
     for (const version of ['0.9.0', '4.0.0']) {
       expect(() => getMissionVersion('system', version as RoadmapVersion)).toThrow('roadmap exists');

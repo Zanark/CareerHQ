@@ -10,8 +10,10 @@ describe('tutorial practice state', () => {
     expect(state.evidence).toEqual([]);
     expect(state.events).toEqual([]);
     expect(state.opportunities).toEqual([]);
-    expect(state.plans['2026-10-04']).toHaveLength(3);
-    expect(state.missions.algorithm.mode).toBe('planned');
+    expect(state.plans['2026-10-04'].length).toBeGreaterThan(0);
+    expect(state.plans['2026-10-04'].length).toBeLessThanOrEqual(3);
+    expect(state.plans['2026-10-04'].reduce((total, action) => total + action.minutes, 0)).toBeLessThanOrEqual(75);
+    expect(state.missions.algorithm.mode).toBe('background');
     expect(state.missions.fabric.roadmapVersion).toBe('1.0.0');
     expect(state.missions.fabric.completedCheckpointIds).toEqual([]);
   });
@@ -35,7 +37,7 @@ describe('tutorial practice state', () => {
     const original = JSON.stringify(real);
     const practice = createPracticeState();
     const adopted = upgradeRoadmap(practice, 'fabric');
-    expect(adopted.missions.fabric.roadmapVersion).toBe('2.0.0');
+    expect(adopted.missions.fabric.roadmapVersion).toBe('3.0.0');
     expect(adopted.missions.fabric.completedCheckpointIds).toEqual([]);
     expect(adopted.archives[0].progress).toEqual(practice.missions.fabric);
     expect(JSON.stringify(real)).toBe(original);

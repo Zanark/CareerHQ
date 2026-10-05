@@ -1,9 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>CareerHQ - Career and life operating system</title>
-  <desc>Two interlocking loops for career and life, with one shared core.</desc>
+  <title>CareerHQ - Career operating system</title>
+  <desc>An original luminous network sphere with layered orbital circuits and a warm central core.</desc>
+  <defs>
+    <radialGradient id="core-halo">
+      <stop stop-color="#EBE565" stop-opacity=".7"/>
+      <stop offset=".45" stop-color="#CB4B16" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#CB4B16" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="shell-light" cx=".35" cy=".25">
+      <stop stop-color="#268BD2" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#001E26"/>
+    </radialGradient>
+  </defs>
   <rect width="64" height="64" rx="18" fill="#000F13"/>
-  <rect x="1" y="1" width="62" height="62" rx="17" fill="none" stroke="#00A591" stroke-opacity=".4"/>
-  <rect x="12" y="12" width="28" height="28" rx="10" fill="none" stroke="#00A591" stroke-width="4.5"/>
-  <rect x="24" y="24" width="28" height="28" rx="10" fill="none" stroke="#EEE8D5" stroke-width="4.5"/>
-  <circle cx="32" cy="32" r="4" fill="#EBE565"/>
+  <circle cx="32" cy="32" r="24" fill="url(#shell-light)" stroke="#268BD2" stroke-width="1.4"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#00A591" stroke-width=".8" stroke-dasharray="9 3 2 4"/>
+  <circle cx="32" cy="32" r="26" fill="none" stroke="#6C71C4" stroke-width=".7" stroke-dasharray="24 12 6 10"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="32" cy="32" rx="11" ry="23" transform="rotate(35 32 32)" stroke="#6C71C4" stroke-opacity=".65"/>
+    <ellipse cx="32" cy="32" rx="23" ry="11" transform="rotate(35 32 32)" stroke="#268BD2" stroke-opacity=".65"/>
+    <path d="M32 9 18 15 10 31 18 48 34 55 50 44 55 27 44 13 32 9ZM18 15Q24 24 32 32Q18 35 10 31M18 48Q21 35 32 32Q37 46 34 55M50 44Q39 42 32 32Q48 29 55 27M44 13Q45 26 32 32M18 15Q31 19 44 13M18 48Q31 41 50 44" stroke="#00A591" stroke-width="1.2"/>
+    <path d="M15 23 25 20 29 28M47 23 43 33 36 36M23 49 24 39 29 35M43 49 40 38" stroke="#EDAE29" stroke-width="1.1"/>
+  </g>
+  <g fill="#268BD2">
+    <circle cx="32" cy="9" r="2.2"/><circle cx="10" cy="31" r="2.5"/>
+    <circle cx="34" cy="55" r="2.2"/><circle cx="55" cy="27" r="2.5"/>
+  </g>
+  <g fill="#00A591">
+    <circle cx="18" cy="15" r="3"/><circle cx="18" cy="48" r="3"/>
+    <circle cx="50" cy="44" r="3"/><circle cx="44" cy="13" r="3"/>
+  </g>
+  <circle cx="32" cy="32" r="19" fill="url(#core-halo)"/>
+  <circle cx="32" cy="32" r="9" fill="#000F13" stroke="#EDAE29" stroke-width="1.4" stroke-dasharray="18 4 8 3"/>
+  <circle cx="32" cy="32" r="6" fill="none" stroke="#EBE565" stroke-width="1.2"/>
+  <circle cx="32" cy="32" r="3.5" fill="#EEE8D5"/>
 </svg>

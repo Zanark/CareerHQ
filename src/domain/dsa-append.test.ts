@@ -83,7 +83,7 @@ describe('exact catalog versions and verified append identity', () => {
     expect(latest.stages?.slice(0, 2)).toEqual(previous.stages);
     expect(missions.map(mission => mission.id)).toEqual([...missionIds]);
     for (const mission of v2Missions.filter(mission => !['pattern', 'system'].includes(mission.id))) {
-      expect(getLatestMission(mission.id)).toBe(mission);
+      expect(getLatestMission(mission.id).roadmapVersion).toBe('3.0.0');
       expect(getMissionVersion(mission.id, '2.0.0')).toBe(mission);
     }
     expect(isVerifiedAppend(latest, previous)).toBe(true);
@@ -124,7 +124,7 @@ describe('exact catalog versions and verified append identity', () => {
   });
 
   it.each<[MissionId, RoadmapVersion]>([
-    ['income', '1.0.0'], ['escape', '3.0.0'], ['fabric', '3.0.0'], ['algorithm', '3.0.0'],
+    ['income', '1.0.0'], ['escape', '4.0.0' as RoadmapVersion], ['fabric', '4.0.0' as RoadmapVersion], ['algorithm', '4.0.0' as RoadmapVersion],
     ['pattern', '9.0.0' as RoadmapVersion],
   ])('rejects nonexistent %s / %s combinations rather than returning latest', (id, version) => {
     expect(() => getMissionVersion(id, version)).toThrow('roadmap exists');
@@ -363,7 +363,8 @@ describe('explicit DSA append adoption preserves saved work', () => {
     });
     expect(updated.missions.pattern).toEqual(state.missions.pattern);
     expect(() => upgradeRoadmap(updated, 'system')).toThrow('already on the latest version');
-    expect(() => upgradeRoadmap(updated, 'income')).toThrow('already on the latest version');
+    const incomeUpdated = upgradeRoadmap(updated, 'income');
+    expect(() => upgradeRoadmap(incomeUpdated, 'income')).toThrow('already on the latest version');
   });
 });
 
@@ -499,11 +500,16 @@ describe('append lineage keeps import and recall validation strict', () => {
     const state = recordEvidence(createInitialState(false), input(createInitialState(false), {
       missionId: 'escape', checkpointId: getLatestMission('escape').checkpoints[0].id,
     }));
-    if (kind === 'evidence') state.evidence[0].roadmapVersion = '3.0.0';
+    if (kind === 'evidence') {
+      state.evidence[0].missionId = 'income';
+      state.evidence[0].roadmapVersion = '1.0.0';
+    }
     if (kind === 'plan') {
       state.capacity = 'deep';
       state.plans[localDate()] = generatePlan(state);
-      state.plans[localDate()].find(action => action.missionId === 'escape')!.roadmapVersion = '3.0.0';
+      const action = state.plans[localDate()].find(action => action.missionId === 'escape')!;
+      action.missionId = 'income';
+      action.roadmapVersion = '1.0.0';
     }
     expect(() => parseState(state)).toThrow('unknown roadmap version');
   });
@@ -520,12 +526,12 @@ describe('append lineage keeps import and recall validation strict', () => {
 
   it('rejects nonexistent active and archived versions and unstamped v2 evidence', () => {
     const unknown = createInitialState(false);
-    unknown.missions.fabric.roadmapVersion = '3.0.0';
+    unknown.missions.income.roadmapVersion = '1.0.0';
     expect(() => parseState(unknown)).toThrow('Unknown roadmap version');
     const unknownArchive = createInitialState(false);
     unknownArchive.archives.push({
-      missionId: 'fabric', archivedAt: unknownArchive.updatedAt,
-      progress: { ...unknownArchive.missions.fabric, roadmapVersion: '3.0.0' },
+      missionId: 'income', archivedAt: unknownArchive.updatedAt,
+      progress: { ...unknownArchive.missions.income, roadmapVersion: '1.0.0' },
     });
     expect(() => parseState(unknownArchive)).toThrow('unknown roadmap');
     const unstamped = upgradeRoadmap(oldState(1), 'pattern');

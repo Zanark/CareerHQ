@@ -96,7 +96,7 @@ async function noOverflow(page: Page) {
 }
 
 test('empty workspace, accessible navigation, and hash deep-link reload', async ({ page }, testInfo) => {
-  await page.goto('./');
+  await page.goto('./#/hq');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
   await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', /^\/CareerHQ\/assets\/.+\.js$/);
   await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
@@ -241,7 +241,7 @@ test('checkpoint unlock requires all criteria and retains evidence across reload
 test('mission and evidence filters use real browser-owned records', async ({ page }) => {
   await freshWorkspace(page);
   await navigate(page, /^Missions/);
-  await page.getByRole('button', { name: /^Planned/ }).click();
+  await page.getByRole('button', { name: /^Background/ }).click();
   await expect(page.getByRole('button', { name: /^Open Competitive/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open DSA', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: /^All missions/ }).click();

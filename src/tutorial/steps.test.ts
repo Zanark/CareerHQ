@@ -23,6 +23,8 @@ describe('current tutorial curriculum', () => {
       'dsa-library', 'dsa-library-section', 'dsa-library-filter',
       'system-concepts-intro', 'system-concepts-search',
       'system-practice-intro', 'system-practice-select', 'system-practice-transfer',
+      'career-graph-intro', 'career-graph-search', 'career-graph-select',
+      'pack-open', 'pack-reference', 'pack-exercises', 'pack-guide', 'pack-gate',
     ]) expect(ids.has(id), id).toBe(true);
   });
 });

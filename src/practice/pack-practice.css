@@ -1,0 +1,59 @@
+.pack-practice-page { min-width: 0; }
+.pack-practice-page p, .pack-practice-page li { line-height: 1.65; }
+.pack-practice-page select, .pack-practice-page input { width: 100%; min-width: 0; }
+.pack-practice-page label { display: grid; gap: 0.45rem; min-width: 0; font-weight: 600; }
+.pack-practice-page .button-row { gap: 1rem; flex-wrap: wrap; }
+.pack-source-notice, .pack-shared-guide, .pack-study-unit {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--paper);
+  padding: 1.25rem;
+  margin-block: 1.25rem;
+  min-width: 0;
+}
+.pack-source-notice { border-left: 0.25rem solid var(--accent); }
+.pack-source-notice p { margin: 0 0 0.8rem; }
+.pack-source-name, .pack-unit-meta, .pack-public-note { overflow-wrap: anywhere; }
+.pack-shared-guide > summary, .pack-study-section > summary { cursor: pointer; font-weight: 700; line-height: 1.5; }
+.pack-shared-guide[open] > summary { margin-bottom: 1rem; }
+.pack-filters { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem; }
+.pack-unit-chooser { min-width: 0; margin-bottom: 1.5rem; }
+.pack-unit-chooser p { margin: 0.6rem 0; color: var(--muted); font-size: 0.8rem; }
+.pack-unit-chooser > a { margin-left: 1rem; }
+.pack-unit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; justify-content: space-between; }
+.pack-unit-meta .eyebrow { display: flex; align-items: center; gap: 0.45rem; }
+:root[data-theme] .pack-study-unit h2 { color: var(--tone); margin: 1rem 0; overflow-wrap: anywhere; }
+.pack-study-unit h3 { margin: 1.4rem 0 0.6rem; }
+.pack-study-unit h4 { margin: 0; }
+.pack-study-unit p, .pack-study-unit li { overflow-wrap: anywhere; }
+.pack-start, .pack-mastery { background: var(--wash); border: 1px solid var(--line); border-radius: 0.75rem; padding: 0.2rem 1rem 1rem; margin: 1.4rem 0; }
+.pack-start span, .pack-public-note, .pack-reference-note { color: var(--muted); font-size: 0.8rem; }
+.pack-concepts ul { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; list-style: none; }
+.pack-concepts li { border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+.pack-study-section { border-top: 1px solid var(--line); padding-block: 1rem; }
+.pack-study-section p, .pack-study-section li { white-space: pre-line; }
+.pack-study-section ul, .pack-mastery ul { padding-left: 1.4rem; }
+.pack-study-section li + li, .pack-mastery li + li { margin-top: 0.55rem; }
+.pack-exercises > h3 > span { color: var(--muted); font-size: 0.85rem; }
+.pack-exercises > ol { display: grid; gap: 1rem; padding-left: 1.5rem; }
+.pack-exercises > ol > li { border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem; background: var(--dsf-surface); }
+.pack-exercise-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.pack-exercises details { border-left: 0.2rem solid var(--accent); padding-left: 0.8rem; }
+.pack-exercises summary { cursor: pointer; font-weight: 600; }
+.pack-exercises small { display: block; color: var(--muted); margin-top: 0.9rem; font-size: 0.7rem; }
+.pack-pagination { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.1rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+.pack-pagination a { max-width: 100%; white-space: normal; }
+.pack-library-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+.pack-library-card { display: flex; flex-direction: column; align-items: flex-start; padding: 1.4rem; border: 1px solid var(--line); border-top: 0.25rem solid var(--accent); background: var(--paper); border-radius: 0.9rem; text-decoration: none; min-width: 0; }
+:root[data-theme] .pack-library-card h2 { color: var(--tone); font-size: 1.2rem; margin: 1rem 0 0; }
+.pack-library-card p { flex: 1; }
+.pack-library-card > span:not(.mission-icon) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; font-size: 0.8rem; margin-top: 0.7rem; }
+.pack-library-card:hover { border-color: var(--accent); }
+@media (max-width: 760px) {
+  .pack-filters { grid-template-columns: minmax(0, 1fr); }
+  .pack-source-notice, .pack-shared-guide, .pack-study-unit { padding: 1rem; }
+  .pack-library-grid { grid-template-columns: minmax(0, 1fr); }
+  .pack-unit-chooser > a { display: flex; margin: 0.8rem 0 0; }
+  .pack-exercises > ol { padding-left: 1.1rem; }
+  .pack-exercises > ol > li { padding: 0.8rem; }
+}

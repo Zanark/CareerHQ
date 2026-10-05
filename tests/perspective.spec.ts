@@ -43,7 +43,8 @@ test('Keep going stays optional and contains no research, generic encouragement 
   await page.goto('./');
   const before = await page.evaluate(key => localStorage.getItem(key), key);
   const navigation = page.getByRole('complementary', { name: 'Main navigation' }).locator('nav').first();
-  await expect(navigation.getByRole('link').nth(0)).toHaveText('Keep going');
+  await expect(navigation.getByRole('link').nth(0)).toHaveText('Career graph');
+  await expect(navigation.getByRole('link').nth(1)).toHaveText('Keep going');
   await navigation.getByRole('link', { name: 'Keep going', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText("What you've already done.");
   await expect(page.locator('.perspective-empty')).toContainText('Your earlier accomplishments have not been loaded into this browser.');

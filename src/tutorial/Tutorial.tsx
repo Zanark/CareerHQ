@@ -16,6 +16,12 @@ function findOpenDialog(): HTMLElement | null {
 
 function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): HTMLElement | null {
   if (!targets || targets.length === 0) return null;
+  if (targets.includes('career-graph-list')) return document.querySelector('[data-tour="career-graph-list"] button');
+  if (dialog && targets.includes('full-map-last-node') &&
+      dialog.querySelector('.full-roadmap-node[aria-pressed="true"]:not([aria-current="step"])')) {
+    const showDetails = dialog.querySelector<HTMLElement>('[data-tour="map-details-toggle"][aria-expanded="false"]');
+    if (showDetails) return showDetails;
+  }
   if (targets.includes('source-optional')) {
     const mission = document.querySelector<HTMLSelectElement>('[data-tour="source-mission"]');
     return mission?.value === 'credential' ? document.querySelector('[data-tour="roadmap-stage"]') : mission;

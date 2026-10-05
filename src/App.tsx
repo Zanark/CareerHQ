@@ -3,7 +3,7 @@ import {
   ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check,
   ChevronRight, CircleCheck, Clock3, Compass, FileCheck2, Flag, FolderOpen,
   GitBranch, History, House, Info, LayoutGrid, ListChecks, LockKeyhole, Menu, CircleHelp,
-  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X, BrainCircuit, FileText, Maximize2,
+  Pause, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Target, X, BrainCircuit, FileText, Maximize2, Network,
 } from 'lucide-react';
 import { getMissions, getMission, getMissionVersion, recordRoadmapVersion, prerequisitesFor } from './domain/catalog';
 import { createInitialState, generatePlan, getSaveState, localDate, recordChange, recordEvidence, activateCheckpoint } from './domain/engine';
@@ -30,9 +30,13 @@ import { FreelancePage, RecallPage } from './OperationTools';
 import { DsaLibrary, DsaPracticeLink } from './dsa/DsaLibrary';
 import { SystemConceptsPage } from './system/SystemConcepts';
 import { SystemPracticePage, SystemPracticeLink } from './system/SystemPractice';
+import { CareerGraphPage } from './graph/CareerGraphPage';
+import { PackPracticePage, PackPracticeLink } from './practice/PackPractice';
+import { searchRoadmapPacks } from './domain/roadmapPacks/registry';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 const mainNav = [
+  { id: 'home', label: 'Career graph', icon: Network, color: 'blue' },
   { id: 'perspective', label: 'Keep going', icon: Compass, color: 'sand' },
   { id: 'hq', label: 'Overview', icon: House, color: 'blue' },
   { id: 'missions', label: 'Missions', icon: LayoutGrid, color: 'violet' },
@@ -53,7 +57,7 @@ const capacities: { id: Capacity; label: string; description: string }[] = [
   { id: 'deep', label: 'Deep focus', description: 'Up to 120 minutes; three actions maximum.' },
 ];
 
-function routeNow() { return window.location.hash.slice(2) || 'hq'; }
+function routeNow() { return window.location.hash.slice(2) || 'home'; }
 function navigate(route: string) { window.location.hash = `/${route}`; }
 function formatDate(date: string) { return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
 
@@ -63,7 +67,7 @@ export default function App() {
   const appearance = useTheme(practice.active);
   const personalFocus = useFocusSession(workspace.state?.capacity ?? 'steady');
   const practiceFocus = useFocusSession(practice.state?.capacity ?? 'steady');
-  const returnRoute = useRef('hq');
+  const returnRoute = useRef('home');
   const startTutorial = useCallback(() => {
     if (!practice.active) returnRoute.current = routeNow();
     practiceFocus.reset();
@@ -110,7 +114,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const selected = missions.find(mission => mission.id === route.split('/')[1]);
   const todayPlan = state.plans[date] ?? [];
   const active = missions.filter(mission => state.missions[mission.id].mode === 'active' && state.missions[mission.id].status !== 'completed');
-  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }, { id: 'system-concepts', label: 'System Design concepts', color: 'blue' }, { id: 'system-practice', label: 'System Design problems', color: 'blue' }].find(item => item.id === page);
+  const pageInfo = [...mainNav, ...extraNav, { id: 'settings', label: 'Settings & data', color: 'blue' }, { id: 'guide', label: 'Help & glossary', color: 'sand' }, { id: 'sources', label: 'Operation documents', color: 'violet' }, { id: 'dsa', label: 'DSA practice library', color: 'sage' }, { id: 'system-concepts', label: 'System Design concepts', color: 'blue' }, { id: 'system-practice', label: 'System Design problems', color: 'blue' }, { id: 'practice', label: 'Practice libraries', color: 'violet' }].find(item => item.id === page);
   const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     setEvidenceDialog(null);
@@ -184,10 +188,11 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const searchResults = query.trim() ? [
     ...missions.filter(mission => `${mission.operation} ${mission.name} ${mission.checkpoints.map(cp => cp.title).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())).map(mission => ({ label: mission.name, detail: mission.operation, route: `mission/${mission.id}` })),
     ...state.evidence.filter(item => `${item.title} ${item.summary}`.toLowerCase().includes(query.trim().toLowerCase())).map(item => ({ label: item.title, detail: 'Evidence', route: `evidence/${item.id}` })),
+    ...searchRoadmapPacks(query),
   ].slice(0, 7) : [];
 
   const navButton = (item: typeof mainNav[number]) => {
-    const selected = page === item.id || (item.id === 'missions' && ['mission', 'dsa', 'system-concepts', 'system-practice'].includes(page));
+    const selected = page === item.id || (item.id === 'missions' && ['mission', 'dsa', 'system-concepts', 'system-practice', 'practice'].includes(page));
     return <a key={item.id} data-tour={`nav-${item.id}`} href={`#/${item.id}`} className={`nav-item ${item.color} ${selected ? 'selected' : ''}`} aria-current={selected ? 'page' : undefined}><item.icon size={18} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'missions' && <span className="nav-count">{active.length}</span>}{item.id === 'hq' && <span className="selected-dot" />}</a>;
   };
 
@@ -200,7 +205,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         setQuery('');
       }
     }}>
-      <a href="#/hq" className="brand" aria-label="CareerHQ - Career and life operating system"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career &amp; life OS</small></span></a>
+      <a href="#/home" className="brand" aria-label="CareerHQ - Career operating system"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career OS</small></span></a>
       <span className="nav-label">TRACKING</span>
       <nav>{mainNav.map(navButton)}</nav>
       <span className="nav-label second">CAREER</span>
@@ -217,7 +222,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
       <header className="topbar">
         <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => { setMenuOpen(!menuOpen); setQuery(''); searchRef.current?.blur(); }} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>CareerHQ</span><ChevronRight size={13} /><strong>{title}</strong></div>
         <div className="top-actions"><div className={`search-wrap${query ? ' has-results' : ''}`}><Search size={16} /><input ref={searchRef} data-tour="global-search" placeholder="Search missions and work" aria-label="Search missions and evidence" value={query} onChange={event => setQuery(event.target.value)} /><kbd>Ctrl K</kbd>
-          {query && <div className="search-results"><span className="eyebrow">IN YOUR WORKSPACE</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission name or an artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
+          {query && <div className="search-results"><span className="eyebrow">MISSIONS, WORK & CURRICULUM</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission, topic or artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
         </div><ThemeToggle appearance={appearance} /><button className="tutorial-launch" onClick={onStartTutorial} aria-label={practice ? 'Restart tutorial' : 'Start tutorial'} title="Interactive tutorial"><CircleHelp size={17} /><span>Tutorial</span></button></div>
       </header>
       <main id="main-content" className={`page-content ${selected?.color ?? pageInfo?.color ?? 'teal'}`} ref={headingRef} tabIndex={-1}>
@@ -226,12 +231,14 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
         {practice && <div className="tutorial-practice-banner"><strong>Practice tutorial</strong><span>Temporary data. Your real progress is untouched.</span><button onClick={onExitTutorial}>Exit tutorial</button></div>}
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
+        {page === 'home' && <CareerGraphPage state={state} practice={practice} date={date} />}
         {page === 'perspective' && <Perspective state={state} practice={practice} commit={commit} />}
         {page === 'dsa' && <DsaLibrary key={route} state={state} sectionNumber={route.split('/')[1]} />}
         {page === 'system-concepts' && <SystemConceptsPage key={route} groupId={route.split('/')[1]} />}
         {page === 'system-practice' && <SystemPracticePage key={route} state={state}
           entryId={route.split('/')[1] === 'concept' ? route.split('/')[3] : route.split('/')[1]}
           conceptGroupId={route.split('/')[1] === 'concept' ? route.split('/')[2] : undefined} />}
+        {page === 'practice' && <PackPracticePage state={state} missionId={route.split('/')[1]} entryId={route.split('/')[2]} />}
         {page === 'hq' && <Overview state={state} date={date} practice={practice} onEvidence={openEvidence} onResume={resume} onExport={exportBackup} />}
         {page === 'missions' && <MissionsPage state={state} onResume={resume} />}
         {page === 'mission' && selected && <MissionPage mission={selected} state={state} commit={commit} onEvidence={() => openEvidence(selected.id)} onResume={resume} notify={setToast} onFullRoadmap={() => setFullRoadmapOpen(true)} />}
@@ -255,7 +262,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'sources' && <OperationSourcesPage key={selected?.id ?? 'pattern'} initialSelection={selected?.id} state={state} commit={commit} />}
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
-        {(!['perspective', 'dsa', 'system-concepts', 'system-practice', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
+        {(!['home', 'perspective', 'dsa', 'system-concepts', 'system-practice', 'practice', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
         <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
       </main>
     </div>
@@ -332,7 +339,7 @@ function MissionsPage({ state, onResume }: { state: AppState; onResume: (id: Mis
   const [filter, setFilter] = useState('all');
   const filtered = missions.filter(mission => filter === 'all' || state.missions[mission.id].mode === filter);
   return <>
-    <PageHeading eyebrow="LEARNING AREAS" title="Missions" description="Each area has one current checkpoint. Background missions retain their progress." />
+    <PageHeading eyebrow="LEARNING AREAS" title="Missions" description="Each area has one current checkpoint. Background missions retain their progress."><a href="#/practice" className="button secondary"><BookOpen size={16} />Practice libraries</a></PageHeading>
     <div className="filter-row" data-tour="mission-list">
       <div className="tabs">{[['all', 'All missions'], ['active', 'In focus'], ['background', 'Background'], ['planned', 'Planned']].map(([key, label]) => <button key={key} onClick={() => setFilter(key)} className={filter === key ? 'active' : ''} aria-pressed={filter === key}>{label}<span>{key === 'all' ? missions.length : missions.filter(m => state.missions[m.id].mode === key).length}</span></button>)}</div>
       <span className="muted small">Operation catalog · v{state.roadmapVersion}</span>
@@ -364,6 +371,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify, onF
         }}>Make current: {checkpoint.title}</button>)}</div></section>}
         {mission.id === 'pattern' && <DsaPracticeLink checkpoint={save.checkpoint} />}
         {mission.id === 'system' && <SystemPracticeLink checkpoint={save.checkpoint} />}
+        <PackPracticeLink mission={mission} checkpoint={save.checkpoint} />
         <SectionTitle title={`Checkpoint flowchart · v${mission.roadmapVersion}`} /><MissionFlowchart mission={mission} state={state} />
       </div><div className="right-rail">
         <section className="panel"><SectionTitle title="Blocker" />
