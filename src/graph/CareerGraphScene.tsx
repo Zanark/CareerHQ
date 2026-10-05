@@ -59,6 +59,8 @@ export interface CareerGraphSceneProps {
   allowReducedMotion?: boolean;
   /** Clip the shell's projected interior; defaults to false, or true in focus. */
   rimOnly?: boolean;
+  /** Show decorative outer rings and particles without changing node glow. */
+  showDecoration?: boolean;
   onInteraction?: () => void;
   onStatusChange?: (status: SceneStatus, message?: string) => void;
   visualProfile?: 'career' | 'focus';
@@ -530,6 +532,12 @@ class CareerScene implements CareerGraphSceneHandle {
   setRimOnly(value: boolean): void {
     this.hologram.setRimOnly(value);
     this.root.dataset.decorationMode = value ? 'outer-rim-only' : 'full-shell';
+    this.requestFrame();
+  }
+
+  setDecorationVisible(value: boolean): void {
+    this.hologram.setDecorationVisible(value);
+    this.root.dataset.decorationVisible = String(value);
     this.requestFrame();
   }
 
@@ -1061,7 +1069,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, selectedId, onSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1137,6 +1145,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
   const maskInterior = rimOnly ?? (visualProfile === 'focus');
   useEffect(() => { runtimeRef.current?.setMotion(autoRotate, animateAmbient, allowReducedMotion); }, [autoRotate, animateAmbient, allowReducedMotion, visualProfile]);
   useEffect(() => { runtimeRef.current?.setRimOnly(maskInterior); }, [maskInterior, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setDecorationVisible(showDecoration); }, [showDecoration, visualProfile]);
 
   return (
     <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" data-animation-state="loading" data-animation-revision="0" data-animation-time="0.000" data-cursor-strength="0.0000" data-cursor-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
@@ -1156,7 +1165,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{maskInterior ? 'Interior links: connections · Outer rim: decoration' : 'Orange links: connections · Multicolor shell: decoration'}</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{!showDecoration ? 'Orange links: connections · Rings and sparks hidden' : maskInterior ? 'Interior links: connections · Outer rim: decoration' : 'Orange links: connections · Multicolor shell: decoration'}</span>}
     </div>
   );
 });

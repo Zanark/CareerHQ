@@ -70,6 +70,25 @@ describe('outer-rim-only decoration', () => {
     core.dispose();
   });
 
+  it('hides rings and particles together without removing the real core aura or rebuilding geometry', () => {
+    const core = new HolographicCore();
+    core.setBounds(new Vector3(0, 0, 0), 60, new Vector3(0, 0, 0));
+    const rim = core.object.getObjectByName('Decorative outer rim only')!;
+    const heart = core.object.getObjectByName('Existing core node aura')!;
+    const geometry = rimLines(core).geometry;
+    core.setRimOnly(false);
+    for (const visible of [false, true, false, true]) {
+      core.setDecorationVisible(visible);
+      expect(rim.visible).toBe(visible);
+      expect(heart.visible).toBe(true);
+      expect(rim.children.some(child => child instanceof LineSegments)).toBe(true);
+      expect(rim.children.some(child => child instanceof Points)).toBe(true);
+      expect(rimLines(core).geometry).toBe(geometry);
+      expect(rimMaterial(core).uniforms.uRimOnly.value).toBe(0);
+    }
+    core.dispose();
+  });
+
   it('updates the silhouette mask from the real camera when rotating and panning', () => {
     const core = new HolographicCore();
     const center = new Vector3(8, -5, 2);

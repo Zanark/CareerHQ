@@ -48,6 +48,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
   const [includeRecords, setIncludeRecords] = useState(true);
   const [includeReferences, setIncludeReferences] = useState(true);
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
+  const [includeDecoration, setIncludeDecoration] = useState(true);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [listCount, setListCount] = useState(40);
@@ -183,6 +184,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
             <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
             <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
             <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
+            <label className="graph-checkbox" title="Show decorative outer rings and floating dots. Real nodes, connections and their glow stay visible."><input type="checkbox" checked={includeDecoration} onChange={event => setIncludeDecoration(event.target.checked)} />Rings &amp; sparks</label>
           </div>
         </div>
         <div className="career-graph-stage" data-tour="career-graph-stage">
@@ -190,7 +192,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
             <Suspense fallback={<div className="career-graph-loading" role="status">Loading the 3D career network...</div>}>
               <CareerGraphScene ref={controls} graph={visible} selectedId={selected?.id ?? null} onSelect={selectNode}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
-                rimOnly={rimOnly} onStatusChange={onSceneStatus} />
+                rimOnly={rimOnly} showDecoration={includeDecoration} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
           <div className="career-graph-stage-label"><Network size={15} /><span>{practice ? 'PRACTICE NETWORK' : 'CAREER NETWORK'}</span></div>
@@ -217,7 +219,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
           <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
             onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>{animationPaused ? <Play size={15} /> : <Pause size={15} />}{animationPaused ? 'Resume animation' : 'Pause animation'}</button>
-          <button className="button secondary" disabled={!sceneReady} aria-pressed={rimOnly}
+          <button className="button secondary" disabled={!sceneReady || !includeDecoration} aria-pressed={rimOnly}
             title="Hide outer-shell arcs where they cross the center of the camera view. Real connections stay visible."
             onClick={() => setRimOnly(value => !value)}>Clear center</button>
           <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>

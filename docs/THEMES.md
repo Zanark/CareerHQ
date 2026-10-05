@@ -55,6 +55,8 @@ with the square root of relative camera distance as you zoom in. Decorative oute
 at 1.5x and 2x their original speeds. The yellow particle counts are halved in each
 viewport/profile. Full-shell
 projection is the default; **Clear center** restores the optional projected-rim mask.
+**Rings & sparks** hides the decorative outer shell and particles without removing
+real nodes, connection glow or the actual core-node aura.
 Glow, sparks and outer arcs are not additional tasks, relationships or evidence of a
 connected AI. **Pause animation** is separate from camera orbit and inspection.
 Reduced motion starts paused, while direct pointer/keyboard navigation remains available.

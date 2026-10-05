@@ -78,6 +78,10 @@ orbit the outside of the sphere at individual speeds, with two stable, randomly
 selected rings boosted by 1.5x and 2x. Their front/back segments
 remain visible by default. **Clear center** optionally masks those projected shell
 segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.
+Uncheck **Rings & sparks** beside the graph filters to hide the decorative shell and
+dots entirely. Real nodes, connections, their glow and your zoom stay unchanged.
+Re-enabling it restores your selected Clear center mode. Like the other graph
+filters, this is a view-only choice, not a saved-progress change.
 Connection lines bend away from your cursor but stay attached to their endpoints.
 The push is stronger at the normal view and gradually weakens as you zoom closer.
 Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**

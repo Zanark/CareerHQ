@@ -238,6 +238,10 @@ export class HolographicCore {
     }
   }
 
+  setDecorationVisible(value: boolean): void {
+    this.rim.visible = value;
+  }
+
   get animationTime(): number { return this.phase; }
 
   resize(height: number, pixelRatio: number, compact: boolean): void {
