@@ -6,6 +6,7 @@ import { DSA_EXPANDED_SOURCE, dsaSections, dsaMasteryGate, dsaPracticeProtocol, 
 import type { AppState, Checkpoint } from '../domain/types';
 import type { DsaDifficulty, DsaProblemSet } from '../domain/operations/dsaStudyTypes';
 import './dsa-library.css';
+import { DsaNotebookCompanion } from './DsaNotebookCompanion';
 
 const sets: { id: DsaProblemSet; label: string }[] = [
   { id: 'foundation', label: 'Foundation set' },
@@ -16,12 +17,12 @@ const sets: { id: DsaProblemSet; label: string }[] = [
 
 export function DsaPracticeLink({ checkpoint }: { checkpoint?: Checkpoint }) {
   const section = dsaStudySectionFor(checkpoint);
-  if (!section) return null;
-  return <aside className="dsa-practice-link" data-tour="dsa-practice-link">
+  return <><DsaNotebookCompanion sectionNumber={section?.number} />
+    {section && <aside className="dsa-practice-link" data-tour="dsa-practice-link">
     <BookOpen size={20} />
     <div><strong>Practice for this topic</strong><p>{section.title}: source problem sets, row difficulty, and mastery guidance. Choose representative problems; do not treat the whole list as a compulsory checklist.</p></div>
     <a className="text-link" href={`#/dsa/${section.number}`}>Open practice set<ArrowRight size={15} /></a>
-  </aside>;
+  </aside>}</>;
 }
 
 export function DsaLibrary({ state, sectionNumber }: { state: AppState; sectionNumber?: string }) {
@@ -48,6 +49,7 @@ export function DsaLibrary({ state, sectionNumber }: { state: AppState; sectionN
       <p>This is a read-only practice reference. Problem difficulty is copied from the PDF, not checked live against LeetCode. The PDF's Foundation/Core/Stress placement sometimes differs from its row difficulty; both are kept visible.</p>
       <p>Your active tracker is v{active.roadmapVersion}. Browsing any section here does not unlock or complete it. Log actual work from your current DSA checkpoint.</p>
     </div>
+    <DsaNotebookCompanion sectionNumber={section?.number} />
     <details className="dsa-protocol">
       <summary>How to use the sets without chasing a problem count</summary>
       <ol>{dsaPracticeProtocol.map(item => <li key={item}>{item}</li>)}</ol>

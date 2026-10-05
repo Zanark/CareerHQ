@@ -1,0 +1,20 @@
+.dsa-notebook-companion {
+  min-width: 0;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--dsf-separator);
+  border-left: 3px solid var(--dsf-violet);
+  border-radius: 9px;
+  background: var(--dsf-paper);
+}
+.dsa-notebook-companion summary { cursor: pointer; font-size: 0.75rem; line-height: 1.6; color: var(--dsf-heading); }
+.dsa-notebook-companion p, .dsa-notebook-companion li { font-size: 0.72rem; line-height: 1.7; overflow-wrap: anywhere; }
+.dsa-notebook-companion p { margin-block: 0.75rem; }
+.dsa-notebook-companion ol { padding-left: 1.2rem; }
+.dsa-notebook-handoff { border-top: 1px solid var(--dsf-separator); padding-top: 0.75rem; margin-top: 0.75rem; }
+.dsa-notebook-handoff textarea { display: block; width: 100%; min-width: 0; margin-block: 0.75rem; font-size: 0.68rem; line-height: 1.6; resize: vertical; }
+.dsa-notebook-reminders { border-top: 1px solid var(--dsf-separator); margin-top: 1rem; }
+.dsa-notebook-reminders h3 { font-size: 0.85rem; margin-top: 1rem; }
+.dsa-notebook-reminders h4 { font-size: 0.75rem; margin-top: 0.85rem; }
+.dsa-notebook-reminders small, .dsa-notebook-companion .dsa-notebook-source { font-size: 0.62rem; color: var(--dsf-muted); }
+.dsa-library > .dsa-notebook-companion { margin-bottom: 0; }

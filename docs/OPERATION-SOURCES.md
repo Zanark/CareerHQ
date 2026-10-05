@@ -1,5 +1,24 @@
 # Operation-document integration
 
+## NotebookLM sourcebook companion: reference only
+
+`Operation_Pattern_Forge_90_Day_DSA_Sourcebook.pdf` was reviewed directly from the
+supplied 71-page attachment. It supplies a coaching workflow, repaired explanations,
+practice material and a proposed 90-day study sequence. It explicitly separates that
+sequence from changes to the external CareerHQ tracker.
+
+The user requested simple tracking, so the addition is limited to an optional collapsed
+handoff guide and relevant correctness reminders. A3/A6/D1/D7 (pp7,10,47,63) inform the
+short session handoff; B1/C2/C3/C5/C6/C12 inform reminders about majority, value scans,
+signed windows, prefix state and component count versus area. All body copy is authored,
+and no personal baseline, note history, local source paths or original PDF is published.
+
+The existing 48-checkpoint DSA definition, 50-section/939-entry practice library, state
+schema, saved progress, completion criteria and recall computation are unchanged. No
+second day tracker, R0 checkpoint, mastery enum or automatic NotebookLM integration is
+introduced. The sourcebook's separate-date/seven-day retention convention remains
+coaching context rather than silently changing or relabeling the app's recall badges.
+
 ## Complete roadmap folder: October 5
 
 The supplied `Downloads/roadmaps` corpus contains **10 PDFs and 1,155 physical pages**.

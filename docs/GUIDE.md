@@ -127,6 +127,13 @@ Independent references are available even before adoption and never become fake 
 
 ### The appended DSA roadmap
 
+**Using the sourcebook with NotebookLM:** the optional **NotebookLM companion - keep
+one tracker** panel appears on DSA and its practice library. Keep day-by-day coaching
+in NotebookLM; copy its short handoff into the existing evidence description rather
+than maintaining a second tracker. Relevant sections include a few correctness reminders.
+No 90-day checklist, R0 checkpoint, progress reset or extra recording fields are added.
+The sourcebook's coaching/retention labels do not replace CareerHQ's existing recall rules.
+
 The expanded 105-page DSA/LeetCode PDF, now named **LeetCode_RoadMap.pdf**, is part of **Pattern Forge v3**.
 The original five HashMap checkpoints and their branches are unchanged.
 The extension adds 43 topic reviews in the dependency-aware order from Appendix A,
