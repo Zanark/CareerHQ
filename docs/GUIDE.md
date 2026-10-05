@@ -79,6 +79,7 @@ selected rings boosted by 1.5x and 2x. Their front/back segments
 remain visible by default. **Clear center** optionally masks those projected shell
 segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.
 Connection lines bend away from your cursor but stay attached to their endpoints.
+The push is stronger at the normal view and gradually weakens as you zoom closer.
 Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**
 is a separate control; **Auto-rotate** controls the camera orbit. Reduced motion
 starts paused, and manual navigation remains available.

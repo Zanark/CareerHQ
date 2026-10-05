@@ -1,3 +1,9 @@
+export const CURSOR_REPULSION_PX = 56;
+
+export function cursorRepulsionOffset(distanceRatio: number): number {
+  return CURSOR_REPULSION_PX * Math.sqrt(Math.max(0, Math.min(1, distanceRatio)));
+}
+
 export const edgeRepulsionShader = `
   attribute vec2 aCurveT;
   uniform vec2 uCursor;

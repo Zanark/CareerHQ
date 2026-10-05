@@ -32,7 +32,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
-import { edgeRepulsionShader } from './edgeRepulsion';
+import { CURSOR_REPULSION_PX, cursorRepulsionOffset, edgeRepulsionShader } from './edgeRepulsion';
 import type { CareerGraph } from './careerGraphModel';
 import './career-graph-scene.css';
 
@@ -313,7 +313,7 @@ class CareerScene implements CareerGraphSceneHandle {
     uCursorViewport: { value: new Vector2(1, 1) },
     uCursorStrength: { value: 0 },
     uCursorRadius: { value: 115 },
-    uCursorOffset: { value: 28 },
+    uCursorOffset: { value: CURSOR_REPULSION_PX },
   };
   private readonly cursorTarget = new Vector2();
   private cursorTargetStrength = 0;
@@ -578,10 +578,14 @@ class CareerScene implements CareerGraphSceneHandle {
     this.requestFrame();
   }
 
-  private frameAll(): void {
+  private fittedDistance(): number {
     const halfFov = MathUtils.degToRad(this.camera.fov / 2);
     const limitingFov = Math.min(halfFov, Math.atan(Math.tan(halfFov) * this.camera.aspect));
-    const distance = this.bounds.radius * 1.32 / Math.sin(limitingFov);
+    return this.bounds.radius * 1.32 / Math.sin(limitingFov);
+  }
+
+  private frameAll(): void {
+    const distance = this.fittedDistance();
     this.controls.maxDistance = Math.max(1800, distance * 4);
     this.camera.far = Math.max(3000, this.controls.maxDistance + this.bounds.radius * 3);
     this.camera.updateProjectionMatrix();
@@ -644,6 +648,9 @@ class CareerScene implements CareerGraphSceneHandle {
     if (rotating) this.controls.update(delta);
     this.updateCursor(delta, time);
     const distance = this.controls.getDistance();
+    this.cursorUniforms.uCursorOffset.value = cursorRepulsionOffset(distance / this.fittedDistance());
+    const cursorOffset = this.cursorUniforms.uCursorOffset.value.toFixed(3);
+    if (this.root.dataset.cursorOffset !== cursorOffset) this.root.dataset.cursorOffset = cursorOffset;
     this.fog.near = Math.max(1, distance - this.bounds.radius * 0.7);
     this.fog.far = distance + this.bounds.radius * 2;
     for (const material of [this.nodesMaterial, this.nodeAuraMaterial]) {

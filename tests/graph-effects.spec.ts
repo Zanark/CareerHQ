@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { edgeRepulsionShader } from '../src/graph/edgeRepulsion';
+import { CURSOR_REPULSION_PX, cursorRepulsionOffset, edgeRepulsionShader } from '../src/graph/edgeRepulsion';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -94,6 +94,34 @@ test('cursor repulsion is a transient visual response, not movement of saved nod
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 
+test('cursor force starts doubled, progressively decreases with zoom and returns with Frame all', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const scene = await ready(page);
+  const raw = await page.evaluate(key => localStorage.getItem(key), key);
+  const nodes = await scene.getAttribute('data-node-count');
+  const edges = await scene.getAttribute('data-edge-count');
+  const force = async () => Number(await scene.getAttribute('data-cursor-offset'));
+  await expect.poll(force).toBeCloseTo(56, 2);
+  for (let step = 1; step <= 4; step++) {
+    await page.getByRole('button', { name: 'Zoom career graph in', exact: true }).click();
+    await expect.poll(force).toBeCloseTo(cursorRepulsionOffset(.8 ** step), 2);
+  }
+  const canvas = scene.locator('canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  const beforeWheel = await force();
+  await page.mouse.wheel(0, -200);
+  await expect.poll(force).toBeLessThan(beforeWheel);
+  await page.getByRole('button', { name: 'Frame all', exact: true }).click();
+  await expect.poll(force).toBeCloseTo(56, 2);
+  await page.getByRole('button', { name: 'Zoom career graph out', exact: true }).click();
+  await expect.poll(force).toBeCloseTo(56, 2);
+  await expect(scene).toHaveAttribute('data-node-count', nodes!);
+  await expect(scene).toHaveAttribute('data-edge-count', edges!);
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
+});
+
 test('reduced motion starts paused and an explicit resume is usable', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const scene = await ready(page);
@@ -106,7 +134,7 @@ test('reduced motion starts paused and an explicit resume is usable', async ({ p
 });
 
 test('the actual GPU displacement is outward on both sides, smooth through center and fixed at endpoints', async ({ page }) => {
-  const samples = await page.evaluate(shader => {
+  const samples = await page.evaluate(({ shader, maximumOffset }) => {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
     if (!gl) throw new Error('A real WebGL2 context is required.');
@@ -144,7 +172,7 @@ test('the actual GPU displacement is outward on both sides, smooth through cente
       gl.uniform2f(gl.getUniformLocation(program, 'uCursor'), 0, 0);
       gl.uniform2f(gl.getUniformLocation(program, 'uCursorViewport'), 320, 320);
       gl.uniform1f(gl.getUniformLocation(program, 'uCursorRadius'), 115);
-      gl.uniform1f(gl.getUniformLocation(program, 'uCursorOffset'), 28);
+      gl.uniform1f(gl.getUniformLocation(program, 'uCursorOffset'), maximumOffset);
       gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, feedback);
       gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, output);
       const count = 481;
@@ -166,7 +194,7 @@ test('the actual GPU displacement is outward on both sides, smooth through cente
         }
         gl.bufferData(gl.ARRAY_BUFFER, points, gl.STATIC_DRAW);
         for (const t of [0, .5, 1]) {
-          for (const strength of [0, 1]) {
+          for (const strength of [0, .5, 1]) {
             gl.vertexAttrib1f(gl.getAttribLocation(program, 'aT'), t);
             gl.uniform1f(gl.getUniformLocation(program, 'uCursorStrength'), strength);
             gl.beginTransformFeedback(gl.POINTS);
@@ -194,17 +222,19 @@ test('the actual GPU displacement is outward on both sides, smooth through cente
       gl.deleteShader(fragment);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
-  }, edgeRepulsionShader);
-  expect(samples).toHaveLength(481 * 12);
+  }, { shader: edgeRepulsionShader, maximumOffset: CURSOR_REPULSION_PX });
+  expect(samples).toHaveLength(481 * 18);
   expect(samples.filter(sample => {
     const length = Math.hypot(...sample.displacement);
     const fixed = sample.t === 0 || sample.t === 1 || sample.strength === 0 || sample.offset === 0;
-    return !sample.displacement.every(Number.isFinite) || length > 28.001 ||
+    return !sample.displacement.every(Number.isFinite) || length > CURSOR_REPULSION_PX + .001 ||
       sample.offset * sample.displacement[sample.axis] < -.001 || (fixed && length >= .001);
   })).toEqual([]);
   for (const axis of [0, 1]) {
     const moving = samples.filter(sample => sample.axis === axis && sample.t === .5 && sample.strength === 1);
+    const legacyForce = samples.filter(sample => sample.axis === axis && sample.t === .5 && sample.strength === .5);
+    expect(moving.filter((sample, index) => Math.abs(sample.displacement[axis] - 2 * legacyForce[index].displacement[axis]) > .001)).toEqual([]);
     const differences = moving.slice(1).map((sample, index) => Math.abs(sample.displacement[axis] - moving[index].displacement[axis]));
-    expect(Math.max(...differences)).toBeLessThan(3);
+    expect(Math.max(...differences)).toBeLessThan(CURSOR_REPULSION_PX / 10);
   }
 });
