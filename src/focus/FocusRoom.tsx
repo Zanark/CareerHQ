@@ -52,7 +52,8 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   const [snapshot, setSnapshot] = useState<CareerGraph | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState('');
-  const [ambientMotion, setAmbientMotion] = useState(true);
+  const [ambientMotion, setAmbientMotion] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [motionOptIn, setMotionOptIn] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [graphics, setGraphics] = useState<'loading' | 'ready' | 'unavailable' | 'lost'>('loading');
   const [acknowledgment, setAcknowledgment] = useState('');
@@ -155,7 +156,13 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   useEffect(() => {
     const stage = stageRef.current;
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onMotion = () => setReducedMotion(preference.matches);
+    const onMotion = () => {
+      setReducedMotion(preference.matches);
+      if (preference.matches) {
+        setAmbientMotion(false);
+        setMotionOptIn(false);
+      }
+    };
     const onFullscreen = () => {
       const owned = document.fullscreenElement === stageRef.current;
       setFullscreen(owned);
@@ -192,12 +199,12 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   };
   const error = session.error || actionError || (session.pendingSave ? 'A session change has not been saved yet. Retry saving before continuing.' : '');
   const toggleLabel = session.running ? 'Pause' : session.phase === 'paused' ? 'Continue' : session.phase === 'finished' ? 'Start again' : 'Start';
-  const motionActive = open && session.running && ambientMotion && !reducedMotion;
-  const motionDescription = graphics !== 'ready' ? '' : reducedMotion
-    ? ' Motion is off for your reduced-motion preference.'
-    : !ambientMotion ? ' Ambient motion is off.'
-      : session.running ? ' Gentle motion is on.'
-        : session.phase === 'ready' ? ' Motion starts with the timer.' : ' Motion is paused with the timer.';
+  const motionActive = open && ambientMotion && (!reducedMotion || motionOptIn);
+  const motionDescription = graphics !== 'ready' ? '' : motionActive
+    ? ' Gentle motion is on.'
+    : reducedMotion && !motionOptIn
+      ? ' Reduced motion: off until you enable Ambient motion.'
+      : ' Ambient motion is off.';
 
   return (
     <dialog
@@ -218,7 +225,8 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
             <BackgroundBoundary onFailure={onGraphicsFailure}>
               <Suspense fallback={null}>
                 <CareerGraphScene graph={snapshot} selectedId={null} onSelect={ignoreSelection}
-                  autoRotate={motionActive} visualProfile="focus" onStatusChange={onGraphics} />
+                  autoRotate={motionActive} animate={motionActive} allowReducedMotion={motionOptIn}
+                  rimOnly={false} visualProfile="focus" onStatusChange={onGraphics} />
               </Suspense>
             </BackgroundBoundary>
           )}
@@ -267,7 +275,10 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
         </div>
         <footer className="focus-room__footer">
           <div className="focus-room__preferences">
-            <label className="focus-room__ambient"><input type="checkbox" data-tour="focus-room-ambient" checked={ambientMotion} onChange={event => setAmbientMotion(event.target.checked)} />Ambient motion</label>
+            <label className="focus-room__ambient"><input type="checkbox" data-tour="focus-room-ambient" checked={ambientMotion} onChange={event => {
+              setAmbientMotion(event.target.checked);
+              setMotionOptIn(event.target.checked && reducedMotion);
+            }} />Ambient motion</label>
             <button type="button" className="focus-room__utility" data-tour="focus-room-fullscreen" onClick={fullscreen ? leaveFullscreen : enterFullscreen}>
               {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}{fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             </button>

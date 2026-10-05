@@ -112,7 +112,7 @@ describe('independently orbiting rim arcs', () => {
       expect(axis.length()).toBeCloseTo(1, 6);
       expect(speeds.getX(index)).toBe(speeds.getX(index + 1));
       expect(Math.abs(speeds.getX(index))).toBeGreaterThanOrEqual(0.028);
-      expect(Math.abs(speeds.getX(index))).toBeLessThanOrEqual(0.113);
+      expect(Math.abs(speeds.getX(index))).toBeLessThanOrEqual(0.226);
       expect(Math.abs(position.dot(axis))).toBeLessThan(0.000001);
       expect(position.clone().applyAxisAngle(axis, speeds.getX(index) * 400).length()).toBeCloseTo(position.length(), 5);
     }
@@ -124,6 +124,47 @@ describe('independently orbiting rim arcs', () => {
     expect(rimMaterial(core).fragmentShader).toContain('if (clearance < 1.035) discard');
     core.dispose();
     repeat.dispose();
+  });
+
+  it('boosts exactly two distinct rings by 1.5x and 2x without altering the other original speeds', () => {
+    const original = [
+      [-0.059875801915, 0.048182137383, 0.078584063323, -0.031296684774],
+      [0.082183274286, 0.044465094842, -0.084656528006, 0.066178309777],
+      [0.031601344114, -0.032388548447, 0.077641187241, 0.079343642821],
+      [-0.042214634527, 0.029587570407, 0.076300416460, -0.080202850757],
+      [0.102459483143, 0.028242549119, -0.04160929843, 0.093457024578],
+      [0.042735763106, -0.045959925189, 0.042144470065, 0.048087785497],
+      [-0.080628957003, 0.038814483106, 0.088261424612, -0.101339395317],
+      [0.043564357529, 0.104013910541, -0.064057251935, 0.068670454955],
+      [0.092880286815, -0.062971120235, 0.09314318404, 0.042805607593],
+      [-0.076484073945, 0.081521349508, 0.097047764688, -0.068195555607],
+      [0.110841959534, 0.037480880126, -0.089088077874, 0.057338106049],
+      [0.110524550671, -0.103567686611, 0.072928312423, 0.06607340849],
+      [-0.112855008112, 0.066613879039, 0.060581409011, -0.073441401463],
+      [0.064183272589, 0.087256248795, -0.055952398384, 0.060645329735],
+      [0.107711955329, -0.099761167322, 0.050048428673, 0.112706132042],
+    ];
+    const core = new HolographicCore();
+    const geometry = rimLines(core).geometry;
+    const axes = geometry.getAttribute('aOrbitAxis');
+    const speeds = geometry.getAttribute('aOrbitSpeed');
+    const rings = new Map<string, Set<number>>();
+    for (let index = 0; index < speeds.count; index++) {
+      const axis = [axes.getX(index), axes.getY(index), axes.getZ(index)].join(',');
+      if (!rings.has(axis)) rings.set(axis, new Set());
+      rings.get(axis)!.add(speeds.getX(index));
+    }
+    expect(rings.size).toBe(15);
+    const multipliers = [...rings.values()].map((ring, index) => {
+      const actual = [...ring].sort((a, b) => a - b);
+      const baseline = [...original[index]].sort((a, b) => a - b);
+      expect(actual).toHaveLength(4);
+      const multiplier = Math.round(actual[0] / baseline[0] * 10) / 10;
+      actual.forEach((speed, arc) => expect(speed).toBeCloseTo(baseline[arc] * multiplier, 7));
+      return multiplier;
+    });
+    expect(multipliers.sort((a, b) => a - b)).toEqual([...Array<number>(13).fill(1), 1.5, 2]);
+    core.dispose();
   });
 
   it('advances only by supplied active-frame deltas, keeping pause and resume continuous', () => {
@@ -143,7 +184,7 @@ describe('independently orbiting rim arcs', () => {
     core.dispose();
   });
 
-  it('keeps the focus profile slow and sparse while restoring career rim sparks', () => {
+  it('halves particles in both profiles and keeps focus motion visibly slower than career motion', () => {
     const core = new HolographicCore();
     const calm = new HolographicCore(true);
     const camera = new PerspectiveCamera();
@@ -151,7 +192,7 @@ describe('independently orbiting rim arcs', () => {
       item.resize(700, 1, false);
       item.update(camera, 1);
     }
-    expect(rimMaterial(calm).uniforms.uPhase.value).toBeCloseTo(0.055);
+    expect(rimMaterial(calm).uniforms.uPhase.value).toBeCloseTo(0.4);
     expect(rimMaterial(core).uniforms.uPhase.value).toBe(1);
     expect(rimMaterial(calm).uniforms.uOpacity.value).toBeCloseTo(0.55 * 0.48);
     const particleCount = (item: HolographicCore) => {
@@ -159,12 +200,12 @@ describe('independently orbiting rim arcs', () => {
       item.object.traverse(object => { if (object instanceof Points) count += object.geometry.drawRange.count; });
       return count;
     };
-    expect(particleCount(core)).toBe(3600);
-    expect(particleCount(calm)).toBe(600);
+    expect(particleCount(core)).toBe(1800);
+    expect(particleCount(calm)).toBe(300);
     core.resize(400, 1.25, true);
     calm.resize(400, 1, true);
-    expect(particleCount(core)).toBe(1800);
-    expect(particleCount(calm)).toBe(350);
+    expect(particleCount(core)).toBe(900);
+    expect(particleCount(calm)).toBe(175);
     core.dispose();
     calm.dispose();
   });

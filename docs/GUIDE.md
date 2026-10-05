@@ -74,7 +74,8 @@ Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
 Fine, glowing orange links represent actual graph connections. Decorative arcs
-orbit the outside of the sphere at individual speeds; their front/back segments
+orbit the outside of the sphere at individual speeds, with two stable, randomly
+selected rings boosted by 1.5x and 2x. Their front/back segments
 remain visible by default. **Clear center** optionally masks those projected shell
 segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.
 Connection lines bend away from your cursor but stay attached to their endpoints.
@@ -103,8 +104,11 @@ on the saved tracker. No reading, diagram click or elapsed time proves the work 
 ### The focus room and distraction log
 
 Open **Daily plan -> Full screen focus**. The large timer sits in front of frosted
-glass, with a subdued, genuine 3D career core behind it. The background moves gently
-only while the timer runs and **Ambient motion** is enabled; reduced motion stops it.
+glass, with the current full-shell 3D career graph behind it. The background moves
+gently as soon as the room opens, independently of the timer; **Ambient motion**
+can stop it without pausing your session. Reduced motion starts it still, with
+an explicit opt-in through that checkbox. The room uses finer orange connections,
+subdued glow and fewer particles to keep the timer readable.
 It is visual ambience, not an AI processing work. If browser fullscreen or WebGL is
 unavailable, the window-filling room still provides the timer and recording controls.
 

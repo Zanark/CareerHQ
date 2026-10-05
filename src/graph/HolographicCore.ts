@@ -12,8 +12,7 @@ const TEAL = new Color('#00A591');
 const BLUE = new Color('#268BD2');
 const VIOLET = new Color('#6C71C4');
 
-function seededRandom(): () => number {
-  let seed = 0x43485131;
+function seededRandom(seed = 0x43485131): () => number {
   return () => {
     seed = Math.imul(seed ^ seed >>> 15, 1 | seed);
     seed ^= seed + Math.imul(seed ^ seed >>> 7, 61 | seed);
@@ -84,6 +83,11 @@ export class HolographicCore {
 
   constructor(private readonly calm = false) {
     const random = seededRandom();
+    // A separate seed picks two stable, distinct rings without changing any
+    // existing arc speed, direction or particle placement.
+    const pickRing = seededRandom(0x52494e47);
+    const fasterRing = Math.floor(pickRing() * 15);
+    const fastestRing = (fasterRing + 1 + Math.floor(pickRing() * 14)) % 15;
     const sparks: number[] = [];
     const sparkColors: number[] = [];
     const sparkSizes: number[] = [];
@@ -99,10 +103,11 @@ export class HolographicCore {
     const beltAxes: number[] = [];
     const beltSpeeds: number[] = [];
     for (let belt = 0; belt < 15; belt++) {
+      const speedMultiplier = belt === fasterRing ? 1.5 : belt === fastestRing ? 2 : 1;
       const q = new Quaternion().setFromEuler(new Euler(0.28 + belt * 0.213, belt * 0.41, -0.6 + belt * 0.19));
       const axis = new Vector3(0, 0, 1).applyQuaternion(q);
       const speeds = Array.from({ length: 4 }, (_, arc) =>
-        (0.028 + random() * 0.085) * ((belt + arc) % 3 === 0 ? -1 : 1));
+        (0.028 + random() * 0.085) * ((belt + arc) % 3 === 0 ? -1 : 1) * speedMultiplier);
       const radius = 1.06 + belt / 15 * 0.13;
       const color = belt % 5 === 0 ? TEAL : belt % 5 === 1 ? BLUE : belt % 5 === 2 ? VIOLET : GOLD;
       for (let lane = 0; lane < 3; lane++) {
@@ -134,7 +139,7 @@ export class HolographicCore {
     }
     this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
 
-    while (sparks.length / 3 < 3600) {
+    while (sparks.length / 3 < (calm ? 300 : 1800)) {
       const z = random() * 2 - 1;
       const a = random() * TAU;
       const radial = Math.sqrt(1 - z * z);
@@ -238,14 +243,14 @@ export class HolographicCore {
   resize(height: number, pixelRatio: number, compact: boolean): void {
     this.particles.material.uniforms.uScale.value = height * pixelRatio;
     this.particles.material.uniforms.uRatio.value = pixelRatio;
-    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 350 : 600) : (compact ? 1800 : 3600));
+    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 175 : 300) : (compact ? 900 : 1800));
   }
 
   update(camera: PerspectiveCamera, delta: number): void {
     if (delta > 0) {
       this.phase += delta;
       const motionScale = this.calm ? 0.22 : 1;
-      for (const material of this.filaments) material.uniforms.uPhase.value = this.phase * (this.calm ? 0.055 : 1);
+      for (const material of this.filaments) material.uniforms.uPhase.value = this.phase * (this.calm ? 0.4 : 1);
       this.particles.rotation.y = this.phase * 0.012 * motionScale;
       this.particles.rotation.z = this.phase * 0.004 * motionScale;
       if (this.calm) this.heart.scale.setScalar(this.radius * (1 + 0.012 * Math.sin(this.phase * TAU / 8)));

@@ -133,8 +133,10 @@ pending with an explicit retry. A replaced record stops its previous timer. The
 record signature is checked inside the commit transaction, not only in a later effect.
 
 The room snapshots the actual career graph when opened, so logging does not rebuild
-the background on every press. Its optional focus visual profile suppresses labels
-and picking, lowers render cost and keeps motion subdued. Closing releases the scene.
+the background on every press. Its focus profile uses the current full-shell geometry
+and fine orange strokes, with subdued glow, fewer particles and slower but visible motion.
+Labels and picking stay disabled. Ambient motion is independent of the countdown;
+reduced motion starts it still and requires an explicit opt-in. Closing releases the scene.
 
 ## Practice isolation
 

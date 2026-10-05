@@ -375,7 +375,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.controls.maxDistance = 1800;
     this.controls.rotateSpeed = 0.65;
     this.controls.zoomSpeed = 0.8;
-    this.controls.autoRotateSpeed = visualProfile === 'focus' ? 0.06 : 0.3;
+    this.controls.autoRotateSpeed = visualProfile === 'focus' ? 0.12 : 0.3;
     this.controls.enabled = visualProfile !== 'focus';
     this.controls.mouseButtons = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN };
     this.controls.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
@@ -400,17 +400,10 @@ class CareerScene implements CareerGraphSceneHandle {
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(this.outputPass);
-    this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.55, 0.2, 0.06, 0.01];
-    if (visualProfile === 'focus') {
-      this.bloomPass.strength = 0.35;
-      this.edgesMaterial.linewidth = 1.2;
-      this.edgeGlow.visible = this.selectedEdgeGlow.visible = this.nodeAuras.visible = false;
-    } else {
-      this.bloomPass.threshold = 0.06;
-      this.bloomPass.strength = 0.44;
-      this.bloomPass.radius = 0;
-      this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.08, 0, 0, 0];
-    }
+    this.bloomPass.threshold = 0.06;
+    this.bloomPass.strength = visualProfile === 'focus' ? 0.28 : 0.44;
+    this.bloomPass.radius = 0;
+    this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.08, 0, 0, 0];
     this.root.dataset.ambience = 'procedural-unpickable';
     this.root.dataset.postprocessing = 'gpu-bloom';
     this.root.dataset.edgeStyle = 'orange-screen-space-ribbons';
@@ -465,9 +458,9 @@ class CareerScene implements CareerGraphSceneHandle {
     if (this.visualProfile === 'focus') this.edgeSegments /= 2;
     writeEdgeGeometry(this.edgeGeometry, graph.edges, this.nodeMap, this.edgeSegments);
     const dense = graph.edges.length > 2000;
-    this.edgesMaterial.opacity = this.visualProfile === 'focus' ? 0.18 : dense ? 0.32 : 0.5;
-    this.edgeGlowMaterial.opacity = dense ? 0.1 : 0.16;
-    this.nodeAuraMaterial.uniforms.uOpacity.value = graph.nodes.length > 2000 ? 0.1 : 0.22;
+    this.edgesMaterial.opacity = this.visualProfile === 'focus' ? 0.3 : dense ? 0.32 : 0.5;
+    this.edgeGlowMaterial.opacity = this.visualProfile === 'focus' ? 0.08 : dense ? 0.1 : 0.16;
+    this.nodeAuraMaterial.uniforms.uOpacity.value = this.visualProfile === 'focus' ? 0.08 : graph.nodes.length > 2000 ? 0.1 : 0.22;
     const box = new Box3();
     for (const node of graph.nodes) box.expandByPoint(this.projected.fromArray(node.position));
     if (!box.isEmpty()) {
@@ -645,7 +638,9 @@ class CareerScene implements CareerGraphSceneHandle {
       return;
     }
     this.controls.autoRotate = rotating;
-    const delta = Math.max(0, Math.min((time - this.lastDraw) / 1000, 0.05));
+    // Fullscreen frost can lower the frame rate; a 50ms cap would turn calm
+    // motion into near-stillness. Pause/visibility transitions reset lastDraw.
+    const delta = Math.max(0, Math.min((time - this.lastDraw) / 1000, this.visualProfile === 'focus' ? 0.25 : 0.05));
     if (rotating) this.controls.update(delta);
     this.updateCursor(delta, time);
     const distance = this.controls.getDistance();

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { AppState } from '../src/domain/types';
 import { focusSessionSummary } from '../src/domain/focusSession';
+import { buildCareerGraph } from '../src/graph/careerGraphModel';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
@@ -290,6 +291,95 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 }
 
 test.describe('genuine calm 3D focus room', () => {
+  test('the current full-shell graph visibly moves before starting without recording a session', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await prepare(page, { graphics: true, fullscreen: false, clock: false });
+    const initial = await stored(page);
+    const expected = buildCareerGraph(initial);
+    const before = await raw(page);
+    await openRoom(page);
+    const scene = room(page).locator('.career-graph-scene');
+    await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
+    await expect(scene).toHaveAttribute('data-decoration-mode', 'full-shell');
+    await expect(scene).toHaveAttribute('data-edge-style', 'orange-screen-space-ribbons');
+    await expect(scene).toHaveAttribute('data-node-count', String(expected.nodes.length));
+    await expect(scene).toHaveAttribute('data-edge-count', String(expected.edges.length));
+    await expect(scene).toHaveAttribute('data-animation-state', 'running');
+    const first = await room(page).screenshot();
+    const firstTime = Number(await scene.getAttribute('data-animation-time'));
+    await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(firstTime + 1);
+    const second = await room(page).screenshot();
+    const visibleChanges = await page.evaluate(async ([first, second]) => {
+      const pixels = async (data: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, canvas.width, canvas.height).data;
+      };
+      const a = await pixels(first), b = await pixels(second);
+      let changed = 0;
+      for (let index = 0; index < a.length; index += 4) {
+        if (Math.abs(a[index] - b[index]) + Math.abs(a[index + 1] - b[index + 1]) + Math.abs(a[index + 2] - b[index + 2]) > 12) changed++;
+      }
+      return changed;
+    }, [first.toString('base64'), second.toString('base64')]);
+    expect(visibleChanges, 'Motion must be visible through the real frosted-glass composition, not only in a counter').toBeGreaterThan(100);
+    await testInfo.attach('focus-full-shell-moving', { body: second, contentType: 'image/png' });
+    expect(await raw(page)).toBe(before);
+    await room(page).locator('[data-tour="focus-room-ambient"]').uncheck();
+    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
+  });
+
+  test('ambient motion stays independent of timer pause and distraction recording', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await prepare(page, { graphics: true, fullscreen: false, clock: false });
+    await openRoom(page);
+    const scene = room(page).locator('.career-graph-scene');
+    await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
+    const canvas = scene.locator('canvas');
+    await canvas.evaluate(element => element.setAttribute('data-original-focus-canvas', 'true'));
+    const edges = await scene.getAttribute('data-edge-count');
+    await room(page).locator('[data-tour="focus-room-toggle"]').click();
+    await room(page).locator('[data-tour="focus-room-toggle"]').click();
+    await expect(room(page).locator('[data-focus-room-stage]')).toHaveAttribute('data-phase', 'paused');
+    await expect(scene).toHaveAttribute('data-animation-state', 'running');
+    const pausedTime = Number(await scene.getAttribute('data-animation-time'));
+    await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(pausedTime);
+    await room(page).locator('[data-tour="focus-room-distraction"]').click();
+    await expect(canvas).toHaveAttribute('data-original-focus-canvas', 'true');
+    await expect(scene).toHaveAttribute('data-edge-count', edges!);
+    expect(reports(await stored(page))).toHaveLength(1);
+    await room(page).locator('[data-tour="focus-room-ambient"]').uncheck();
+    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
+    const stopped = await scene.getAttribute('data-animation-time');
+    await page.waitForTimeout(200);
+    await expect(scene).toHaveAttribute('data-animation-time', stopped!);
+  });
+
+  for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
+    test(`the moving full-shell backdrop preserves focus controls at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await prepare(page, { graphics: true, fullscreen: false, clock: false });
+      await startRoom(page);
+      const scene = room(page).locator('.career-graph-scene');
+      await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
+      await expect(scene).toHaveAttribute('data-animation-state', 'running');
+      await expect(scene).toHaveAttribute('data-decoration-mode', 'full-shell');
+      await expect(room(page).locator('[data-tour="focus-room-time"]')).toBeInViewport({ ratio: 1 });
+      await expect(room(page).locator('[data-tour="focus-room-distraction"]')).toBeInViewport({ ratio: 1 });
+      await room(page).locator('[data-tour="focus-room-distraction"]').click();
+      expect(reports(await stored(page))).toHaveLength(1);
+      await room(page).locator('[data-tour="focus-room-ambient"]').uncheck();
+      await expect(scene).toHaveAttribute('data-animation-state', 'paused');
+      await testInfo.attach('current-compact-focus-room', { body: await room(page).screenshot(), contentType: 'image/png' });
+    });
+  }
+
   test('native fullscreen keeps the graph quiet, the snapshot stable and the timer alive after closing', async ({ page }) => {
     await prepare(page, { graphics: true, fullscreen: true, clock: false });
     await startRoom(page);
@@ -325,6 +415,17 @@ test.describe('genuine calm 3D focus room', () => {
     await page.waitForTimeout(400);
     await expect(scene).toHaveAttribute('data-view-revision', revision!);
     await room(page).locator('[data-tour="focus-room-distraction"]').click();
+    expect(reports(await stored(page))).toHaveLength(1);
+    const ambient = room(page).locator('[data-tour="focus-room-ambient"]');
+    await expect(ambient).not.toBeChecked();
+    await ambient.check();
+    await expect(scene).toHaveAttribute('data-animation-state', 'running');
+    const time = Number(await scene.getAttribute('data-animation-time'));
+    await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(time);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(ambient).not.toBeChecked();
+    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
     expect(reports(await stored(page))).toHaveLength(1);
   });
 });

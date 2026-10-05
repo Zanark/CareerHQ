@@ -50,7 +50,9 @@ Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
 notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orange
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
-their endpoints. Decorative outer arcs have independent orbital speeds. Full-shell
+their endpoints. Decorative outer arcs have independent orbital speeds; two stable sampled rings run
+at 1.5x and 2x their original speeds. The yellow particle counts are halved in each
+viewport/profile. Full-shell
 projection is the default; **Clear center** restores the optional projected-rim mask.
 Glow, sparks and outer arcs are not additional tasks, relationships or evidence of a
 connected AI. **Pause animation** is separate from camera orbit and inspection.
