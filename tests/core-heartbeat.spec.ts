@@ -7,7 +7,7 @@ const key = 'careerhq.workspace.v1';
 async function ready(page: Page) {
   const scene = page.locator('.career-graph-scene');
   await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-  await expect(scene).toHaveAttribute('data-heartbeat-period-ms', '3000');
+  await expect(scene).toHaveAttribute('data-heartbeat-period-ms', '10000');
   return scene;
 }
 
@@ -58,19 +58,19 @@ for (const viewport of [{ width: 1920, height: 1200 }, { width: 390, height: 844
   });
 }
 
-test('the heartbeat completes a three-second cycle even when animation frames are skipped', async ({ page }) => {
+test('the heartbeat completes a ten-second cycle even when animation frames are skipped', async ({ page }) => {
   const scene = await frozenMain(page);
-  await expect(scene).toHaveAttribute('data-heartbeat-period-ms', '3000');
+  await expect(scene).toHaveAttribute('data-heartbeat-period-ms', '10000');
   const cycle = Number(await scene.getAttribute('data-heartbeat-cycle'));
   for (let beat = 1; beat <= 2; beat++) {
-    await page.clock.fastForward(3000);
+    await page.clock.fastForward(10000);
     await page.clock.runFor(50);
     await expect(scene).toHaveAttribute('data-heartbeat-cycle', String(cycle + beat));
   }
   await expect(scene).toHaveAttribute('data-orbit-pulse-count', '0');
 });
 
-test('the expanding ripple changes rendered pixels without changing work or orbit motion', async ({ page }, testInfo) => {
+test('the travelling mesh ripple changes rendered pixels without a separate ring or data changes', async ({ page }, testInfo) => {
   const scene = await frozenMain(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
   await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
@@ -79,18 +79,23 @@ test('the expanding ripple changes rendered pixels without changing work or orbi
   await heartbeat.uncheck();
   await page.clock.runFor(50);
   await heartbeat.check();
-  await page.clock.fastForward(900);
+  await page.clock.fastForward(2500);
   await page.clock.runFor(50);
-  await expect(scene).toHaveAttribute('data-heartbeat-wave-visible', 'true');
+  await expect(scene).toHaveAttribute('data-heartbeat-visualization', 'mesh-ripple');
+  await expect(scene).toHaveAttribute('data-heartbeat-wave-active', 'true');
   const canvas = scene.locator('canvas');
   await canvas.scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
+  await page.clock.runFor(50);
+  await expect.poll(async () => Number(await scene.getAttribute('data-cursor-strength'))).toBe(0);
   const wave = await canvas.screenshot();
   await heartbeat.uncheck();
   await page.clock.runFor(50);
-  await expect(scene).toHaveAttribute('data-heartbeat-wave-visible', 'false');
+  await expect(scene).toHaveAttribute('data-heartbeat-wave-active', 'false');
   await canvas.scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
+  await page.clock.runFor(50);
+  await expect.poll(async () => Number(await scene.getAttribute('data-cursor-strength'))).toBe(0);
   const still = await canvas.screenshot();
   const a = PNG.sync.read(wave), b = PNG.sync.read(still);
   expect([a.width, a.height]).toEqual([b.width, b.height]);
@@ -98,9 +103,63 @@ test('the expanding ripple changes rendered pixels without changing work or orbi
   for (let index = 0; index < a.data.length; index += 4) {
     if (Math.abs(a.data[index] - b.data[index]) + Math.abs(a.data[index + 1] - b.data[index + 1]) + Math.abs(a.data[index + 2] - b.data[index + 2]) > 12) changed++;
   }
-  expect(changed, 'The actual spherical ripple must be visible, not just a running counter').toBeGreaterThan(100);
+  expect(changed, 'The meshes must visibly respond to the travelling wave, not just a running counter').toBeGreaterThan(100);
   await testInfo.attach('core-ripple-on', { body: wave, contentType: 'image/png' });
   await testInfo.attach('core-ripple-off', { body: still, contentType: 'image/png' });
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
+});
+
+test('a real node gently moves outward, returns exactly and remains pickable at the displaced position', async ({ page }) => {
+  const scene = await frozenMain(page);
+  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  const heartbeat = page.getByRole('checkbox', { name: 'Core heartbeat', exact: true });
+  await heartbeat.uncheck();
+  await page.clock.runFor(50);
+  const raw = await page.evaluate(key => localStorage.getItem(key), key);
+  await page.getByLabel('Search career graph nodes', { exact: true }).fill('DSA');
+  await page.locator('.career-graph-node-list > button').filter({ has: page.getByText('DSA', { exact: true }) }).click();
+  await page.clock.runFor(50);
+  const marker = scene.locator('.career-graph-scene__selected-marker');
+  const coordinates = async () => ({
+    x: Number(await marker.getAttribute('data-screen-x')),
+    y: Number(await marker.getAttribute('data-screen-y')),
+  });
+  const baseline = await coordinates();
+  const core = {
+    x: Number(await scene.getAttribute('data-core-screen-x')),
+    y: Number(await scene.getAttribute('data-core-screen-y')),
+  };
+  await heartbeat.check();
+  await page.clock.runFor(50);
+  const samples: { phase: number; x: number; y: number; displacement: number }[] = [];
+  for (let step = 0; step < 13; step++) {
+    await page.clock.fastForward(500);
+    await page.clock.runFor(50);
+    const point = await coordinates();
+    const dx = point.x - baseline.x, dy = point.y - baseline.y;
+    expect(dx * (baseline.x - core.x) + dy * (baseline.y - core.y)).toBeGreaterThanOrEqual(-1);
+    samples.push({ ...point, phase: Number(await scene.getAttribute('data-heartbeat-phase')), displacement: Math.hypot(dx, dy) });
+  }
+  const peak = samples.reduce((best, point) => point.displacement > best.displacement ? point : best);
+  expect(peak.displacement).toBeGreaterThan(1);
+  const settled = await coordinates();
+  expect(settled.x).toBeCloseTo(baseline.x, 1);
+  expect(settled.y).toBeCloseTo(baseline.y, 1);
+  await heartbeat.uncheck();
+  await page.clock.runFor(50);
+  await heartbeat.check();
+  await page.clock.fastForward(Math.round(peak.phase * 1000));
+  await page.clock.runFor(50);
+  const displaced = await coordinates();
+  expect(Math.hypot(displaced.x - baseline.x, displaced.y - baseline.y)).toBeGreaterThan(1);
+  await page.getByRole('button', { name: 'Close node details', exact: true }).click();
+  const canvas = scene.locator('canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  await canvas.click({ position: displaced });
+  await page.clock.runFor(50);
+  await expect(canvas).toHaveAttribute('data-selected-node-id', 'mission:pattern');
+  await heartbeat.uncheck();
+  await page.clock.runFor(50);
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 

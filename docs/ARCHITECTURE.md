@@ -59,9 +59,11 @@ their useful anchors. The accessible ring index and inspector work without WebGL
 The animation pause control is independent of inspection and camera manipulation.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 The optional periodic core heartbeat is separate from saved-status completion pulses.
-Its source is the real core node, its three-second cadence uses active elapsed time,
-and it never creates graph records or focus events. Focus framing targets that core;
-the main graph retains its user-controlled camera.
+Its source is the real core node and its ten-second cadence uses active elapsed time.
+A shared radial deformation moves rendered meshes outward and back without changing
+model coordinates; node/edge/orbit endpoints, labels and picking must use equivalent
+positions. No standalone luminous wave ring is drawn. It never creates graph records
+or focus events. Focus framing targets the core; the main graph retains its camera.
 
 There is no backend, authentication layer, remote database, agent execution service,
 or model call. All nine latest missions now have documented tracking units, totaling

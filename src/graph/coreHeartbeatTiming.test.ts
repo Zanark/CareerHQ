@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   CoreHeartbeatClock, HEARTBEAT_PERIOD_MS, heartbeatCoreScale, heartbeatEnvelope,
-  heartbeatGlow, heartbeatWaveOpacity,
+  heartbeatGlow, heartbeatWaveEnvelope,
 } from './coreHeartbeatTiming';
 
-describe('three-second active-wall-time heartbeat', () => {
-  it('has exact boundaries at 0, 3000 and 6000 milliseconds', () => {
+describe('ten-second active-wall-time ripple', () => {
+  it('has exact boundaries at 0, 10000 and 20000 milliseconds', () => {
     const clock = new CoreHeartbeatClock();
-    expect(HEARTBEAT_PERIOD_MS).toBe(3000);
-    for (const [time, cycle, phase] of [[0, 0, 0], [2999, 0, 2.999], [3000, 1, 0], [6000, 2, 0]]) {
+    expect(HEARTBEAT_PERIOD_MS).toBe(10000);
+    for (const [time, cycle, phase] of [[0, 0, 0], [9999, 0, 9.999], [10000, 1, 0], [20000, 2, 0]]) {
       clock.update(time, true);
       expect(clock.running).toBe(true);
       expect(clock.cycle).toBe(cycle);
@@ -19,10 +19,10 @@ describe('three-second active-wall-time heartbeat', () => {
   it('uses the current phase after skipped visible frames, without slowing or queueing missed waves', () => {
     const clock = new CoreHeartbeatClock();
     clock.update(120, true);
-    clock.update(7970, true);
+    clock.update(27970, true);
     expect(clock.cycle).toBe(2);
-    expect(clock.phase).toBeCloseTo(1.85);
-    clock.update(12120, true);
+    expect(clock.phase).toBeCloseTo(7.85);
+    clock.update(40120, true);
     expect(clock.cycle).toBe(4);
     expect(clock.phase).toBe(0);
   });
@@ -37,7 +37,7 @@ describe('three-second active-wall-time heartbeat', () => {
     expect(clock).toMatchObject({ running: false, cycle: 0, phase: 0 });
     clock.update(200100, true);
     expect(clock).toMatchObject({ running: true, cycle: 0, phase: 0 });
-    clock.update(203100, true);
+    clock.update(210100, true);
     expect(clock).toMatchObject({ cycle: 1, phase: 0 });
     clock.reset();
     clock.update(800000, true);
@@ -49,8 +49,8 @@ describe('three-second active-wall-time heartbeat', () => {
     clock.update(0, true);
     clock.update(5000, true);
     for (const time of [4900, NaN, Infinity]) clock.update(time, true);
-    expect(clock.cycle).toBe(1);
-    expect(clock.phase).toBe(2);
+    expect(clock.cycle).toBe(0);
+    expect(clock.phase).toBe(5);
   });
 
   it('gently grows the core in a double bump, never shrinking below its opaque baseline', () => {
@@ -59,14 +59,16 @@ describe('three-second active-wall-time heartbeat', () => {
     expect(heartbeatEnvelope(0.4)).toBeCloseTo(0.58);
     expect(heartbeatEnvelope(0.8)).toBe(0);
     for (const calm of [false, true]) {
-      for (let milliseconds = 0; milliseconds < 3000; milliseconds++) {
+      for (let milliseconds = 0; milliseconds < 10000; milliseconds += 5) {
         const strength = heartbeatEnvelope(milliseconds / 1000);
         expect(strength).toBeGreaterThanOrEqual(0);
         expect(strength).toBeLessThanOrEqual(1);
         expect(heartbeatCoreScale(strength, calm)).toBeGreaterThanOrEqual(1);
         expect(heartbeatCoreScale(strength, calm)).toBeLessThanOrEqual(1 + (calm ? 0.1 : 0.14));
         expect(heartbeatGlow(strength, calm)).toBeGreaterThanOrEqual(1);
-        expect(heartbeatWaveOpacity(milliseconds / 1000, calm)).toBeLessThanOrEqual(calm ? 0.2 : 0.28);
+        expect(heartbeatWaveEnvelope(milliseconds / 1000)).toBeLessThanOrEqual(1);
+        expect(heartbeatWaveEnvelope(milliseconds / 1000)).toBeGreaterThanOrEqual(0);
+        if (milliseconds >= 6000) expect(heartbeatWaveEnvelope(milliseconds / 1000)).toBe(0);
       }
     }
   });

@@ -72,7 +72,7 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-intro', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-summary'],
     title: 'Your career in a 3D view',
-    body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and references are not extra tasks. Drag to rotate or scroll to zoom. Core heartbeat controls a visual ripple from the white center every three seconds, not work or AI activity. This tutorial shows only temporary practice data.',
+    body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and references are not extra tasks. Drag to rotate or scroll to zoom. Core heartbeat gently pushes the meshes outward and back every ten seconds; it is visual, not work or AI activity. This tutorial shows only temporary practice data.',
   },
   {
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',

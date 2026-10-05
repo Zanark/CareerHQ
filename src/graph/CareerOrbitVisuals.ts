@@ -8,15 +8,18 @@ import { CAREER_ORBIT_PLANES, orbitPoint } from './careerOrbitMotion';
 import { CareerOrbitSavedPulses, SAVED_STATUS_PULSE_SECONDS } from './careerOrbitSavedPulses';
 import type { SavedStatusPulse } from './careerOrbitSavedPulses';
 import type { CareerOrbitScreenHit } from './careerSceneInteraction';
+import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
+import type { CareerRippleField } from './careerRipple';
 
 const TAU = Math.PI * 2;
 const STATUS = { complete: new Color('#45D072'), incomplete: new Color('#F34B00'), reference: new Color('#268BD2') };
 const WHITE = new Color('#EEE8D5');
 const vertex = `
+  ${careerRippleVertexShader}
   varying vec3 vColor;
   varying vec3 vViewPosition;
   void main() {
-    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+    vec4 viewPosition = rippleView(modelViewMatrix * vec4(position, 1.0));
     vColor = color;
     vViewPosition = viewPosition.xyz;
     gl_Position = projectionMatrix * viewPosition;
@@ -48,6 +51,7 @@ function lineMaterial(masked = false, opacity = 0.65): ShaderMaterial {
       }`,
     vertexColors: true, transparent: true, depthWrite: false, toneMapped: false,
     uniforms: {
+      ...createRippleUniforms(),
       uOpacity: { value: opacity }, uCenterView: { value: new Vector3() },
       uRadius: { value: 1 }, uRimOnly: { value: 0 },
     },
@@ -94,7 +98,7 @@ export class CareerOrbitVisuals {
         gl_FragColor = vec4(vColor, alpha);
         #include <colorspace_fragment>
       }`,
-    uniforms: { uPixelRatio: { value: 1 } },
+    uniforms: { ...createRippleUniforms(), uPixelRatio: { value: 1 } },
     vertexColors: true, transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
   }));
   readonly primaryTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.22));
@@ -124,6 +128,7 @@ export class CareerOrbitVisuals {
   private phase = 0;
   private dirty = true;
   private disposed = false;
+  private ripple: CareerRippleField | null = null;
   private detailSegments = 8;
   private readonly primarySegments = 8;
 
@@ -305,6 +310,19 @@ export class CareerOrbitVisuals {
     return true;
   }
 
+  getDisplayedAnchor(selection: CareerOrbitSelection, target: Vector3): boolean {
+    if (!this.getAnchor(selection, target)) return false;
+    this.ripple?.deformWorld(target, target);
+    return true;
+  }
+
+  setRippleField(field: CareerRippleField): void {
+    this.ripple = field;
+    for (const material of [this.paths.material, this.anchors.material, this.primaryTethers.material, this.detailTethers.material, this.savedPulseTethers.material]) {
+      Object.assign(material.uniforms, field.uniforms);
+    }
+  }
+
   setVisible(value: boolean): void { this.object.visible = value; }
   setRimOnly(value: boolean): void { this.paths.material.uniforms.uRimOnly.value = Number(value); }
   resize(pixelRatio: number): void { this.anchors.material.uniforms.uPixelRatio.value = pixelRatio; }
@@ -473,7 +491,7 @@ export class CareerOrbitVisuals {
     };
     let best: CareerOrbitSelection | undefined;
     let closest = 11;
-    if (this.selection && this.getAnchor(this.selection, this.projectedA) && project(this.projectedA)) {
+    if (this.selection && this.getDisplayedAnchor(this.selection, this.projectedA) && project(this.projectedA)) {
       const distance = Math.hypot(x - this.projectedA.x, y - this.projectedA.y);
       if (distance < closest) {
         closest = distance;
@@ -484,6 +502,7 @@ export class CareerOrbitVisuals {
     if (!anchors) return undefined;
     this.entries.forEach((entry, index) => {
       this.projectedA.fromBufferAttribute(anchors, index);
+      this.ripple?.deformWorld(this.projectedA, this.projectedA);
       if (!project(this.projectedA)) return;
       const distance = Math.hypot(x - this.projectedA.x, y - this.projectedA.y);
       if (distance < closest) {
@@ -512,6 +531,8 @@ export class CareerOrbitVisuals {
       for (let index = range.start; index < range.end; index += 2) {
         this.projectedA.fromBufferAttribute(positions, index);
         this.projectedB.fromBufferAttribute(positions, index + 1);
+        this.ripple?.deformWorld(this.projectedA, this.projectedA);
+        this.ripple?.deformWorld(this.projectedB, this.projectedB);
         if (masked) {
           this.scratch.copy(this.projectedA).add(this.projectedB).multiplyScalar(0.5)
             .applyMatrix4(camera.matrixWorldInverse).normalize().cross(centerView);
@@ -546,5 +567,6 @@ export class CareerOrbitVisuals {
     this.originalColors = new Float32Array();
     this.savedPulses.dispose();
     this.pulseTargets.clear();
+    this.ripple = null;
   }
 }

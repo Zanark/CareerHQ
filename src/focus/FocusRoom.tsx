@@ -286,7 +286,7 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
               setAmbientMotion(event.target.checked);
               setMotionOptIn(event.target.checked && reducedMotion);
             }} />Ambient motion</label>
-            <label className="focus-room__ambient" title="A visual ripple from the white core every 3 seconds. Requires Ambient motion.">
+            <label className="focus-room__ambient" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds. Requires Ambient motion.">
               <input type="checkbox" data-tour="focus-room-heartbeat" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
             </label>
           </div>

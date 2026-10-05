@@ -35,12 +35,13 @@ import { HolographicCore } from './HolographicCore';
 import { CoreHeartbeat } from './CoreHeartbeat';
 import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
+import { careerEdgeVertexShader, careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import { CareerOrbitVisuals } from './CareerOrbitVisuals';
 import type { OrbitAnchorInfo } from './CareerOrbitVisuals';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import { chooseCareerSceneHit, compactOrbitTooltip, showOrbitIdentityLabels } from './careerSceneInteraction';
 import type { CareerNodeScreenHit, CareerSceneHit } from './careerSceneInteraction';
-import { CURSOR_REPULSION_PX, cursorRepulsionOffset, edgeRepulsionShader } from './edgeRepulsion';
+import { CURSOR_REPULSION_PX, cursorRepulsionOffset } from './edgeRepulsion';
 import type { CareerGraph } from './careerGraphModel';
 import './career-graph-scene.css';
 
@@ -101,6 +102,7 @@ const VIEW_ATTRIBUTE_INTERVAL = 120;
 const CURSOR_EPSILON = 0.0001;
 
 const pointVertexShader = `
+  ${careerRippleVertexShader}
   attribute float aSize;
   attribute float aKind;
   uniform float uHeight;
@@ -111,7 +113,7 @@ const pointVertexShader = `
   varying float vKind;
   varying float vDepth;
   void main() {
-    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+    vec4 viewPosition = rippleView(modelViewMatrix * vec4(position, 1.0));
     vColor = color;
     vKind = aKind;
     vDepth = -viewPosition.z;
@@ -201,6 +203,7 @@ function pointMaterial(selected = false, aura = false): ShaderMaterial {
     fragmentShader: selected ? selectionFragmentShader : aura ? nodeAuraFragmentShader : pointFragmentShader,
     vertexColors: true,
     uniforms: {
+      ...createRippleUniforms(),
       uHeight: { value: 1 },
       uPixelRatio: { value: 1 },
       uSizeScale: { value: aura ? 1.35 : 1 },
@@ -330,6 +333,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly projected = new Vector3();
+  private readonly pickPosition = new Vector3();
   private readonly bounds = new Sphere(new Vector3(), 100);
   private readonly focusBounds = new Sphere(new Vector3(), 124);
   private readonly corePosition = new Vector3();
@@ -403,6 +407,11 @@ class CareerScene implements CareerGraphSceneHandle {
     this.hologram = new HolographicCore(visualProfile === 'focus', false);
     this.heartbeat = new CoreHeartbeat(visualProfile === 'focus');
     this.orbits = new CareerOrbitVisuals(visualProfile === 'focus');
+    this.hologram.setRippleField(this.heartbeat.field.uniforms);
+    this.orbits.setRippleField(this.heartbeat.field);
+    for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial]) {
+      Object.assign(material.uniforms, this.heartbeat.field.uniforms);
+    }
     this.scene.background = new Color('#000F13');
     this.scene.fog = this.fog;
     this.workScene.fog = this.fog;
@@ -424,16 +433,8 @@ class CareerScene implements CareerGraphSceneHandle {
     this.controls.addEventListener('start', this.onControlStart);
 
     for (const material of [this.edgesMaterial, this.selectedEdgesMaterial, this.edgeGlowMaterial, this.selectedEdgeGlowMaterial]) {
-      Object.assign(material.uniforms, this.cursorUniforms);
-      material.vertexShader = material.vertexShader
-        .replace('#include <fog_pars_vertex>', `#include <fog_pars_vertex>\n${edgeRepulsionShader}`)
-        .replace('vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );', `
-          vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );
-          if (uCursorStrength > 0.0) {
-            start = repelInterior(start, aCurveT.x);
-            end = repelInterior(end, aCurveT.y);
-          }
-        `);
+      Object.assign(material.uniforms, this.cursorUniforms, this.heartbeat.field.uniforms);
+      material.vertexShader = careerEdgeVertexShader(material.vertexShader);
     }
 
     this.composer = new EffectComposer(this.renderer);
@@ -461,7 +462,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.edges.renderOrder = 0;
     this.points.renderOrder = 2;
     this.selectedEdges.renderOrder = 1;
-    this.scene.add(this.hologram.object, this.heartbeat.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
+    this.scene.add(this.hologram.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
     this.workScene.add(this.orbits.object, this.edges, this.points, this.selectedEdges, this.selection);
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown, true);
@@ -522,7 +523,7 @@ class CareerScene implements CareerGraphSceneHandle {
     const focusBoundsChanged = previousFocusBounds.radius !== this.focusBounds.radius
       || !previousFocusBounds.center.equals(this.focusBounds.center);
     this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? this.corePosition : undefined);
-    this.heartbeat.setSource(core ? this.corePosition : undefined, this.focusBounds.radius, this.bounds.radius * 0.032);
+    this.heartbeat.setSource(core ? this.corePosition : undefined, this.focusBounds.radius, this.bounds.radius);
     this.refreshHeartbeat();
     this.hologram.object.visible = graph.nodes.length > 0;
     this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
@@ -646,6 +647,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private refreshHeartbeat(now = performance.now()): void {
     const allowed = this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost;
     this.heartbeat.update(now, allowed);
+    this.heartbeat.field.updateCamera(this.camera);
     this.hologram.setHeartbeatStrength(this.heartbeat.strength);
     this.nodesMaterial.uniforms.uCoreScale.value = this.heartbeat.coreScale;
     this.selectionMaterial.uniforms.uCoreScale.value = this.heartbeat.coreScale;
@@ -665,13 +667,17 @@ class CareerScene implements CareerGraphSceneHandle {
       element.dataset.heartbeatPhase = (Math.floor(this.heartbeat.phase * 1000) / 1000).toFixed(3);
       element.dataset.heartbeatCycle = String(this.heartbeat.cycle);
       element.dataset.heartbeatRadius = this.heartbeat.radius.toFixed(4);
-      element.dataset.heartbeatWaveVisible = String(this.heartbeat.object.visible);
+      delete element.dataset.heartbeatWaveVisible;
+      element.dataset.heartbeatVisualization = 'mesh-ripple';
+      element.dataset.heartbeatWaveActive = String(this.heartbeat.field.active);
+      element.dataset.heartbeatDeformationMax = this.heartbeat.field.maxDisplacement.toFixed(4);
+      element.dataset.heartbeatBandWidth = this.heartbeat.field.bandWidth.toFixed(4);
       element.dataset.heartbeatCoreScale = this.heartbeat.coreScale.toFixed(4);
       element.dataset.coreScreenVisible = String(coreVisible);
       if (this.heartbeat.hasSource) {
-        element.dataset.heartbeatSourceX = String(this.heartbeat.object.position.x);
-        element.dataset.heartbeatSourceY = String(this.heartbeat.object.position.y);
-        element.dataset.heartbeatSourceZ = String(this.heartbeat.object.position.z);
+        element.dataset.heartbeatSourceX = String(this.heartbeat.sourcePosition.x);
+        element.dataset.heartbeatSourceY = String(this.heartbeat.sourcePosition.y);
+        element.dataset.heartbeatSourceZ = String(this.heartbeat.sourcePosition.z);
       } else {
         delete element.dataset.heartbeatSourceX;
         delete element.dataset.heartbeatSourceY;
@@ -701,14 +707,14 @@ class CareerScene implements CareerGraphSceneHandle {
     if (!node || this.lost) return;
     this.callbacks.onInteraction();
     const direction = this.camera.position.clone().sub(this.controls.target).normalize();
-    this.controls.target.fromArray(node.position);
+    this.displayedNodePosition(node, this.controls.target);
     this.camera.position.copy(this.controls.target).addScaledVector(direction, Math.max(45, nodeSize(node) * 7));
     this.controls.update();
     this.requestFrame();
   };
 
   focusOrbit = (selection: CareerOrbitSelection): void => {
-    if (this.lost || !this.orbits.getAnchor(selection, this.orbitPoint)) return;
+    if (this.lost || !this.orbits.getDisplayedAnchor(selection, this.orbitPoint)) return;
     this.callbacks.onInteraction();
     const direction = this.camera.position.clone().sub(this.controls.target).normalize();
     this.controls.target.copy(this.orbitPoint);
@@ -1024,7 +1030,9 @@ class CareerScene implements CareerGraphSceneHandle {
     this.camera.updateMatrixWorld();
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const farthest = this.controls.getDistance() + this.bounds.radius * 2;
-    this.raycaster.params.Points.threshold = Math.max(10, 18 * 2 * farthest * Math.tan(MathUtils.degToRad(this.camera.fov / 2)) / this.height);
+    // Raycast the immutable base buffers broadly, then test actual deformed screen positions.
+    this.raycaster.params.Points.threshold = Math.max(10, 18 * 2 * farthest * Math.tan(MathUtils.degToRad(this.camera.fov / 2)) / this.height)
+      + this.heartbeat.field.maxDisplacement;
     const hits = this.raycaster.intersectObject(this.points, false);
     let picked: GraphNode | undefined;
     let closest = Infinity;
@@ -1033,7 +1041,7 @@ class CareerScene implements CareerGraphSceneHandle {
       const node = this.graph.nodes[hit.index];
       if (!node || !this.projectNode(node)) continue;
       const distance = Math.hypot(this.projected.x - x, this.projected.y - y);
-      const depth = -new Vector3().fromArray(node.position).applyMatrix4(this.camera.matrixWorldInverse).z;
+      const depth = -this.displayedNodePosition(node, this.pickPosition).applyMatrix4(this.camera.matrixWorldInverse).z;
       const coreScale = node.kind === 'core' ? this.heartbeat.coreScale : 1;
       const visibleRadius = MathUtils.clamp(nodeSize(node) * this.height / Math.max(1, depth), 7, 90) * 0.42 * coreScale;
       if (distance <= Math.max(8, visibleRadius + 3) && distance < closest) {
@@ -1045,12 +1053,17 @@ class CareerScene implements CareerGraphSceneHandle {
   }
 
   private projectNode(node: GraphNode): boolean {
-    this.projected.fromArray(node.position).project(this.camera);
+    this.displayedNodePosition(node, this.projected).project(this.camera);
     const visible = this.projected.z >= -1 && this.projected.z <= 1
       && Math.abs(this.projected.x) <= 1 && Math.abs(this.projected.y) <= 1;
     this.projected.x = (this.projected.x + 1) * this.width / 2;
     this.projected.y = (1 - this.projected.y) * this.height / 2;
     return visible;
+  }
+
+  private displayedNodePosition(node: GraphNode, target: Vector3): Vector3 {
+    target.fromArray(node.position);
+    return this.heartbeat.field.deformWorld(target, target);
   }
 
   private pick(clientX: number, clientY: number): CareerSceneHit | undefined {
@@ -1066,7 +1079,7 @@ class CareerScene implements CareerGraphSceneHandle {
   }
 
   private projectOrbit(selection: CareerOrbitSelection): boolean {
-    if (!this.orbits.getAnchor(selection, this.orbitPoint)) return false;
+    if (!this.orbits.getDisplayedAnchor(selection, this.orbitPoint)) return false;
     this.projected.copy(this.orbitPoint).project(this.camera);
     const visible = this.projected.z >= -1 && this.projected.z <= 1
       && Math.abs(this.projected.x) <= 1 && Math.abs(this.projected.y) <= 1;

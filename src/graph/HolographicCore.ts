@@ -4,6 +4,8 @@ import {
   SphereGeometry, Vector3,
 } from 'three';
 import { heartbeatCoreScale, heartbeatGlow } from './coreHeartbeatTiming';
+import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
+import type { CareerRippleUniforms } from './careerRipple';
 
 const TAU = Math.PI * 2;
 const GOLD = new Color('#EDAE29');
@@ -22,6 +24,7 @@ function seededRandom(seed = 0x43485131): () => number {
 }
 
 const filamentVertex = `
+  ${careerRippleVertexShader}
   attribute vec3 aOrbitAxis;
   attribute float aOrbitSpeed;
   uniform float uPhase;
@@ -32,7 +35,7 @@ const filamentVertex = `
     float angle = uPhase * aOrbitSpeed;
     vec3 rotated = position * cos(angle) + cross(aOrbitAxis, position) * sin(angle)
       + aOrbitAxis * dot(aOrbitAxis, position) * (1.0 - cos(angle));
-    vec4 p = modelViewMatrix * vec4(rotated, 1.0);
+    vec4 p = rippleView(modelViewMatrix * vec4(rotated, 1.0));
     vDepth = -p.z;
     vViewPosition = p.xyz;
     vColor = color;
@@ -162,8 +165,9 @@ export class HolographicCore {
     sparkGeometry.setAttribute('aSize', new Float32BufferAttribute(sparkSizes, 1));
     this.geometries.push(sparkGeometry);
     const sparkMaterial = new ShaderMaterial({
-      uniforms: { uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uBrightness: { value: calm ? 0.45 : 1 } },
+      uniforms: { ...createRippleUniforms(), uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uBrightness: { value: calm ? 0.45 : 1 } },
       vertexShader: `
+        ${careerRippleVertexShader}
         attribute float aSize;
         uniform float uScale;
         uniform float uRatio;
@@ -171,7 +175,7 @@ export class HolographicCore {
         varying float vDepth;
         varying vec3 vViewPosition;
         void main() {
-          vec4 p = modelViewMatrix * vec4(position, 1.0);
+          vec4 p = rippleView(modelViewMatrix * vec4(position, 1.0));
           vColor = color;
           vDepth = -p.z;
           vViewPosition = p.xyz;
@@ -222,7 +226,7 @@ export class HolographicCore {
     geometry.setAttribute('aOrbitSpeed', new Float32BufferAttribute(speeds, 1));
     const material = new ShaderMaterial({
       vertexShader: filamentVertex, fragmentShader: filamentFragment,
-      uniforms: { uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uOpacity: { value: this.calm ? 0.55 * 0.48 : opacity }, uPhase: { value: 0 } },
+      uniforms: { ...createRippleUniforms(), uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uOpacity: { value: this.calm ? 0.55 * 0.48 : opacity }, uPhase: { value: 0 } },
       transparent: true, vertexColors: true, depthWrite: false, blending: AdditiveBlending,
     });
     this.geometries.push(geometry);
@@ -255,6 +259,10 @@ export class HolographicCore {
     this.heartbeatStrength = Math.max(0, Math.min(1, value));
     this.heart.scale.setScalar(this.radius * heartbeatCoreScale(this.heartbeatStrength, this.calm));
     this.heartMaterial.color.copy(this.heartColor).multiplyScalar(heartbeatGlow(this.heartbeatStrength, this.calm));
+  }
+
+  setRippleField(uniforms: CareerRippleUniforms): void {
+    for (const material of [...this.filaments, this.particles.material]) Object.assign(material.uniforms, uniforms);
   }
 
   get animationTime(): number { return this.phase; }

@@ -292,7 +292,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
             onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>{animationPaused ? <Play size={15} /> : <Pause size={15} />}{animationPaused ? 'Resume animation' : 'Pause animation'}</button>
-          <label className="graph-checkbox" title="A visual ripple from the white core every 3 seconds; paused with animation.">
+          <label className="graph-checkbox" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds; paused with animation.">
             <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
           </label>
           <button className="button secondary" disabled={!sceneReady || !includeDecoration} aria-pressed={rimOnly}

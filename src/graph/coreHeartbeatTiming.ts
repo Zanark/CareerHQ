@@ -1,5 +1,5 @@
-export const HEARTBEAT_PERIOD_MS = 3000;
-export const HEARTBEAT_WAVE_SECONDS = 2.6;
+export const HEARTBEAT_PERIOD_MS = 10000;
+export const HEARTBEAT_WAVE_SECONDS = 6;
 
 /** A single visual rhythm, measured in active monotonic wall time, not capped animation deltas. */
 export class CoreHeartbeatClock {
@@ -48,9 +48,9 @@ export function heartbeatGlow(strength: number, calm: boolean): number {
   return 1 + Math.max(0, Math.min(1, strength)) * (calm ? 0.22 : 0.32);
 }
 
-export function heartbeatWaveOpacity(phase: number, calm: boolean): number {
+export function heartbeatWaveEnvelope(phase: number): number {
   if (phase <= 0 || phase >= HEARTBEAT_WAVE_SECONDS) return 0;
-  const fadeIn = Math.min(1, phase / 0.12);
-  const fadeOut = Math.min(1, (HEARTBEAT_WAVE_SECONDS - phase) / 0.65);
-  return (calm ? 0.2 : 0.28) * fadeIn * fadeOut;
+  const a = Math.min(1, phase / 0.35);
+  const b = Math.min(1, (HEARTBEAT_WAVE_SECONDS - phase) / 0.6);
+  return a * a * (3 - 2 * a) * b * b * (3 - 2 * b);
 }

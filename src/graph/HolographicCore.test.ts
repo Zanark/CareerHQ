@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LineSegments, Mesh, PerspectiveCamera, Points, ShaderMaterial, Vector3 } from 'three';
 import { HolographicCore } from './HolographicCore';
+import { CareerRippleField } from './careerRipple';
 
 function rimLines(core: HolographicCore): LineSegments {
   let lines: LineSegments | undefined;
@@ -16,6 +17,27 @@ function rimMaterial(core: HolographicCore): ShaderMaterial {
 }
 
 describe('outer-rim-only decoration', () => {
+  it('shares the view-space field for nested sparks and legacy helpers without mutating their base buffers', () => {
+    const core = new HolographicCore();
+    const field = new CareerRippleField();
+    core.setRippleField(field.uniforms);
+    field.source.set(4, -2, 8);
+    field.setWave(60, 20, 3);
+    core.setBounds(new Vector3(20, 4, 0), 60, field.source);
+    const before: { object: Points | LineSegments; positions: ArrayLike<number> }[] = [];
+    core.object.traverse(object => {
+      if (!(object instanceof Points || object instanceof LineSegments)) return;
+      if (!(object.material instanceof ShaderMaterial)) throw new Error('Expected shared deformation shader.');
+      expect(object.material.uniforms.uRippleAmplitude).toBe(field.uniforms.uRippleAmplitude);
+      expect(object.material.vertexShader).toContain('rippleView(modelViewMatrix');
+      before.push({ object, positions: object.geometry.getAttribute('position').array.slice() });
+    });
+    core.update(new PerspectiveCamera(), 0.5);
+    for (const { object, positions } of before) expect(object.geometry.getAttribute('position').array).toEqual(positions);
+    expect(core.object.getObjectByName('Existing core node aura')?.position).toEqual(field.source);
+    core.dispose();
+  });
+
   it('allocates no decorative belt geometry in semantic orbit scenes, preserving sparks and the opaque core', () => {
     const core = new HolographicCore(false, false);
     const legacy = new HolographicCore();

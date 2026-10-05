@@ -5,6 +5,7 @@ import type { CareerOrbit } from './careerOrbitTypes';
 import { CareerOrbitVisuals } from './CareerOrbitVisuals';
 import { CAREER_ORBIT_PLANES, orbitPoint } from './careerOrbitMotion';
 import { SAVED_STATUS_PULSE_SECONDS } from './careerOrbitSavedPulses';
+import { CareerRippleField } from './careerRipple';
 
 function node(id: string, position: [number, number, number] = [12, 7, 3]): CareerGraphNode {
   return { id, position, kind: 'checkpoint', roadmapVersion: '1.0.0', status: 'incomplete', label: id, detail: '', context: '', href: '/' };
@@ -229,6 +230,47 @@ describe('semantic career orbit geometry', () => {
     visuals.dispose();
   });
 
+  it('keeps all orbit layers on one field and picks displayed anchors without double-deforming base buffers', () => {
+    const visuals = new CareerOrbitVisuals(), field = new CareerRippleField(), view = camera();
+    const data = orbit(), actual = nodes();
+    const selection = { orbitId: data.id, segmentId: data.segments[0].id };
+    visuals.setRippleField(field);
+    visuals.setData([data], actual, new Vector3(), 60);
+    visuals.setSelection(selection);
+    const base = new Vector3(), displayed = new Vector3();
+    visuals.getAnchor(selection, base);
+    field.setWave(base.length(), 24, 2.4);
+    field.updateCamera(view);
+    visuals.getDisplayedAnchor(selection, displayed);
+    expect(displayed.distanceTo(base)).toBeCloseTo(2.4);
+    expect(position(visuals.selectedAnchor.geometry, 0).distanceTo(base)).toBeLessThan(0.00001);
+    const paths = visuals.paths.geometry.getAttribute('position');
+    const before = paths.array.slice();
+    expect(visuals.pickAnchor(...screen(displayed.clone(), view), view, 800, 800)?.selection).toEqual(selection);
+    expect(visuals.pickPath(...screen(displayed.clone(), view), view, 800, 800)).toEqual(selection);
+    for (const material of [
+      visuals.paths.material, visuals.anchors.material, visuals.primaryTethers.material,
+      visuals.detailTethers.material, visuals.selectedAnchor.material,
+      visuals.savedPulseTethers.material, visuals.savedPulsePackets.material,
+    ]) {
+      expect(material.uniforms.uRippleAmplitude).toBe(field.uniforms.uRippleAmplitude);
+      expect(material.vertexShader).toContain('rippleView(modelViewMatrix');
+    }
+    const tetherStart = position(visuals.detailTethers.geometry, 0);
+    expect(field.deformWorld(tetherStart, tetherStart).distanceTo(displayed)).toBeLessThan(0.00001);
+    field.setWave(new Vector3().fromArray(actual.get('checkpoint:now')!.position).length(), 24, 2.4);
+    const end = position(visuals.detailTethers.geometry, visuals.detailTethers.geometry.getAttribute('position').count - 1);
+    const nodePoint = new Vector3().fromArray(actual.get('checkpoint:now')!.position);
+    expect(field.deformWorld(end, end).distanceTo(field.deformWorld(nodePoint, nodePoint))).toBeLessThan(0.00001);
+    visuals.update(view, 0);
+    expect(paths.array).toEqual(before);
+    expect(visuals.savedPulseCount).toBe(0);
+    field.cancel();
+    visuals.getDisplayedAnchor(selection, displayed);
+    expect(displayed).toEqual(base);
+    visuals.dispose();
+  });
+
   it('masks only orbit paths, preserving primary anchors, details and selection hit testing', () => {
     const visuals = new CareerOrbitVisuals();
     const view = camera();
@@ -337,6 +379,37 @@ describe('semantic career orbit geometry', () => {
     expect(actual.get('checkpoint:now')!.status).toBe('incomplete');
     visuals.dispose();
     staticUpdated.dispose();
+  });
+
+  it('deforms saved-status packets and their real membership endpoints with the same independent ripple', () => {
+    const visuals = new CareerOrbitVisuals(), field = new CareerRippleField(), data = orbit(), actual = nodes();
+    const view = camera();
+    visuals.setRippleField(field);
+    visuals.setMotionAllowed(true);
+    visuals.setData([data], actual, new Vector3(), 60);
+    const nodePoint = new Vector3().fromArray(actual.get('checkpoint:now')!.position);
+    field.setWave(nodePoint.length(), 20, 2.4);
+    field.updateCamera(view);
+    visuals.update(view, 0);
+    expect(visuals.savedPulseCount).toBe(0);
+    data.segments[0].members[1].status = 'complete';
+    data.segments[0].members[1].current = false;
+    visuals.setData([data], actual, new Vector3(), 60);
+    expect(visuals.savedPulseCount).toBe(1);
+    const packet = position(visuals.savedPulsePackets.geometry, 0);
+    expect(field.deformWorld(packet, packet)).toEqual(field.deformWorld(nodePoint, new Vector3()));
+    visuals.update(view, SAVED_STATUS_PULSE_SECONDS / 2);
+    const midPacket = position(visuals.savedPulsePackets.geometry, 0);
+    const midTether = position(visuals.savedPulseTethers.geometry, 8);
+    expect(field.deformWorld(midPacket, midPacket).distanceTo(field.deformWorld(midTether, midTether))).toBeLessThan(0.00001);
+    const anchor = new Vector3();
+    visuals.getDisplayedAnchor({ orbitId: data.id, segmentId: data.segments[0].id }, anchor);
+    const tetherStart = position(visuals.savedPulseTethers.geometry, 0);
+    expect(field.deformWorld(tetherStart, tetherStart).distanceTo(anchor)).toBeLessThan(0.00001);
+    visuals.update(view, SAVED_STATUS_PULSE_SECONDS);
+    expect(visuals.savedPulseCount).toBe(0);
+    expect(field.active).toBe(true);
+    visuals.dispose();
   });
 
   it('cancels saved-status packets immediately when motion is disallowed and never replays on resume', () => {
