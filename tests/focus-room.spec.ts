@@ -305,9 +305,18 @@ test.describe('genuine calm 3D focus room', () => {
     await expect(scene).toHaveAttribute('data-node-count', String(expected.nodes.length));
     await expect(scene).toHaveAttribute('data-edge-count', String(expected.edges.length));
     await expect(scene).toHaveAttribute('data-animation-state', 'running');
+    const ambient = room(page).locator('[data-tour="focus-room-ambient"]');
+    // Capture two stationary compositions around a real interval of motion,
+    // rather than competing with continuous WebGL while encoding/decoding PNGs.
+    await ambient.uncheck();
+    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
     const first = await room(page).screenshot();
     const firstTime = Number(await scene.getAttribute('data-animation-time'));
+    await ambient.check();
+    await expect(scene).toHaveAttribute('data-animation-state', 'running');
     await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(firstTime + 1);
+    await ambient.uncheck();
+    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
     const second = await room(page).screenshot();
     const visibleChanges = await page.evaluate(async ([first, second]) => {
       const pixels = async (data: string) => {
@@ -331,8 +340,6 @@ test.describe('genuine calm 3D focus room', () => {
     expect(visibleChanges, 'Motion must be visible through the real frosted-glass composition, not only in a counter').toBeGreaterThan(100);
     await testInfo.attach('focus-full-shell-moving', { body: second, contentType: 'image/png' });
     expect(await raw(page)).toBe(before);
-    await room(page).locator('[data-tour="focus-room-ambient"]').uncheck();
-    await expect(scene).toHaveAttribute('data-animation-state', 'paused');
   });
 
   test('ambient motion stays independent of timer pause and distraction recording', async ({ page }) => {
