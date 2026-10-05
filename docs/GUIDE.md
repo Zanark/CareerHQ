@@ -73,13 +73,29 @@ references and untracked expanded curriculum remain distinct reference nodes.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
-Fine, glowing orange links represent actual graph connections. Decorative arcs
-orbit the outside of the sphere at individual speeds, with two stable, randomly
-selected rings boosted by 1.5x and 2x. Their front/back segments
-remain visible by default. **Clear center** optionally masks those projected shell
-segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.
-Uncheck **Rings & sparks** beside the graph filters to hide the decorative shell and
-dots entirely. Real nodes, connections, their glow and your zoom stay unchanged.
+Fine, glowing orange links represent actual graph connections. The revolving rings
+are **15 data views**: nine saved missions, plus Daily work, Saved evidence,
+Applications, Freelance leads, Past accomplishments and Untracked curriculum.
+Mission rings summarize the stages, recorded completion and current checkpoint of
+your **saved roadmap edition**. Archived completions and unadopted curriculum do
+not inflate that progress. Record rings show their real groups/counts, not invented
+completion percentages; empty collections say so.
+
+Select a ring anchor or open **Explore ring views** below the graph. Choose a stage
+or record group, inspect its connected members, or open the relevant mission/records.
+An active, unblocked mission also offers **Record evidence**, using the same existing
+form and explicit completion criteria without leaving the graph.
+**Focus ring** brings its moving anchor into view. Ring tethers stretch as the rings
+revolve while your inner work nodes keep their positions. They mean membership,
+not an additional prerequisite or task. Detailed member connections belong to the
+selected ring/group rather than an always-on web across every collection.
+The inspector distinguishes global members from those visible through your filters;
+**Reveal orbit and members** explicitly adjusts the view without changing progress.
+
+Full-shell paths remain visible by default. **Clear center** masks projected ring
+paths without hiding data anchors or membership links. Sparks and glow are still
+atmosphere, not extra nodes. Uncheck **Rings & sparks** to hide the ring views and
+decorative dots. Real work nodes, their connections, glow and your zoom stay unchanged.
 Re-enabling it restores your selected Clear center mode. Like the other graph
 filters, this is a view-only choice, not a saved-progress change.
 Connection lines bend away from your cursor but stay attached to their endpoints.
@@ -100,7 +116,7 @@ action; it reveals the necessary view filters. The inspector stays collapsible.
 **Copy brief for AI** copies a local snapshot for you to review and paste into your
 chosen assistant. CareerOS does not send it to an AI service or automatically make
 career decisions. If WebGL is unavailable, the page says so and keeps the named
-node list usable; it does not pretend a flat fallback is a 3D visualization.
+node list and ring-view index usable; it does not pretend a flat fallback is a 3D visualization.
 
 **CareerOS provides study material and tracks evidence; it is not an autonomous teacher or grader.**
 Use the built-in prompts with your editor, authorized lab or coach. Record actual results

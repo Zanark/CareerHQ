@@ -6,6 +6,8 @@ import { missionIds } from '../domain/types';
 import type { AppState, Checkpoint, Mission, MissionId, RoadmapVersion, SourceReference } from '../domain/types';
 import { careerSkillLinks } from './careerSkillLinks';
 import type { CareerSkillAnchor } from './careerSkillLinks';
+import { buildCareerOrbits } from './careerOrbitModel';
+import type { CareerOrbit } from './careerOrbitTypes';
 
 export type CareerGraphStatus = 'complete' | 'incomplete' | 'reference';
 export type CareerGraphKind = 'core' | 'mission' | 'checkpoint' | 'evidence' | 'opportunity' | 'freelance' | 'history' | 'curriculum' | 'action';
@@ -46,6 +48,7 @@ export type CareerGraphEdge = CareerGraphEdgeEndpoints & (
 export interface CareerGraph {
   nodes: CareerGraphNode[];
   edges: CareerGraphEdge[];
+  orbits: CareerOrbit[];
   stats: {
     trackedTotal: number;
     trackedCompleted: number;
@@ -347,5 +350,6 @@ export function buildCareerGraph(state: AppState): CareerGraph {
     addEdge(missionNodeId('income'), id, 'contains');
   }
 
-  return { nodes: [...nodes.values()], edges: [...edges.values()], stats, updates };
+  const graphNodes = [...nodes.values()];
+  return { nodes: graphNodes, edges: [...edges.values()], stats, updates, orbits: buildCareerOrbits(state, graphNodes) };
 }

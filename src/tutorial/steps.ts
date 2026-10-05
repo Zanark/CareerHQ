@@ -75,6 +75,12 @@ export const steps: TutorialStep[] = [
     body: 'The home graph uses saved records: green is recorded done, orange is unfinished, and reference nodes do not count as extra tasks. Drag the 3D network to rotate, scroll to zoom, or use the keyboard controls. This tutorial shows only its temporary practice workspace.',
   },
   {
+    id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
+    targets: ['career-graph-orbits'],
+    title: 'Read the moving rings',
+    body: 'Explore ring views lists nine saved missions and six record/reference collections. A mission ring uses your saved roadmap edition, stages and current checkpoint; other rings show real record groups and counts. Select a ring or its members to inspect them. Stretching tethers mean membership, not new prerequisites or completion credit.',
+  },
+  {
     id: 'career-graph-search', chapter: 'career-graph', kind: 'action',
     targets: ['career-graph-search'],
     title: 'Find a real checkpoint',

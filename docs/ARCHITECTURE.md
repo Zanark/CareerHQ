@@ -23,6 +23,7 @@ plan as proof of capability.
 | `src/domain/roadmapPacks/*`, `src/practice/*` | Typed outlines generate 377 new-edition checkpoints; seven lazy study chunks preserve 806 source units and 5,944 exercise occurrences. Reference/practice roles stay outside required checkpoint identity. |
 | `src/roadmaps/useMapViewport.ts` | Shared fit/zoom, pointer panning, focus/centering, resize measurement and lifecycle cleanup for both tracked and concept maps. |
 | `src/graph/*` | Read-only career graph model, stable 3D positions and Three.js rendering. Recorded statuses drive colors; context/archives are not silently promoted to current mastery. |
+| `src/graph/careerOrbitModel.ts`, `careerOrbitTypes.ts` | Fifteen derived data views: exact saved-mission stages and six record/reference collections. Membership reuses real graph IDs, never new task identities or completion gates. |
 | `src/domain/focusSession.ts`, focus operations in `engine.ts` | Optional, bounded focus-session event records, strict chronology/state/ID validation and conditional ownership checks before appending reports. |
 | `src/focus/*` | One tab-local controller shared by compact/fullscreen timers, immediately persisted self-reports, retained history, and an inert calm-profile 3D backdrop. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
@@ -44,8 +45,17 @@ changes the domain prerequisites, awards progress or substitutes an archived def
 Multiple reasons for the same unordered pair share one edge. View filters may hide
 lines, but the collapsible connection inspector retains reasons and explicit reveal actions.
 
-Decorative arcs orbit outside the enclosing data sphere. Full-shell projection is
-the default; an optional camera-space silhouette mask provides the Clear center view.
+`CareerGraph.orbits` is a read-only projection shared by home and the focus snapshot.
+Mission progress includes only active saved-version checkpoints, not archived
+completions or latest-version previews. Collection membership follows the graph's
+record-inclusion rules, and collection groups do not get invented progress percentages.
+Orbits are not added to `nodes`, `edges` or completion statistics. Their separate
+tethers mean collection membership, with actual graph endpoints; filtered-out members
+stay listed with explicit reveal actions instead of silently becoming "no records."
+
+Data orbits revolve outside the enclosing data sphere, leaving work-node positions
+fixed. Full-shell projection is the default; Clear center masks orbit paths but not
+their useful anchors. The accessible ring index and inspector work without WebGL.
 The animation pause control is independent of inspection and camera manipulation.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 

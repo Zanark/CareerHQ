@@ -81,7 +81,7 @@ export class HolographicCore {
   private phase = 0;
   private radius = 80;
 
-  constructor(private readonly calm = false) {
+  constructor(private readonly calm = false, decorativeRings = true) {
     const random = seededRandom();
     // A separate seed picks two stable, distinct rings without changing any
     // existing arc speed, direction or particle placement.
@@ -108,6 +108,9 @@ export class HolographicCore {
       const axis = new Vector3(0, 0, 1).applyQuaternion(q);
       const speeds = Array.from({ length: 4 }, (_, arc) =>
         (0.028 + random() * 0.085) * ((belt + arc) % 3 === 0 ? -1 : 1) * speedMultiplier);
+      // Semantic orbit scenes keep the original spark seed, but allocate no
+      // legacy belt geometry underneath the data-backed rings.
+      if (!decorativeRings) continue;
       const radius = 1.06 + belt / 15 * 0.13;
       const color = belt % 5 === 0 ? TEAL : belt % 5 === 1 ? BLUE : belt % 5 === 2 ? VIOLET : GOLD;
       for (let lane = 0; lane < 3; lane++) {
@@ -137,7 +140,7 @@ export class HolographicCore {
         }
       }
     }
-    this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
+    if (decorativeRings) this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
 
     while (sparks.length / 3 < (calm ? 300 : 1800)) {
       const z = random() * 2 - 1;

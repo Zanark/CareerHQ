@@ -32,11 +32,38 @@
   outline-offset: -4px;
 }
 
-.career-graph-scene__mission-labels {
+.career-graph-scene__mission-labels,
+.career-graph-scene__orbit-labels {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+.career-graph-scene__orbit-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 13rem;
+  padding: 0.15rem 0.3rem;
+  border-left: 2px solid var(--orbit-color);
+  color: #d3d9d7;
+  background: rgb(0 15 19 / 86%);
+  font-size: 0.62rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.career-graph-scene__orbit-label[data-empty-state="empty"] {
+  color: #83979e;
+  border-left-color: #52676e;
+}
+
+.career-graph-scene__node-label[data-status="orbit"] {
+  border-left-color: var(--orbit-color);
 }
 
 .career-graph-scene__mission-label {
@@ -86,7 +113,8 @@
   border-left-color: #f34b00;
 }
 
-.career-graph-scene__selected-marker {
+.career-graph-scene__selected-marker,
+.career-graph-scene__selected-orbit-marker {
   position: absolute;
   top: 0;
   left: 0;

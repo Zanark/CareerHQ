@@ -32,6 +32,11 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
+import { CareerOrbitVisuals } from './CareerOrbitVisuals';
+import type { OrbitAnchorInfo } from './CareerOrbitVisuals';
+import type { CareerOrbitSelection } from './careerOrbitTypes';
+import { chooseCareerSceneHit, compactOrbitTooltip, showOrbitIdentityLabels } from './careerSceneInteraction';
+import type { CareerNodeScreenHit, CareerSceneHit } from './careerSceneInteraction';
 import { CURSOR_REPULSION_PX, cursorRepulsionOffset, edgeRepulsionShader } from './edgeRepulsion';
 import type { CareerGraph } from './careerGraphModel';
 import './career-graph-scene.css';
@@ -39,12 +44,14 @@ import './career-graph-scene.css';
 type GraphNode = CareerGraph['nodes'][number];
 type SceneStatus = 'ready' | 'unavailable' | 'lost';
 type Direction = 'left' | 'right' | 'up' | 'down';
+type LabelBox = { left: number; top: number; right: number; bottom: number };
 
 export interface CareerGraphSceneHandle {
   resetView: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   focusNode: (id: string) => void;
+  focusOrbit: (selection: CareerOrbitSelection) => void;
   rotate: (direction: Direction) => void;
 }
 
@@ -52,6 +59,8 @@ export interface CareerGraphSceneProps {
   graph: CareerGraph;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  selectedOrbit?: CareerOrbitSelection | null;
+  onOrbitSelect?: (selection: CareerOrbitSelection) => void;
   autoRotate: boolean;
   /** Ambient motion only; defaults to true, or autoRotate in the focus profile. */
   animate?: boolean;
@@ -59,7 +68,7 @@ export interface CareerGraphSceneProps {
   allowReducedMotion?: boolean;
   /** Clip the shell's projected interior; defaults to false, or true in focus. */
   rimOnly?: boolean;
-  /** Show decorative outer rings and particles without changing node glow. */
+  /** Show derived orbit views and decorative particles without changing node glow. */
   showDecoration?: boolean;
   onInteraction?: () => void;
   onStatusChange?: (status: SceneStatus, message?: string) => void;
@@ -68,6 +77,7 @@ export interface CareerGraphSceneProps {
 
 interface SceneCallbacks {
   onSelect: (id: string) => void;
+  onOrbitSelect: (selection: CareerOrbitSelection) => void;
   onInteraction: () => void;
   onStatusChange: (status: SceneStatus, message?: string) => void;
 }
@@ -300,6 +310,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly edgeGlow = new LineSegments2(this.edgeGeometry, this.edgeGlowMaterial);
   private readonly selectedEdgeGlow = new LineSegments2(this.selectedEdgeGeometry, this.selectedEdgeGlowMaterial);
   private readonly hologram: HolographicCore;
+  private readonly orbits: CareerOrbitVisuals;
   private readonly composer: EffectComposer;
   private readonly renderPass: RenderPass;
   private readonly bloomPass = new UnrealBloomPass(new Vector2(256, 256), 0.72, 0.08, 0.9);
@@ -328,9 +339,16 @@ class CareerScene implements CareerGraphSceneHandle {
   private graph: CareerGraph | null = null;
   private nodeMap = new Map<string, GraphNode>();
   private selectedId: string | null = null;
+  private selectedOrbit: CareerOrbitSelection | null = null;
+  private hoveredOrbit: CareerOrbitSelection | null = null;
   private hoveredId: string | null = null;
   private labelId: string | null = null;
   private missionLabels: { node: GraphNode; element: HTMLSpanElement; width: number; height: number }[] = [];
+  private orbitLabels: (OrbitAnchorInfo & { element: HTMLSpanElement; width: number; height: number })[] = [];
+  private readonly orbitLabelRects: LabelBox[] = [];
+  private orbitLabelRectCount = 0;
+  private readonly orbitPoint = new Vector3();
+  private decorationVisible = true;
   private autoRotate = false;
   private animate = false;
   private allowReducedMotion = false;
@@ -361,11 +379,14 @@ class CareerScene implements CareerGraphSceneHandle {
     private readonly label: HTMLDivElement,
     private readonly marker: HTMLDivElement,
     private readonly missionLabelLayer: HTMLDivElement,
+    private readonly orbitLabelLayer: HTMLDivElement,
+    private readonly orbitMarker: HTMLDivElement,
     private readonly renderer: WebGLRenderer,
     private readonly callbacks: SceneCallbacks,
     private readonly visualProfile: 'career' | 'focus',
   ) {
-    this.hologram = new HolographicCore(visualProfile === 'focus');
+    this.hologram = new HolographicCore(visualProfile === 'focus', false);
+    this.orbits = new CareerOrbitVisuals(visualProfile === 'focus');
     this.scene.background = new Color('#000F13');
     this.scene.fog = this.fog;
     this.workScene.fog = this.fog;
@@ -408,7 +429,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.bloomPass.strength = visualProfile === 'focus' ? 0.28 : 0.44;
     this.bloomPass.radius = 0;
     this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.08, 0, 0, 0];
-    this.root.dataset.ambience = 'procedural-unpickable';
+    this.root.dataset.ambience = 'semantic-orbits-decorative-sparks';
     this.root.dataset.postprocessing = 'gpu-bloom';
     this.root.dataset.edgeStyle = 'orange-screen-space-ribbons';
     this.root.dataset.edgeColor = '#F34B00';
@@ -425,7 +446,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.points.renderOrder = 2;
     this.selectedEdges.renderOrder = 1;
     this.scene.add(this.hologram.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
-    this.workScene.add(this.edges, this.points, this.selectedEdges, this.selection);
+    this.workScene.add(this.orbits.object, this.edges, this.points, this.selectedEdges, this.selection);
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown, true);
     this.canvas.addEventListener('pointermove', this.onPointerMove, true);
@@ -480,9 +501,13 @@ class CareerScene implements CareerGraphSceneHandle {
     const core = graph.nodes.find(node => node.kind === 'core');
     this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? new Vector3().fromArray(core.position) : undefined);
     this.hologram.object.visible = graph.nodes.length > 0;
+    this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
+    this.root.dataset.orbitCount = String(this.orbits.orbitCount);
+    this.canvas.dataset.orbitCount = String(this.orbits.orbitCount);
     this.root.dataset.nodeCount = String(graph.nodes.length);
     this.root.dataset.edgeCount = String(graph.edges.filter(edge => this.nodeMap.has(edge.source) && this.nodeMap.has(edge.target)).length);
     this.hoveredId = null;
+    this.hoveredOrbit = null;
     this.labelId = null;
     this.missionLabelLayer.replaceChildren();
     this.missionLabels = graph.nodes.filter(node => this.visualProfile === 'career' && node.kind === 'mission').slice(0, 9).map(node => {
@@ -494,8 +519,22 @@ class CareerScene implements CareerGraphSceneHandle {
       this.missionLabelLayer.appendChild(element);
       return { node, element, width: 0, height: 0 };
     });
-    this.setSelection(this.selectedId);
-    if (!this.framed && graph.nodes.length > 0) {
+    this.orbitLabelLayer.replaceChildren();
+    this.orbitLabels = this.visualProfile === 'focus' ? [] : this.orbits.anchorInfo.map(info => {
+      const element = document.createElement('span');
+      element.className = 'career-graph-scene__orbit-label';
+      element.dataset.orbitId = info.orbit.id;
+      element.dataset.orbitIndex = String(info.orbit.index);
+      element.dataset.memberCount = String(info.orbit.memberIds.length);
+      element.dataset.visibleMemberCount = String(info.visibleMemberCount);
+      element.dataset.emptyState = !info.orbit.memberIds.length ? 'empty' : !info.visibleMemberCount ? 'filtered' : 'populated';
+      element.style.setProperty('--orbit-color', info.orbit.color);
+      element.textContent = `${info.orbit.label}${!info.orbit.memberIds.length ? ' · No records' : !info.visibleMemberCount ? ' · Members hidden' : ''}`;
+      this.orbitLabelLayer.appendChild(element);
+      return { ...info, element, width: 0, height: 0 };
+    });
+    this.setOrbitSelection(this.selectedOrbit, true);
+    if (!this.framed && (graph.nodes.length > 0 || graph.orbits.length > 0)) {
       this.frameAll();
       this.framed = true;
     }
@@ -505,10 +544,15 @@ class CareerScene implements CareerGraphSceneHandle {
   setSelection(id: string | null): void {
     this.selectedId = id;
     const node = id ? this.nodeMap.get(id) : undefined;
-    this.selection.visible = Boolean(node);
+    const orbit = this.graph?.orbits.find(item => item.id === this.selectedOrbit?.orbitId);
+    const memberIds = this.selectedOrbit?.segmentId
+      ? orbit?.segments.find(segment => segment.id === this.selectedOrbit?.segmentId)?.members.map(member => member.nodeId) ?? []
+      : orbit?.memberIds ?? [];
+    const highlights = node ? [node] : memberIds.map(memberId => this.nodeMap.get(memberId)).filter((item): item is GraphNode => Boolean(item));
+    this.selection.visible = highlights.length > 0;
     this.selectedGeometry.dispose();
     this.selectedEdgeGeometry.dispose();
-    writePointGeometry(this.selectedGeometry, node ? [node] : [], true);
+    writePointGeometry(this.selectedGeometry, highlights, true);
     writeEdgeGeometry(
       this.selectedEdgeGeometry,
       this.graph?.edges.filter(edge => edge.source === id || edge.target === id) ?? [],
@@ -520,11 +564,31 @@ class CareerScene implements CareerGraphSceneHandle {
     this.requestFrame();
   }
 
+  setOrbitSelection(selection: CareerOrbitSelection | null, refresh = false): void {
+    if (!refresh && this.selectedOrbit?.orbitId === selection?.orbitId
+      && this.selectedOrbit?.segmentId === selection?.segmentId) return;
+    this.selectedOrbit = selection;
+    const active = selection && this.graph?.orbits.some(orbit => orbit.id === selection.orbitId) ? selection : null;
+    this.orbits.setSelection(active);
+    for (const element of [this.root, this.canvas]) {
+      element.dataset.selectedOrbitId = active?.orbitId ?? '';
+      element.dataset.selectedOrbitSegmentId = active?.segmentId ?? '';
+      element.dataset.selectedSegmentId = active?.segmentId ?? '';
+      element.dataset.orbitTetherCount = String(this.orbits.tetherCount);
+      element.dataset.orbitTetherSegments = String(this.orbits.detailTetherSegments);
+      element.dataset.orbitPulseCount = String(this.orbits.savedPulseCount);
+    }
+    this.orbitMarker.dataset.orbitId = active?.orbitId ?? '';
+    this.orbitMarker.dataset.segmentId = active?.segmentId ?? '';
+    this.setSelection(this.selectedId);
+  }
+
   setMotion(autoRotate: boolean, animate: boolean, allowReducedMotion: boolean): void {
     this.autoRotate = autoRotate;
     this.animate = animate;
     this.lastReducedMotion = this.motionPreference.matches;
     this.allowReducedMotion = allowReducedMotion && (autoRotate || animate);
+    this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
     this.controls.autoRotate = false;
     // Start from the resumed frame, never from time spent paused or hidden.
     this.lastDraw = performance.now();
@@ -533,12 +597,16 @@ class CareerScene implements CareerGraphSceneHandle {
 
   setRimOnly(value: boolean): void {
     this.hologram.setRimOnly(value);
+    this.orbits.setRimOnly(value);
     this.root.dataset.decorationMode = value ? 'outer-rim-only' : 'full-shell';
     this.requestFrame();
   }
 
   setDecorationVisible(value: boolean): void {
     this.hologram.setDecorationVisible(value);
+    this.decorationVisible = value;
+    this.orbits.setVisible(value);
+    if (!value) this.hoveredOrbit = null;
     this.root.dataset.decorationVisible = String(value);
     this.requestFrame();
   }
@@ -559,6 +627,16 @@ class CareerScene implements CareerGraphSceneHandle {
     const direction = this.camera.position.clone().sub(this.controls.target).normalize();
     this.controls.target.fromArray(node.position);
     this.camera.position.copy(this.controls.target).addScaledVector(direction, Math.max(45, nodeSize(node) * 7));
+    this.controls.update();
+    this.requestFrame();
+  };
+
+  focusOrbit = (selection: CareerOrbitSelection): void => {
+    if (this.lost || !this.orbits.getAnchor(selection, this.orbitPoint)) return;
+    this.callbacks.onInteraction();
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    this.controls.target.copy(this.orbitPoint);
+    this.camera.position.copy(this.orbitPoint).addScaledVector(direction, Math.max(65, this.bounds.radius * 1.25));
     this.controls.update();
     this.requestFrame();
   };
@@ -621,9 +699,11 @@ class CareerScene implements CareerGraphSceneHandle {
     const bloomScale = compact || this.visualProfile === 'focus' ? 0.5 : 0.7;
     this.bloomPass.setSize(this.width * this.pixelRatio * bloomScale, this.height * this.pixelRatio * bloomScale);
     this.hologram.resize(this.height, this.pixelRatio, compact);
+    this.orbits.resize(this.pixelRatio);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
     for (const label of this.missionLabels) label.width = 0;
+    for (const label of this.orbitLabels) label.width = 0;
     for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial]) {
       material.uniforms.uHeight.value = this.height * this.pixelRatio;
       material.uniforms.uPixelRatio.value = this.pixelRatio;
@@ -645,7 +725,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.frame = 0;
     if (this.disposed || this.lost || !this.intersecting || document.hidden) return;
     if (this.motionPreference.matches !== this.lastReducedMotion) this.refreshMotionPreference();
-    const ambient = this.animate && this.automaticMotionAllowed && Boolean(this.graph?.nodes.length);
+    const ambient = this.animate && this.automaticMotionAllowed && Boolean(this.graph?.nodes.length || this.graph?.orbits.length);
     const rotating = this.autoRotate && this.automaticMotionAllowed && this.pointers.size === 0;
     if ((ambient || rotating || this.cursorSettling) && time - this.lastDraw < FRAME_INTERVAL) {
       this.requestFrame();
@@ -668,6 +748,16 @@ class CareerScene implements CareerGraphSceneHandle {
       material.uniforms.uFar.value = distance + this.bounds.radius * 1.3;
     }
     this.hologram.update(this.camera, ambient ? delta : 0);
+    this.orbits.setMotionAllowed(ambient);
+    this.orbits.update(this.camera, ambient ? delta : 0);
+    const orbitTetherCount = String(this.orbits.tetherCount);
+    const orbitPulseCount = String(this.orbits.savedPulseCount);
+    if (this.root.dataset.orbitTetherCount !== orbitTetherCount) {
+      this.root.dataset.orbitTetherCount = this.canvas.dataset.orbitTetherCount = orbitTetherCount;
+    }
+    if (this.root.dataset.orbitPulseCount !== orbitPulseCount) {
+      this.root.dataset.orbitPulseCount = this.canvas.dataset.orbitPulseCount = orbitPulseCount;
+    }
     this.composer.render();
     // Work markers bypass bloom: decorative brightness must not bleach status
     // colors, hide selection, or become an apparent completion indicator.
@@ -680,6 +770,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.updateAnimationState(ambient ? 'running' : 'paused', time);
     if (this.visualProfile === 'career') {
       this.updateLabels();
+      this.updateOrbitLabels();
       this.updateMissionLabels();
     }
     if (!this.reportedReady) {
@@ -747,8 +838,10 @@ class CareerScene implements CareerGraphSceneHandle {
         this.hoverTimer = 0;
         this.lastHover = performance.now();
         if (!this.hoverPosition || this.pointers.size || this.lost) return;
-        this.hoveredId = this.pick(this.hoverPosition.x, this.hoverPosition.y)?.id ?? null;
-        this.canvas.style.cursor = this.hoveredId ? 'pointer' : 'grab';
+        const hit = this.pick(this.hoverPosition.x, this.hoverPosition.y);
+        this.hoveredId = hit?.kind === 'node' ? hit.nodeId : null;
+        this.hoveredOrbit = hit?.kind === 'orbit' ? hit.selection : null;
+        this.canvas.style.cursor = this.hoveredId || this.hoveredOrbit ? 'pointer' : 'grab';
         this.requestFrame();
       }, Math.max(0, 75 - (performance.now() - this.lastHover)));
     }
@@ -760,8 +853,9 @@ class CareerScene implements CareerGraphSceneHandle {
     if (gesture?.pointerId === event.pointerId) {
       const moved = gesture.moved || Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 5;
       if (!moved && gesture.selectable && !this.lost) {
-        const node = this.pick(event.clientX, event.clientY);
-        if (node) this.callbacks.onSelect(node.id);
+        const hit = this.pick(event.clientX, event.clientY);
+        if (hit?.kind === 'node') this.callbacks.onSelect(hit.nodeId);
+        else if (hit?.kind === 'orbit') this.callbacks.onOrbitSelect(hit.selection);
       }
       this.gesture = null;
     }
@@ -837,18 +931,14 @@ class CareerScene implements CareerGraphSceneHandle {
     this.hoverTimer = 0;
     this.hoverPosition = null;
     this.hoveredId = null;
+    this.hoveredOrbit = null;
     this.canvas.style.cursor = 'grab';
     this.requestFrame();
   }
 
-  private pick(clientX: number, clientY: number): GraphNode | undefined {
-    if (this.visualProfile === 'focus') return undefined;
+  private pickNode(x: number, y: number, width: number, height: number): CareerNodeScreenHit | undefined {
     if (!this.graph?.nodes.length) return undefined;
-    const rect = this.canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return undefined;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    this.pointer.set(x / rect.width * 2 - 1, -(y / rect.height) * 2 + 1);
+    this.pointer.set(x / width * 2 - 1, -(y / height) * 2 + 1);
     this.camera.updateMatrixWorld();
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const farthest = this.controls.getDistance() + this.bounds.radius * 2;
@@ -868,7 +958,7 @@ class CareerScene implements CareerGraphSceneHandle {
         picked = node;
       }
     }
-    return picked;
+    return picked ? { nodeId: picked.id, distance: closest } : undefined;
   }
 
   private projectNode(node: GraphNode): boolean {
@@ -878,6 +968,92 @@ class CareerScene implements CareerGraphSceneHandle {
     this.projected.x = (this.projected.x + 1) * this.width / 2;
     this.projected.y = (1 - this.projected.y) * this.height / 2;
     return visible;
+  }
+
+  private pick(clientX: number, clientY: number): CareerSceneHit | undefined {
+    if (this.visualProfile === 'focus') return undefined;
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return undefined;
+    const x = clientX - rect.left, y = clientY - rect.top;
+    const node = this.pickNode(x, y, rect.width, rect.height);
+    const anchor = this.decorationVisible ? this.orbits.pickAnchor(x, y, this.camera, rect.width, rect.height) : undefined;
+    const path = !node && !anchor && this.decorationVisible
+      ? this.orbits.pickPath(x, y, this.camera, rect.width, rect.height) : undefined;
+    return chooseCareerSceneHit(node, anchor, path);
+  }
+
+  private projectOrbit(selection: CareerOrbitSelection): boolean {
+    if (!this.orbits.getAnchor(selection, this.orbitPoint)) return false;
+    this.projected.copy(this.orbitPoint).project(this.camera);
+    const visible = this.projected.z >= -1 && this.projected.z <= 1
+      && Math.abs(this.projected.x) <= 1 && Math.abs(this.projected.y) <= 1;
+    this.projected.x = (this.projected.x + 1) * this.width / 2;
+    this.projected.y = (1 - this.projected.y) * this.height / 2;
+    return visible;
+  }
+
+  private updateOrbitLabels(): void {
+    this.orbitLabelLayer.hidden = !showOrbitIdentityLabels(this.width, this.height, this.decorationVisible);
+    this.orbitLabelRectCount = 0;
+    const selectedVisible = this.decorationVisible && this.selectedOrbit ? this.projectOrbit(this.selectedOrbit) : false;
+    this.orbitMarker.hidden = !selectedVisible;
+    this.orbitMarker.dataset.screenVisible = String(selectedVisible);
+    if (selectedVisible) {
+      const x = this.projected.x.toFixed(2), y = this.projected.y.toFixed(2);
+      this.orbitMarker.dataset.screenX = x;
+      this.orbitMarker.dataset.screenY = y;
+      this.orbitMarker.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
+    const tooltip = this.hoveredOrbit ?? (!this.hoveredId ? this.selectedOrbit : null);
+    if (tooltip && this.decorationVisible && this.projectOrbit(tooltip)) {
+      const orbit = this.graph?.orbits.find(item => item.id === tooltip.orbitId);
+      if (orbit) {
+        this.label.hidden = false;
+        this.labelId = null;
+        this.label.textContent = compactOrbitTooltip(orbit, tooltip, Boolean(this.hoveredOrbit));
+        this.label.dataset.status = 'orbit';
+        this.label.style.setProperty('--orbit-color', orbit.color);
+        const x = MathUtils.clamp(this.projected.x + 16, 8, Math.max(8, this.width - this.label.offsetWidth - 8));
+        const y = MathUtils.clamp(this.projected.y - this.label.offsetHeight - 14, 8, Math.max(8, this.height - this.label.offsetHeight - 8));
+        this.label.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
+      }
+    }
+    // Identity labels are secondary to the hover/selected detail and avoid one another.
+    for (const entry of this.orbitLabels) {
+      const { element, orbit } = entry;
+      const visible = this.decorationVisible && this.projectOrbit({ orbitId: orbit.id });
+      element.dataset.screenVisible = String(visible);
+      element.dataset.screenX = this.projected.x.toFixed(2);
+      element.dataset.screenY = this.projected.y.toFixed(2);
+      element.style.visibility = 'hidden';
+      element.dataset.labelVisible = 'false';
+      if (!visible || this.orbitLabelLayer.hidden) continue;
+      if (!entry.width) {
+        entry.width = element.offsetWidth;
+        entry.height = element.offsetHeight;
+      }
+      const { width, height } = entry;
+      const x = MathUtils.clamp(this.projected.x + 12, 5, Math.max(5, this.width - width - 5));
+      const y = MathUtils.clamp(this.projected.y - height / 2, 5, Math.max(5, this.height - height - 5));
+      let overlaps = false;
+      for (let index = 0; index < this.orbitLabelRectCount; index++) {
+        const box = this.orbitLabelRects[index];
+        if (x < box.right + 3 && x + width > box.left - 3 && y < box.bottom + 3 && y + height > box.top - 3) {
+          overlaps = true;
+          break;
+        }
+      }
+      if (overlaps) continue;
+      element.style.visibility = 'visible';
+      element.dataset.labelVisible = 'true';
+      element.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
+      const box = this.orbitLabelRects[this.orbitLabelRectCount] ?? { left: 0, top: 0, right: 0, bottom: 0 };
+      box.left = x;
+      box.top = y;
+      box.right = x + width;
+      box.bottom = y + height;
+      this.orbitLabelRects[this.orbitLabelRectCount++] = box;
+    }
   }
 
   private updateLabels(): void {
@@ -915,8 +1091,8 @@ class CareerScene implements CareerGraphSceneHandle {
   private updateMissionLabels(): void {
     this.missionLabelLayer.hidden = this.width < 640 || this.height < 350;
     if (this.missionLabelLayer.hidden) return;
-    type LabelBox = { left: number; top: number; right: number; bottom: number };
     const occupied: LabelBox[] = [];
+    for (let index = 0; index < this.orbitLabelRectCount; index++) occupied.push(this.orbitLabelRects[index]);
     if (!this.label.hidden) {
       const labelRect = this.label.getBoundingClientRect();
       const rootRect = this.root.getBoundingClientRect();
@@ -985,6 +1161,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.allowReducedMotion = false;
       this.controls.autoRotate = false;
     }
+    this.orbits.setMotionAllowed(this.animate && this.automaticMotionAllowed && this.intersecting && !document.hidden && !this.lost);
   }
 
   private onMotionChange = (): void => {
@@ -996,6 +1173,7 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private syncVisibility(): void {
     if (!this.intersecting || document.hidden) {
+      this.orbits.setMotionAllowed(false);
       cancelAnimationFrame(this.frame);
       this.frame = 0;
       this.clearHover();
@@ -1010,6 +1188,7 @@ class CareerScene implements CareerGraphSceneHandle {
   private onContextLost = (event: Event): void => {
     event.preventDefault();
     this.lost = true;
+    this.orbits.setMotionAllowed(false);
     this.reportedReady = false;
     this.controls.enabled = false;
     cancelAnimationFrame(this.frame);
@@ -1018,6 +1197,9 @@ class CareerScene implements CareerGraphSceneHandle {
     this.clearCursor(true);
     this.label.hidden = true;
     this.marker.hidden = true;
+    this.orbitMarker.hidden = true;
+    this.orbitMarker.dataset.screenVisible = 'false';
+    this.orbitLabelLayer.hidden = true;
     this.missionLabelLayer.hidden = true;
     this.updateAnimationState('lost');
     this.callbacks.onStatusChange('lost', 'The 3D graphics context was lost. The graph will reconnect if the browser restores it. Your saved work is unchanged; the node list remains available.');
@@ -1056,6 +1238,7 @@ class CareerScene implements CareerGraphSceneHandle {
     for (const geometry of [this.nodeGeometry, this.edgeGeometry, this.selectedGeometry, this.selectedEdgeGeometry]) geometry.dispose();
     for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial, this.edgesMaterial, this.selectedEdgesMaterial, this.edgeGlowMaterial, this.selectedEdgeGlowMaterial]) material.dispose();
     this.hologram.dispose();
+    this.orbits.dispose();
     this.renderPass.dispose();
     this.bloomPass.dispose();
     this.bloomPass.materialHighPassFilter.dispose();
@@ -1067,31 +1250,35 @@ class CareerScene implements CareerGraphSceneHandle {
     this.renderer.forceContextLoss();
     this.canvas.remove();
     this.missionLabelLayer.replaceChildren();
+    this.orbitLabelLayer.replaceChildren();
   }
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showDecoration = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<HTMLDivElement>(null);
   const missionLabelLayerRef = useRef<HTMLDivElement>(null);
+  const orbitLabelLayerRef = useRef<HTMLDivElement>(null);
+  const orbitMarkerRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CareerScene | null>(null);
-  const callbacks = useRef({ onSelect, onInteraction, onStatusChange });
+  const callbacks = useRef({ onSelect, onOrbitSelect, onInteraction, onStatusChange });
   const instructionsId = useId();
   const [state, setState] = useState<{ status: SceneStatus | 'loading'; message?: string }>({ status: 'loading' });
 
   useLayoutEffect(() => {
-    callbacks.current = { onSelect, onInteraction, onStatusChange };
-  }, [onSelect, onInteraction, onStatusChange]);
+    callbacks.current = { onSelect, onOrbitSelect, onInteraction, onStatusChange };
+  }, [onSelect, onOrbitSelect, onInteraction, onStatusChange]);
 
   useImperativeHandle(ref, () => ({
     resetView: () => runtimeRef.current?.resetView(),
     zoomIn: () => runtimeRef.current?.zoomIn(),
     zoomOut: () => runtimeRef.current?.zoomOut(),
     focusNode: id => runtimeRef.current?.focusNode(id),
+    focusOrbit: selection => runtimeRef.current?.focusOrbit(selection),
     rotate: direction => runtimeRef.current?.rotate(direction),
   }), []);
 
@@ -1101,7 +1288,9 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
     const label = labelRef.current;
     const marker = markerRef.current;
     const missionLabelLayer = missionLabelLayerRef.current;
-    if (!root || !viewport || !label || !marker || !missionLabelLayer) return;
+    const orbitLabelLayer = orbitLabelLayerRef.current;
+    const orbitMarker = orbitMarkerRef.current;
+    if (!root || !viewport || !label || !marker || !missionLabelLayer || !orbitLabelLayer || !orbitMarker) return;
     // A fresh canvas also makes StrictMode's setup/cleanup/setup safe after forceContextLoss.
     const canvas = document.createElement('canvas');
     canvas.className = 'career-graph-scene__canvas';
@@ -1126,8 +1315,9 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
       canvas.remove();
       return;
     }
-    const runtime = new CareerScene(root, viewport, label, marker, missionLabelLayer, renderer, {
+    const runtime = new CareerScene(root, viewport, label, marker, missionLabelLayer, orbitLabelLayer, orbitMarker, renderer, {
       onSelect: id => callbacks.current.onSelect(id),
+      onOrbitSelect: selection => callbacks.current.onOrbitSelect?.(selection),
       onInteraction: () => callbacks.current.onInteraction?.(),
       onStatusChange: (status, message) => {
         setState({ status, message });
@@ -1143,6 +1333,13 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
 
   useEffect(() => { runtimeRef.current?.setGraph(graph); }, [graph, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId, visualProfile]);
+  const selectedOrbitId = selectedOrbit?.orbitId;
+  const selectedOrbitSegmentId = selectedOrbit?.segmentId;
+  useEffect(() => {
+    runtimeRef.current?.setOrbitSelection(selectedOrbitId
+      ? { orbitId: selectedOrbitId, ...(selectedOrbitSegmentId ? { segmentId: selectedOrbitSegmentId } : {}) }
+      : null);
+  }, [selectedOrbitId, selectedOrbitSegmentId, visualProfile]);
   const animateAmbient = animate ?? (visualProfile === 'focus' ? autoRotate : true);
   const maskInterior = rimOnly ?? (visualProfile === 'focus');
   useEffect(() => { runtimeRef.current?.setMotion(autoRotate, animateAmbient, allowReducedMotion); }, [autoRotate, animateAmbient, allowReducedMotion, visualProfile]);
@@ -1153,21 +1350,24 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
     <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" data-animation-state="loading" data-animation-revision="0" data-animation-time="0.000" data-cursor-strength="0.0000" data-cursor-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
       <div ref={viewportRef} className="career-graph-scene__viewport" />
       <div ref={missionLabelLayerRef} className="career-graph-scene__mission-labels" aria-hidden="true" hidden />
+      <div ref={orbitLabelLayerRef} className="career-graph-scene__orbit-labels" aria-hidden="true" hidden />
       <div ref={markerRef} className="career-graph-scene__selected-marker" data-screen-visible="false" aria-hidden="true" hidden />
+      <div ref={orbitMarkerRef} className="career-graph-scene__selected-orbit-marker" data-screen-visible="false" aria-hidden="true" hidden />
       <div ref={labelRef} className="career-graph-scene__node-label" aria-hidden="true" hidden />
       <p id={instructionsId} className="career-graph-scene__sr-only">
         Drag to rotate. Scroll or pinch to zoom. Use two fingers or the right mouse button to pan.
         With the canvas focused, arrow keys rotate, plus and minus zoom, and Home fits the graph.
-        Select a ringed point to inspect real work. Bright orange links connect actual nodes; the multicolor shell and sparks are decorative, not additional relationships.
+        Select a ringed point to inspect real work. Select an orbit identity or a moving stage arc to inspect its actual members.
+        Bright orange links connect actual nodes; colored orbit tethers show real membership. Only sparks are decorative.
         Moving the pointer gently bends link interiors without moving their endpoints, including while automatic animation is paused.
-        The accessible node list offers the same selections without the canvas.
+        The accessible node list and orbit index offer the same selections without the canvas.
       </p>
       <div className="career-graph-scene__status" role="status" aria-live="polite" aria-atomic="true">
         {state.status === 'loading' && <p>Opening 3D space…</p>}
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{!showDecoration ? 'Orange links: connections · Rings and sparks hidden' : maskInterior ? 'Interior links: connections · Outer rim: decoration' : 'Orange links: connections · Multicolor shell: decoration'}</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{!showDecoration ? 'Orange links: connections · Orbit views and sparks hidden' : maskInterior ? 'Orbit paths: clear center · Anchors and membership tethers stay visible' : 'Orbits: saved missions and records · Tethers: membership · Sparks: decoration'}</span>}
     </div>
   );
 });

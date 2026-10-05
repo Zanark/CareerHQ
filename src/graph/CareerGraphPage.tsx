@@ -4,11 +4,13 @@ import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Check, ClipboardCopy, Focus,
   Expand, Maximize2, Minimize2, Minus, Network, Pause, Play, Plus, Search, X,
 } from 'lucide-react';
-import type { AppState } from '../domain/types';
+import type { AppState, MissionId } from '../domain/types';
 import { getMissions } from '../domain/catalog';
 import { buildCareerGraph } from './careerGraphModel';
 import type { CareerGraphEdge, CareerGraphKind, CareerGraphNode } from './careerGraphModel';
 import { CareerGraphConnections } from './CareerGraphConnections';
+import { CareerOrbitInspector } from './CareerOrbitInspector';
+import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
 import './career-graph.css';
 
@@ -32,7 +34,7 @@ class GraphSceneBoundary extends Component<{ children: ReactNode; onFailure: () 
     if (!this.state.failed) return this.props.children;
     return <div className="career-graph-unavailable" role="alert">
       <strong>The 3D view could not load.</strong>
-      <p>Your records are still available in the node list. Reload the page to retry; this does not clear saved data.</p>
+      <p>Your records and ring views are still available in the indexes below. Reload the page to retry; this does not clear saved data.</p>
       <button className="button secondary" onClick={() => location.reload()}>Reload 3D view</button>
     </div>;
   }
@@ -42,7 +44,9 @@ function matchesScope(node: CareerGraphNode, scope: string) {
   return scope === 'all' || node.kind === 'core' || node.missionId === scope;
 }
 
-export function CareerGraphPage({ state, practice, date }: { state: AppState; practice: boolean; date: string }) {
+export function CareerGraphPage({ state, practice, date, onRecord }: {
+  state: AppState; practice: boolean; date: string; onRecord: (missionId: MissionId) => void;
+}) {
   const graph = useMemo(() => buildCareerGraph(state), [state, date]);
   const [scope, setScope] = useState('all');
   const [includeRecords, setIncludeRecords] = useState(true);
@@ -51,6 +55,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
   const [includeDecoration, setIncludeDecoration] = useState(true);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
   const [listCount, setListCount] = useState(40);
   const [autoRotate, setAutoRotate] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [animationPaused, setAnimationPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -65,7 +70,10 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
   const controls = useRef<CareerGraphSceneHandle>(null);
   const stageRef = useRef<HTMLElement>(null);
   const inspectorRef = useRef<HTMLElement>(null);
+  const orbitInspectorRef = useRef<HTMLElement>(null);
+  const orbitIndexRef = useRef<HTMLDetailsElement>(null);
   const inspectFromList = useRef(false);
+  const inspectOrbitFromList = useRef(false);
   const previousFilter = useRef(`${scope}:${includeRecords}:${includeReferences}`);
   const missionNodes = graph.nodes.filter(node => node.kind === 'mission');
   const nodeMap = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph]);
@@ -74,11 +82,21 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
       (includeRecords || !recordKinds.has(node.kind)) &&
       (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference'));
     const ids = new Set(nodes.map(node => node.id));
-    return { ...graph, nodes, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
+    const orbits = graph.orbits.filter(orbit => scope === 'all' || orbit.kind !== 'mission' || orbit.missionId === scope);
+    return { ...graph, nodes, orbits, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
       (includeSharedSkills || edge.kind !== 'shared-skill')) };
   }, [graph, scope, includeRecords, includeReferences, includeSharedSkills]);
   const visibleIds = useMemo(() => new Set(visible.nodes.map(node => node.id)), [visible.nodes]);
   const selected = visible.nodes.find(node => node.id === selectedId);
+  const selectedOrbit = graph.orbits.find(orbit => orbit.id === orbitSelection?.orbitId);
+  const selectedSegment = selectedOrbit?.segments.find(segment => segment.id === orbitSelection?.segmentId);
+  const activeOrbitSelection = useMemo(() => selectedOrbit ? {
+    orbitId: selectedOrbit.id, ...(selectedSegment ? { segmentId: selectedSegment.id } : {}),
+  } : null, [selectedOrbit?.id, selectedSegment?.id]);
+  const recordableOrbitMission = selectedOrbit?.missionId && selectedOrbit.currentNodeId &&
+    state.missions[selectedOrbit.missionId].mode === 'active' &&
+    state.missions[selectedOrbit.missionId].status !== 'completed' && !state.missions[selectedOrbit.missionId].blocker
+    ? selectedOrbit.missionId : undefined;
   const checkpoints = graph.nodes.filter(node => node.kind === 'checkpoint' && !node.archived && matchesScope(node, scope));
   const completed = checkpoints.filter(node => node.status === 'complete').length;
   const filtered = visible.nodes.filter(node => node.kind !== 'core' &&
@@ -89,15 +107,29 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
     setSceneMessage(message ?? '');
   }, []);
   const onSceneFailure = useCallback(() => setSceneStatus('unavailable'), []);
-  const selectNode = useCallback((id: string) => setSelectedId(id), []);
+  const selectNode = useCallback((id: string) => { setSelectedId(id); setOrbitSelection(null); }, []);
+  const selectOrbit = useCallback((selection: CareerOrbitSelection) => {
+    setOrbitSelection(selection);
+    setSelectedId(null);
+  }, []);
   useLayoutEffect(() => {
     if (!selected || !inspectFromList.current) return;
     inspectFromList.current = false;
     inspectorRef.current?.focus({ preventScroll: true });
     inspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
   }, [selected?.id]);
+  useLayoutEffect(() => {
+    if (!selectedOrbit || !inspectOrbitFromList.current) return;
+    inspectOrbitFromList.current = false;
+    orbitInspectorRef.current?.focus({ preventScroll: true });
+    orbitInspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, [selectedOrbit?.id, selectedSegment?.id]);
   useEffect(() => {
-    const update = () => setFullscreen(document.fullscreenElement === stageRef.current);
+    const update = () => {
+      const active = document.fullscreenElement === stageRef.current;
+      setFullscreen(active);
+      if (active && orbitIndexRef.current) orbitIndexRef.current.open = false;
+    };
     document.addEventListener('fullscreenchange', update);
     return () => document.removeEventListener('fullscreenchange', update);
   }, []);
@@ -129,6 +161,8 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
         return `${mission.name} (v${mission.roadmapVersion}): ${progress.mode}; ${progress.status}; ${progress.completedCheckpointIds.length}/${mission.checkpoints.length} checkpoints. Saved position: ${current?.title ?? 'Reference only'}.`;
       }),
       ...(selected ? ['', `Selected ${kindLabels[selected.kind]}: ${selected.label}`, statusLabels[selected.status], selected.context, selected.detail] : []),
+      ...(selectedOrbit ? ['', `Selected orbit: ${selectedOrbit.label}`, selectedSegment?.summary ?? selectedOrbit.summary,
+        selectedOrbit.detail, 'An orbit is a derived data view, not another task or a mastery assessment.'] : []),
       '', 'Use this context to discuss the next step. Do not invent completion or change the tracker without confirmation.',
     ];
     try {
@@ -149,15 +183,45 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
     }
   }
 
-  function inspectConnection(node: CareerGraphNode, edge: CareerGraphEdge) {
+  function inspectOrbitMember(node: CareerGraphNode) {
     if (!matchesScope(node, scope)) setScope('all');
     if (node.status === 'reference' && node.kind !== 'core' && node.kind !== 'mission') setIncludeReferences(true);
     if (recordKinds.has(node.kind)) setIncludeRecords(true);
-    if (edge.kind === 'shared-skill') setIncludeSharedSkills(true);
     setQuery('');
     setListCount(40);
     inspectFromList.current = true;
     setSelectedId(node.id);
+    setOrbitSelection(null);
+  }
+
+  function inspectConnection(node: CareerGraphNode, edge: CareerGraphEdge) {
+    if (edge.kind === 'shared-skill') setIncludeSharedSkills(true);
+    inspectOrbitMember(node);
+  }
+
+  function inspectOrbitFromIndex(orbitId: string) {
+    const orbit = graph.orbits.find(item => item.id === orbitId)!;
+    if (fullscreen && orbitIndexRef.current) orbitIndexRef.current.open = false;
+    if (orbit.kind === 'mission' && scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
+    inspectOrbitFromList.current = true;
+    selectOrbit({ orbitId });
+    if (selectedOrbit?.id === orbitId && !selectedSegment) {
+      inspectOrbitFromList.current = false;
+      orbitInspectorRef.current?.focus({ preventScroll: true });
+      orbitInspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  }
+
+  function revealOrbit() {
+    if (!selectedOrbit) return;
+    setScope(selectedOrbit.kind === 'mission' ? selectedOrbit.missionId! : 'all');
+    const ids = selectedSegment ? selectedSegment.members.map(member => member.nodeId) : selectedOrbit.memberIds;
+    const members = ids.map(id => nodeMap.get(id)!);
+    if (members.some(node => recordKinds.has(node.kind))) setIncludeRecords(true);
+    if (members.some(node => node.status === 'reference')) setIncludeReferences(true);
+    setIncludeDecoration(true);
+    setQuery('');
+    setListCount(40);
   }
 
   return <div className="career-graph-page">
@@ -184,13 +248,14 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
             <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
             <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
             <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
-            <label className="graph-checkbox" title="Show decorative outer rings and floating dots. Real nodes, connections and their glow stay visible."><input type="checkbox" checked={includeDecoration} onChange={event => setIncludeDecoration(event.target.checked)} />Rings &amp; sparks</label>
+            <label className="graph-checkbox" title="Show mission and record-view orbits plus decorative floating dots. Work nodes and their connections stay visible."><input type="checkbox" checked={includeDecoration} onChange={event => setIncludeDecoration(event.target.checked)} />Rings &amp; sparks</label>
           </div>
         </div>
         <div className="career-graph-stage" data-tour="career-graph-stage">
           <GraphSceneBoundary onFailure={onSceneFailure}>
             <Suspense fallback={<div className="career-graph-loading" role="status">Loading the 3D career network...</div>}>
               <CareerGraphScene ref={controls} graph={visible} selectedId={selected?.id ?? null} onSelect={selectNode}
+                selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
                 rimOnly={rimOnly} showDecoration={includeDecoration} onStatusChange={onSceneStatus} />
             </Suspense>
@@ -210,25 +275,41 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
                 visibleIds={visibleIds} includeSharedSkills={includeSharedSkills} onInspect={inspectConnection} />
             </>}
           </aside>
+          {selectedOrbit && <CareerOrbitInspector ref={orbitInspectorRef} key={selectedOrbit.id}
+            orbit={selectedOrbit} segment={selectedSegment} nodes={nodeMap} visibleIds={visibleIds}
+            ringsVisible={includeDecoration && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
+            onClose={() => setOrbitSelection(null)} onSelect={selectOrbit} onReveal={revealOrbit} onInspect={inspectOrbitMember}
+            onRecord={recordableOrbitMission ? () => onRecord(recordableOrbitMission) : undefined} />}
         </div>
         <div className="career-graph-controls">
           <button className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.resetView()}><Maximize2 size={15} />Frame all</button>
           <button className="icon-button" aria-label="Zoom career graph in" disabled={!sceneReady} onClick={() => controls.current?.zoomIn()}><Plus size={17} /></button>
           <button className="icon-button" aria-label="Zoom career graph out" disabled={!sceneReady} onClick={() => controls.current?.zoomOut()}><Minus size={17} /></button>
           <button className="button secondary" disabled={!sceneReady || !selected} onClick={() => { if (selected) controls.current?.focusNode(selected.id); }}><Focus size={15} />Focus node</button>
+          <button className="button secondary" disabled={!sceneReady || !activeOrbitSelection || !includeDecoration || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
+            onClick={() => { if (activeOrbitSelection) controls.current?.focusOrbit(activeOrbitSelection); }}><Focus size={15} />Focus ring</button>
           <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
           <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
             onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>{animationPaused ? <Play size={15} /> : <Pause size={15} />}{animationPaused ? 'Resume animation' : 'Pause animation'}</button>
           <button className="button secondary" disabled={!sceneReady || !includeDecoration} aria-pressed={rimOnly}
-            title="Hide outer-shell arcs where they cross the center of the camera view. Real connections stay visible."
+            title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
             onClick={() => setRimOnly(value => !value)}>Clear center</button>
           <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>
         </div>
         <div className="career-graph-stage-footer">
-          <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node.</p>
+          <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
           <div className="career-graph-legend"><span>Work nodes:</span><span><i className="graph-status-complete" />Done</span><span><i className="graph-status-incomplete" />Unfinished</span><span><i className="graph-status-reference" />Reference</span></div>
           <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
+          <p className="career-graph-orbit-key">{visible.orbits.length} ring views · moving tethers show membership, not prerequisites or extra work nodes.</p>
         </div>
+        <details ref={orbitIndexRef} className="career-orbit-index" data-tour="career-graph-orbits">
+          <summary>Explore ring views ({graph.orbits.length})</summary>
+          <p>Nine saved-mission views and six record/reference collections. Inspect any ring here, even without 3D.</p>
+          <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
+            aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
+            <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong><small>{orbit.summary}</small></span>
+          </button>)}</div>
+        </details>
         {fullscreenError && <p className="career-graph-render-notice" role="alert">{fullscreenError}</p>}
         {(sceneStatus === 'unavailable' || sceneStatus === 'lost') && <p className="career-graph-render-notice" role="status">{sceneMessage || 'The 3D renderer is unavailable. The node list and your saved data remain accessible.'}</p>}
         <details className="career-graph-keyboard"><summary>Keyboard rotation controls</summary><div className="button-row">
@@ -244,6 +325,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
       </div>
       <div className="career-graph-node-list" data-tour="career-graph-list">
         {filtered.slice(0, listCount).map(node => <button key={node.id} type="button" aria-pressed={selected?.id === node.id} onClick={() => {
+          setOrbitSelection(null);
           if (selectedId === node.id) {
             inspectFromList.current = false;
             inspectorRef.current?.focus({ preventScroll: true });
@@ -260,7 +342,7 @@ export function CareerGraphPage({ state, practice, date }: { state: AppState; pr
       {!filtered.length && <p className="career-graph-empty">No nodes match this view. Change the mission, layers or search text.</p>}
       {filtered.length > listCount && <button className="button secondary" onClick={() => setListCount(count => count + 80)}>Show more nodes</button>}
     </section>
-    <footer className="career-graph-footer"><p>Orange links connect actual nodes; their reasons are in Connections. Outer-shell arcs and sparks are decoration, not extra relationships. Clear center hides camera-facing shell arcs without removing real links. Shared skills add no tasks, prerequisites or completion credit. The core glow is visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
+    <footer className="career-graph-footer"><p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks and glow remain visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
       {copied && <p role="status">Career brief copied to your clipboard.</p>}{copyError && <p role="alert" className="form-error">{copyError}</p>}
     </footer>
   </div>;

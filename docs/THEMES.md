@@ -44,23 +44,27 @@ content-hashed asset so updated tabs and the app use the same mark. Its deep-wat
 tile and canonical seafoam, ivory and yellow stay consistent in both themes;
 the surrounding wordmark follows the current theme's heading and muted roles.
 
-The home graph is a real WebGL 3D scene with an original procedural core, layered
-outer-shell arcs, sparks and luminous depth. Its stage remains deep-water in both themes.
+The home graph is a real WebGL 3D scene with an original procedural core, meaningful
+data orbits, sparks and luminous depth. Its stage remains deep-water in both themes.
 Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
 notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orange
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
 their endpoints. The maximum push is 56 CSS pixels at the fitted view, tapering
-with the square root of relative camera distance as you zoom in. Decorative outer arcs have independent orbital speeds; two stable sampled rings run
-at 1.5x and 2x their original speeds. The yellow particle counts are halved in each
-viewport/profile. Full-shell
-projection is the default; **Clear center** restores the optional projected-rim mask.
-**Rings & sparks** hides the decorative outer shell and particles without removing
-real nodes, connection glow or the actual core-node aura.
+with the square root of relative camera distance as you zoom in.
+Nine mission orbits use the active saved roadmap's stages and checkpoint statuses;
+six record/reference orbits show the appropriate collection groups and counts.
+The orbit's base hue identifies its view; mission checkpoint ticks use the saved
+green/orange/reference status colors. Stage marks stay together as each orbit turns.
+Their moving anchors remain attached to genuine hubs or selected members by
+stretching membership tethers. These are derived views, excluded from work totals.
+Full-shell projection is the default; **Clear center** masks ring paths rather
+than their data anchors. **Rings & sparks** hides the orbit overlay and particles
+without removing real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
 lines cannot show through; only the outer glow has a soft falloff.
-Glow, sparks and outer arcs are not additional tasks, relationships or evidence of a
-connected AI. **Pause animation** is separate from camera orbit and inspection.
+Glow and sparks remain decorative; orbit motion is not evidence of a connected AI
+or progress by itself. **Pause animation** is separate from camera orbit and inspection.
 Reduced motion starts paused, while direct pointer/keyboard navigation remains available.
 The Three.js runtime is distributed with its [MIT notice](../public/licenses/Three-MIT.txt).
 

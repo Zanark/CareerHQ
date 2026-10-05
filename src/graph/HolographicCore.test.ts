@@ -16,6 +16,26 @@ function rimMaterial(core: HolographicCore): ShaderMaterial {
 }
 
 describe('outer-rim-only decoration', () => {
+  it('allocates no decorative belt geometry in semantic orbit scenes, preserving sparks and the opaque core', () => {
+    const core = new HolographicCore(false, false);
+    const legacy = new HolographicCore();
+    let lines = 0;
+    let sparks: Points | undefined;
+    let legacySparks: Points | undefined;
+    core.object.traverse(object => {
+      if (object instanceof LineSegments) lines++;
+      if (object instanceof Points) sparks = object;
+    });
+    legacy.object.traverse(object => { if (object instanceof Points) legacySparks = object; });
+    expect(lines).toBe(0);
+    expect(sparks?.geometry.getAttribute('position').array).toEqual(legacySparks?.geometry.getAttribute('position').array);
+    core.setBounds(new Vector3(), 60, new Vector3());
+    core.setDecorationVisible(false);
+    expect(core.object.getObjectByName('Existing core node aura')?.visible).toBe(true);
+    core.dispose();
+    legacy.dispose();
+  });
+
   it.each([false, true])('has no invented interior line or particle geometry (calm=%s)', calm => {
     const core = new HolographicCore(calm);
     let lineObjects = 0;

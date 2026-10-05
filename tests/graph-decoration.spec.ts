@@ -28,7 +28,7 @@ for (const width of [1440, 320]) {
     await toggle.uncheck();
     await expect(scene).toHaveAttribute('data-decoration-visible', 'false');
     await expect(page.getByRole('button', { name: 'Clear center', exact: true })).toBeDisabled();
-    await expect(scene.locator('.career-graph-scene__space-note')).toHaveText('Orange links: connections · Rings and sparks hidden');
+    await expect(scene.locator('.career-graph-scene__space-note')).toHaveText('Orange links: connections · Orbit views and sparks hidden');
     const hidden = await canvas.screenshot();
     expect(hidden.equals(before)).toBe(false);
     await testInfo.attach('rings-and-sparks-visible', { body: before, contentType: 'image/png' });

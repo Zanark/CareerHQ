@@ -70,6 +70,9 @@ describe('Career OS graph: real saved progress', () => {
     expect(graph.stats).toEqual({ trackedTotal: total, trackedCompleted: 0, archivedCompleted: 0, pastWorkRecords: 0 });
     expect(graph.updates).toEqual([]);
     expect(graph.nodes).toHaveLength(total + missionIds.length + 1);
+    expect(graph.orbits).toHaveLength(15);
+    expect(graph.orbits.reduce((sum, orbit) => sum + (orbit.progress?.total ?? 0), 0)).toBe(total);
+    expect(graph.nodes.some(item => item.id.startsWith('orbit:'))).toBe(false);
     expect(node(graph, 'core:careerhq')).toMatchObject({
       kind: 'core', status: 'reference', label: 'CareerOS', detail: state.objective, position: [0, 0, 0],
     });
@@ -443,6 +446,7 @@ describe('Career OS graph: daily work is distinct from checkpoint mastery', () =
     const ids = new Set(graph.nodes.map(item => item.id));
     expect(actions).toHaveLength(days * planMissions.length);
     expect(actions.length).toBeGreaterThan(10_000);
+    expect(graph.orbits.find(orbit => orbit.kind === 'action')?.memberIds).toEqual(actions.map(item => item.id));
     expect(actions.every(item => item.status === 'complete' && item.position.every(Number.isFinite))).toBe(true);
     expect(ids.size).toBe(graph.nodes.length);
     expect(graph.edges.every(edge => ids.has(edge.source) && ids.has(edge.target))).toBe(true);

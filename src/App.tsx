@@ -238,7 +238,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
         {practice && <div className="tutorial-practice-banner"><strong>Practice tutorial</strong><span>Temporary data. Your real progress is untouched.</span><button onClick={onExitTutorial}>Exit tutorial</button></div>}
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
-        {page === 'home' && <CareerGraphPage state={state} practice={practice} date={date} />}
+        {page === 'home' && <CareerGraphPage state={state} practice={practice} date={date} onRecord={id => openEvidence(id)} />}
         {page === 'perspective' && <Perspective state={state} practice={practice} commit={commit} />}
         {page === 'dsa' && <DsaLibrary key={route} state={state} sectionNumber={route.split('/')[1]} />}
         {page === 'system-concepts' && <SystemConceptsPage key={route} groupId={route.split('/')[1]} />}
