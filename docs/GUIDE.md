@@ -73,7 +73,7 @@ references and untracked expanded curriculum remain distinct reference nodes.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
-Thicker, glowing orange links represent actual graph connections. Decorative arcs
+Fine, glowing orange links represent actual graph connections. Decorative arcs
 orbit the outside of the sphere at individual speeds; their front/back segments
 remain visible by default. **Clear center** optionally masks those projected shell
 segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.

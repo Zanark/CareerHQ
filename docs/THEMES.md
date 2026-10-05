@@ -48,7 +48,7 @@ The home graph is a real WebGL 3D scene with an original procedural core, layere
 outer-shell arcs, sparks and luminous depth. Its stage remains deep-water in both themes.
 Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
-notes do not award mastery. Real connections use thicker, glowing DeepSeaFoam orange
+notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orange
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
 their endpoints. Decorative outer arcs have independent orbital speeds. Full-shell
 projection is the default; **Clear center** restores the optional projected-rim mask.

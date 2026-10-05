@@ -284,10 +284,10 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly nodesMaterial = pointMaterial();
   private readonly selectionMaterial = pointMaterial(true);
   private readonly nodeAuraMaterial = pointMaterial(false, true);
-  private readonly edgesMaterial = edgeMaterial(0.5, 1.7);
-  private readonly selectedEdgesMaterial = edgeMaterial(0.85, 2.8);
-  private readonly edgeGlowMaterial = edgeMaterial(0.16, 2.8, true);
-  private readonly selectedEdgeGlowMaterial = edgeMaterial(0.38, 3.8, true);
+  private readonly edgesMaterial = edgeMaterial(0.5, 0.9);
+  private readonly selectedEdgesMaterial = edgeMaterial(0.85, 1.5);
+  private readonly edgeGlowMaterial = edgeMaterial(0.16, 1.6, true);
+  private readonly selectedEdgeGlowMaterial = edgeMaterial(0.38, 2.2, true);
   private readonly points = new Points(this.nodeGeometry, this.nodesMaterial);
   private readonly nodeAuras = new Points(this.nodeGeometry, this.nodeAuraMaterial);
   private readonly selection = new Points(this.selectedGeometry, this.selectionMaterial);
