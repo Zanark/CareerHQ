@@ -194,7 +194,7 @@ export class HolographicCore {
     this.rim.add(this.particles);
 
     const heartGeometry = new SphereGeometry(0.032, 24, 16);
-    const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(calm ? 1.35 : 2.8), transparent: true, opacity: 0.88 });
+    const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(calm ? 1.35 : 2.8) });
     this.geometries.push(heartGeometry);
     this.materials.push(heartMaterial);
     this.heart.add(new Mesh(heartGeometry, heartMaterial));

@@ -57,6 +57,8 @@ viewport/profile. Full-shell
 projection is the default; **Clear center** restores the optional projected-rim mask.
 **Rings & sparks** hides the decorative outer shell and particles without removing
 real nodes, connection glow or the actual core-node aura.
+The white CareerOS center and its inner halo are opaque, so underlying connection
+lines cannot show through; only the outer glow has a soft falloff.
 Glow, sparks and outer arcs are not additional tasks, relationships or evidence of a
 connected AI. **Pause animation** is separate from camera orbit and inspection.
 Reduced motion starts paused, while direct pointer/keyboard navigation remains available.

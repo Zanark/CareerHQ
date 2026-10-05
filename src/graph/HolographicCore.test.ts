@@ -70,6 +70,15 @@ describe('outer-rim-only decoration', () => {
     core.dispose();
   });
 
+  it.each([false, true])('keeps the white core mesh fully opaque (calm=%s)', calm => {
+    const core = new HolographicCore(calm);
+    const heart = core.object.getObjectByName('Existing core node aura')!;
+    const mesh = heart.children.find(child => child instanceof Mesh)!;
+    expect(mesh).toBeInstanceOf(Mesh);
+    expect(mesh.material).toMatchObject({ transparent: false, opacity: 1, depthWrite: true });
+    core.dispose();
+  });
+
   it('hides rings and particles together without removing the real core aura or rebuilding geometry', () => {
     const core = new HolographicCore();
     core.setBounds(new Vector3(0, 0, 0), 60, new Vector3(0, 0, 0));

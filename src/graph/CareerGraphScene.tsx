@@ -127,8 +127,10 @@ const pointFragmentShader = `
     float depth = mix(1.0, 0.4, smoothstep(uNear, uFar, vDepth));
     float alpha = max(center, max(ring, glow)) * depth;
     float backing = vKind > 2.5 ? 0.0 : (1.0 - smoothstep(0.48, 0.64, r)) * 0.78;
+    float coreFill = vKind > 2.5 ? 1.0 - smoothstep(0.62, 0.76, r) : 0.0;
     vec3 ink = mix(vec3(0.0, 0.005, 0.008), vColor, max(center, ring));
-    gl_FragColor = vec4(ink, max(alpha, backing));
+    ink = mix(ink, vColor, coreFill);
+    gl_FragColor = vec4(ink, max(coreFill, max(alpha, backing)));
     #include <colorspace_fragment>
   }
 `;

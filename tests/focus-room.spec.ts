@@ -1,13 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createRequire } from 'node:module';
 import type { AppState } from '../src/domain/types';
 import { focusSessionSummary } from '../src/domain/focusSession';
 import { buildCareerGraph } from '../src/graph/careerGraphModel';
-
-// Reuse the locked Playwright PNG decoder outside the browser/GPU process.
-const { PNG }: {
-  PNG: { sync: { read(buffer: Buffer): { width: number; height: number; data: Buffer } } };
-} = createRequire(import.meta.url)('playwright-core/lib/utilsBundle');
+import { PNG } from './png';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
