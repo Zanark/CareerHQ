@@ -23,7 +23,7 @@ for (const theme of ['dark', 'light']) {
       const mark = brand.locator('img');
       await expect(mark).toHaveAttribute('alt', '');
       const source = await mark.getAttribute('src');
-      expect(source).toMatch(/^\/CareerHQ\/assets\/careerhq-mark-.+\.svg$/);
+      expect(source).toMatch(/^\/CareerOS\/assets\/careerhq-mark-.+\.svg$/);
       await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', source!);
       expect(await mark.evaluate(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth === 64)).toBe(true);
 

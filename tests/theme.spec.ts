@@ -5,6 +5,7 @@ import { createInitialState } from '../src/domain/engine';
 type Theme = 'dark' | 'light';
 const themeKey = 'careerhq.theme.v1';
 const workspaceKey = 'careerhq.workspace.v1';
+// Theme-only cases use Overview; career-graph.spec.ts covers real WebGL/theme integration.
 const palette = {
   dark: { page: 'rgb(0, 15, 19)', card: 'rgb(0, 30, 38)', text: 'rgb(147, 161, 161)', meta: '#000F13' },
   light: { page: 'rgb(243, 242, 233)', card: 'rgb(252, 250, 242)', text: 'rgb(53, 84, 81)', meta: '#F3F2E9' },
@@ -131,7 +132,7 @@ test('external prepaint script restores saved light before the main module hydra
     await route.continue();
   });
   try {
-    await page.goto('./', { waitUntil: 'commit' });
+    await page.goto('./#/hq', { waitUntil: 'commit' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#F3F2E9');
     await expect(page.locator('script[src$="/theme-init.js"]')).toHaveCount(1);
@@ -156,7 +157,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.addInitScript(({ key, state }) => {
       if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(state));
     }, { key: workspaceKey, state: createInitialState(true) });
-    await page.goto('./');
+    await page.goto('./#/hq');
     await selectTheme(page, theme);
     const before = await workspace(page);
     const documentStarted = await page.evaluate(() => performance.timeOrigin);
@@ -192,7 +193,7 @@ for (const theme of ['dark', 'light'] as const) {
 }
 
 test('workspace resets and backup imports do not reset the separate theme preference', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./#/hq');
   await selectTheme(page, 'light');
   const backup = await workspace(page);
   await navigate(page, 'Settings & data');
@@ -322,9 +323,7 @@ test('a late sunrise request continues past the west horizon and returns from th
 });
 
 test('theme motion uses only the tiny control and one page fade', async ({ page }) => {
-  await page.goto('./');
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await frozenMotionPage(page);
   await themeSwitch(page).click();
   const effects = await page.evaluate(() => document.getAnimations().map(animation => {
     const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
@@ -371,7 +370,7 @@ test('sunny mode has a bright blue sky instead of the night palette', async ({ p
 
 test('reduced motion changes theme immediately without animated transition state', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('./');
+  await page.goto('./#/hq');
   await assertTheme(page, 'dark');
   await themeSwitch(page).click();
   const immediate = await themeSwitch(page).evaluate(button => ({
@@ -390,7 +389,7 @@ test('reduced motion changes theme immediately without animated transition state
 });
 
 test('keyboard Tab exposes a visible focus indicator and Space toggles the switch', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./#/hq');
   await assertTheme(page, 'dark');
   await page.keyboard.press('Control+k');
   await expect(page.getByRole('textbox', { name: 'Search missions and evidence', exact: true })).toBeFocused();
@@ -415,11 +414,8 @@ test('keyboard Tab exposes a visible focus indicator and Space toggles the switc
 });
 
 test('rapid theme changes settle on the last choice without workspace changes', async ({ page }) => {
-  await page.goto('./');
-  await assertTheme(page, 'dark');
+  await frozenMotionPage(page);
   const before = await workspace(page);
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   for (let index = 0; index < 5; index++) await themeSwitch(page).click();
   await expect(themeSwitch(page)).toHaveAttribute('aria-checked', 'false');
   await expect(themeSwitch(page)).toHaveAttribute('data-motion', 'sunrise');
@@ -434,7 +430,7 @@ test('rapid theme changes settle on the last choice without workspace changes', 
 for (const width of [320, 390]) {
   test(`both themes fit ${width}px across routes with global search expanded`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto('./');
+    await page.goto('./#/hq');
     for (const theme of ['dark', 'light'] as const) {
       await selectTheme(page, theme);
       for (const route of ['Overview', /^Missions/, 'Roadmap', 'Daily plan', 'Saved work',
@@ -469,7 +465,7 @@ test('blocked theme-only writes show a notice while workspace storage still work
       return setItem.call(this, name, value);
     };
   }, themeKey);
-  await page.goto('./');
+  await page.goto('./#/hq');
   await assertTheme(page, 'dark');
   const before = await workspace(page);
   await selectTheme(page, 'light');

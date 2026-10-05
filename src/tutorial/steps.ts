@@ -495,7 +495,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'persistence-transfer', chapter: 'persistence', kind: 'explain',
     targets: ['backup-export', 'backup-import'], title: 'Move your real data between machines',
-    body: 'Outside this tutorial, export the latest real backup from Settings & data, transfer it privately, then import it at zanark.github.io/CareerHQ on the other machine. Export any destination progress first: import replaces, not merges. Carry the latest backup when switching back.',
+    body: 'Outside this tutorial, export the latest real backup from Settings & data, transfer it privately, then import it at zanark.github.io/CareerOS on the other machine. Export any destination progress first: import replaces, not merges. Carry the latest backup when switching back.',
   },
   {
     id: 'persistence-boundaries', chapter: 'persistence', kind: 'explain',

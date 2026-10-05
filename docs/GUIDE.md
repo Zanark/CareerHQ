@@ -3,10 +3,13 @@
 Track current checkpoints, daily actions, and saved work.
 Built with React, TypeScript, and Vite; data stays in your browser.
 
-The site is now named **CareerOS**. Its existing `/CareerHQ/` address, storage keys
-and backup format remain unchanged, so the rename does not move or reset your progress.
+The site and repository are now named **CareerOS**, at `/CareerOS/`. The previous
+`/CareerHQ/` address is no longer the deployment path. Storage keys and backup format
+remain unchanged: both paths use the same `https://zanark.github.io` origin, so the
+same browser profile retains its existing progress. Do not clear site data to fix a
+loading problem. Different browsers/devices still need a private backup transfer.
 
-[Website](https://zanark.github.io/CareerHQ/) ·
+[Website](https://zanark.github.io/CareerOS/) ·
 [Overview](../README.md) · [Architecture](ARCHITECTURE.md) · [Themes](THEMES.md) · [Privacy](PRIVACY.md) ·
 [Agent contract](AGENT_CONTRACT.md) · [Operation sources](OPERATION-SOURCES.md)
 
@@ -58,7 +61,7 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 
 ### Your 3D career view
 
-The website now opens **[Career graph](https://zanark.github.io/CareerHQ/#/home)**.
+The website now opens **[Career graph](https://zanark.github.io/CareerOS/#/home)**.
 Drag to rotate the network in genuine 3D, scroll or pinch to zoom, and select a
 node for its record. **Frame all** restores the whole view; **Focus node** centers
 the selected item. **Full screen** expands the scene and its controls; Escape returns.
@@ -128,7 +131,7 @@ leaving practice, subject to the normal storage/conflict protections.
 
 ### The complete mission workbooks
 
-Open **[Practice libraries](https://zanark.github.io/CareerHQ/#/practice)** from Missions
+Open **[Practice libraries](https://zanark.github.io/CareerOS/#/practice)** from Missions
 or Operation documents. Each expanded mission has its own source-based library with
 mental models, worked reasoning, concepts, exercises, transfer tasks, diagnostics,
 mastery evidence and recovery guidance.
@@ -166,7 +169,7 @@ checkpoint becomes the foundation bridge; those five are counted once, not again
 because an archive exists. Existing v1 trackers still use the older explicit
 archive-and-start adoption path. Export a backup before either operation.
 
-**[DSA practice library](https://zanark.github.io/CareerHQ/#/dsa/1)** includes all
+**[DSA practice library](https://zanark.github.io/CareerOS/#/dsa/1)** includes all
 50 source sections, 939 problem appearances and 371 distinct problem IDs. Repeated
 appearances are intentional. Use the section selector, row-difficulty filter and
 problem search; **Open practice set** on the mission opens the relevant section.
@@ -198,11 +201,11 @@ The concepts view preserves 20 source sections and 160 concept placements.
 The problems view includes 72 tracked modules and all 15 case-study references.
 
 Use **Find a concept** to center a term at readable size. **My saved tracker**
-returns to your actual System Forge checkpoints. The [concept browser](https://zanark.github.io/CareerHQ/#/system-concepts)
+returns to your actual System Forge checkpoints. The [concept browser](https://zanark.github.io/CareerOS/#/system-concepts)
 also presents every branch at ordinary text size, with search and source attribution.
 Repeated patterns stay under each source category. The source asks for an overview
 of the cloud patterns, not mastery of all of them. This concepts reference adds no
-checkpoint gates and records no completion. The [problems browser](https://zanark.github.io/CareerHQ/#/system-practice)
+checkpoint gates and records no completion. The [problems browser](https://zanark.github.io/CareerOS/#/system-practice)
 provides all 146 module practice prompts, 15 cases with 195 scope/deep-dive prompts,
 transfer drills, module-specific gates and eight periodic diagnostics.
 
@@ -217,7 +220,7 @@ click as a completed case. Source component outlines are discussion prompts, not
 production execution diagrams. Specialized patterns begin at overview depth and
 are deepened when an exercise needs them.
 
-1. Open [Operation documents](https://zanark.github.io/CareerHQ/#/sources).
+1. Open [Operation documents](https://zanark.github.io/CareerOS/#/sources).
 2. Choose an area from **Mission**. For example, **DSA · Pattern Forge**.
 3. Read **Sources, scope and supporting material**, then use **Roadmap stage** to
    browse its stages. Expand **Topics and completion criteria in this stage** for the detail.
@@ -319,7 +322,7 @@ that workspace backup on another machine. Nothing personal is bundled in the pub
 1. Open a mission. Use **Bring into focus** if it is in the background, then **Make
    primary mission** if you want it considered first. Leave other areas in the background
    when you do not want daily actions for them.
-2. Open [Daily plan](https://zanark.github.io/CareerHQ/#/plan), choose **Gentle**,
+2. Open [Daily plan](https://zanark.github.io/CareerOS/#/plan), choose **Gentle**,
    **Steady**, or **Deep focus**, and select **Refresh plan** if today's untouched plan
    needs your latest priorities. A plan with logged actions stays intact.
 3. Select **Open checkpoint** and do its **Next action** outside the tracker.
@@ -439,7 +442,7 @@ npm run test:e2e
 npm run build
 ```
 
-The development site is `http://127.0.0.1:5173/CareerHQ/`.
+The development site is `http://127.0.0.1:5173/CareerOS/`.
 Playwright builds the production app and manages Vite preview on port `4173`, reusing
 an existing server outside CI. Use a production preview at that address, not a dev server:
 the browser tests should exercise the shipped content-security policy.
@@ -457,13 +460,13 @@ the HTML report is in `playwright-report`. Test contexts use only synthetic reco
 
 ## Deployment and troubleshooting
 
-The Vite base is `/CareerHQ/`. Routes use hashes, such as
-`/CareerHQ/#/mission/pattern`, so reloading a deep link does not require server rewrites.
+The Vite base is `/CareerOS/`, matching the repository name. Routes use hashes, such as
+`/CareerOS/#/mission/pattern`, so reloading a deep link does not require server rewrites.
 `npm run build` produces `dist`; **only that build output belongs in the Pages artifact**.
 Do not publish local backups, browser reports, source-reference documents, or context stores.
 
 For the first deployment, a repository administrator must select **Settings → Pages →
-Build and deployment → Source: GitHub Actions**. The `Validate and deploy CareerHQ`
+Build and deployment → Source: GitHub Actions**. The `Validate and deploy CareerOS`
 workflow then validates, builds, runs browser coverage, and deploys on pushes to `main`.
 It can also be run manually from Actions. If a run happened before Pages was enabled,
 rerun it after selecting that source.
@@ -472,14 +475,14 @@ The production HTML carries a restrictive content-security policy and makes no e
 runtime requests. Only Vite development mode removes that policy to allow its inline
 hot-refresh preamble; the built static HTML retains the policy.
 
-The application is at **https://zanark.github.io/CareerHQ/**, not the GitHub repository
-file listing. Use the exact `/CareerHQ/` project path.
+The application is at **https://zanark.github.io/CareerOS/**, not the GitHub repository
+file listing. Use the exact `/CareerOS/` project path.
 
 If the website is missing or appears outdated:
 
-1. Open [repository Pages settings](https://github.com/Zanark/CareerHQ/settings/pages).
+1. Open [repository Pages settings](https://github.com/Zanark/CareerOS/settings/pages).
    An administrator must select **GitHub Actions** as the build source.
-2. Open [Validate and deploy CareerHQ](https://github.com/Zanark/CareerHQ/actions/workflows/deploy.yml).
+2. Open [Validate and deploy CareerOS](https://github.com/Zanark/CareerOS/actions/workflows/deploy.yml).
    Select the latest `main` run and inspect **both** `build` and `deploy`.
 3. If the source setting was just corrected, use **Re-run all jobs** on that run, or
    **Run workflow** with branch `main`. A green build alone does not establish deployment.
@@ -488,6 +491,10 @@ If the website is missing or appears outdated:
    error means Pages needs the source setting above.
 5. After both jobs succeed, open the website link and hard-refresh with **Ctrl+Shift+R**.
    Do not clear site data: that can delete your private progress.
+
+Failed browser runs retain their synthetic test reports and traces in the
+`browser-failure-diagnostics` Actions artifact for seven days. Inspect the failing
+test rather than treating a successful compile as a successful deployment.
 
 Repository administration and Git push permissions can differ. A user who can push
 may still need the owner to change Pages settings.

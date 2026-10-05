@@ -7,9 +7,10 @@ const key = 'careerhq.workspace.v1';
 
 async function ready(page: Page) {
   await expect(page.locator('.career-graph-scene')).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
   const pause = page.getByRole('button', { name: 'Pause animation', exact: true });
   if (await pause.count()) await pause.click();
+  await expect(page.locator('.career-graph-scene')).toHaveAttribute('data-animation-state', 'paused');
+  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
 }
 
 async function seed(page: Page, state: AppState) {
@@ -199,6 +200,8 @@ test('reduced motion stops automatic orbit while keyboard rotation remains avail
 });
 
 test('leaving the graph releases its WebGL context and reopening preserves workspace data', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
   await page.goto('./');
   await ready(page);
   const before = await page.evaluate(key => localStorage.getItem(key), key);
@@ -207,14 +210,18 @@ test('leaving the graph releases its WebGL context and reopening preserves works
       if (!(element instanceof HTMLCanvasElement)) throw new Error('Expected canvas');
       return element.getContext('webgl2')!;
     });
+    expect(await context.evaluate(gl => gl.isContextLost())).toBe(false);
     await page.getByRole('link', { name: 'Open Overview', exact: true }).click();
-    await expect.poll(() => context.evaluate(gl => gl.isContextLost())).toBe(true);
+    await expect(page).toHaveURL(/#\/hq$/);
+    await expect(page.getByRole('heading', { name: 'Overview', level: 1, exact: true })).toBeVisible();
     await expect(page.locator('.career-graph-stage canvas')).toHaveCount(0);
+    await expect.poll(() => context.evaluate(gl => gl.isContextLost())).toBe(true);
     await page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Career graph', exact: true }).click();
     await ready(page);
     await context.dispose();
   }
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(before);
+  expect(errors).toEqual([]);
 });
 
 test('full screen expands the actual scene and retains its orbit controls', async ({ page }) => {

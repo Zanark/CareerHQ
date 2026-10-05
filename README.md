@@ -1,12 +1,12 @@
-[![CareerOS: a local-first tracker for roadmaps, daily actions, and saved work.](docs/images/readme-cover.png)](https://zanark.github.io/CareerHQ/)
+[![CareerOS: a local-first tracker for roadmaps, daily actions, and saved work.](docs/images/readme-cover.png)](https://zanark.github.io/CareerOS/)
 
-**[Open CareerOS](https://zanark.github.io/CareerHQ/)** · [How to use it](docs/GUIDE.md#start-using-it) · [Developer setup](docs/GUIDE.md#develop-and-verify)
+**[Open CareerOS](https://zanark.github.io/CareerOS/)** · [How to use it](docs/GUIDE.md#start-using-it) · [Developer setup](docs/GUIDE.md#develop-and-verify)
 
 ## Your documents, made usable
 
-[![The supplied PDFs became nine learning and career roadmaps: DSA, system design, Service Fabric, architecture, certifications, AI engineering, opportunities, freelance research, and planned competitive programming.](docs/images/readme-roadmaps.png)](https://zanark.github.io/CareerHQ/#/sources)
+[![The supplied PDFs became nine learning and career roadmaps: DSA, system design, Service Fabric, architecture, certifications, AI engineering, opportunities, freelance research, and planned competitive programming.](docs/images/readme-roadmaps.png)](https://zanark.github.io/CareerOS/#/sources)
 
-Open **[Operation documents](https://zanark.github.io/CareerHQ/#/sources)** to explore the content. These are tracking milestones, not full courses or imported achievements.
+Open **[Operation documents](https://zanark.github.io/CareerOS/#/sources)** to explore the content. These are tracking milestones, not full courses or imported achievements.
 
 ## One session at a time
 
@@ -16,8 +16,8 @@ New here? Open the website and click **Tutorial**. Practice with the actual cont
 
 ## Know where your progress lives
 
-[![Progress is stored in this browser. Export a JSON backup and import it elsewhere to move devices. There is no account or automatic sync.](docs/images/readme-storage.png)](https://zanark.github.io/CareerHQ/#/settings)
+[![Progress is stored in this browser. Export a JSON backup and import it elsewhere to move devices. There is no account or automatic sync.](docs/images/readme-storage.png)](https://zanark.github.io/CareerOS/#/settings)
 
-**[Export a backup](https://zanark.github.io/CareerHQ/#/settings)** before changing devices. Imports replace the destination; backups are not encrypted.
+**[Export a backup](https://zanark.github.io/CareerOS/#/settings)** before changing devices. Imports replace the destination; backups are not encrypted.
 
 [Full guide](docs/GUIDE.md) · [PDF-to-website mapping](docs/OPERATION-SOURCES.md) · [Privacy](docs/PRIVACY.md) · [DeepSeaFoam theme](docs/THEMES.md)

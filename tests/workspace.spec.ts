@@ -98,7 +98,7 @@ async function noOverflow(page: Page) {
 test('empty workspace, accessible navigation, and hash deep-link reload', async ({ page }, testInfo) => {
   await page.goto('./#/hq');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
-  await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', /^\/CareerHQ\/assets\/.+\.js$/);
+  await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', /^\/CareerOS\/assets\/.+\.js$/);
   await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
     'content', /(?:^|;)\s*script-src 'self'\s*(?:;|$)/,
   );
@@ -119,7 +119,7 @@ test('empty workspace, accessible navigation, and hash deep-link reload', async 
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   }
   await openPatternForge(page);
-  await expect(page).toHaveURL(/\/CareerHQ\/#\/mission\/pattern$/);
+  await expect(page).toHaveURL(/\/CareerOS\/#\/mission\/pattern$/);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'DSA', exact: true })).toBeVisible();
   await screenshot(page, testInfo, 'mission-desktop');

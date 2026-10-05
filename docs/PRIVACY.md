@@ -62,7 +62,8 @@ data. Anyone with suitable access to the browser,
 extensions, developer tools, or same-origin JavaScript may read or modify it.
 
 GitHub Pages project paths are **not separate origins**. For example, another site
-running under `https://zanark.github.io/` can access storage used by `/CareerHQ/`.
+running under `https://zanark.github.io/` can access storage used by `/CareerOS/`
+(and the previous `/CareerHQ/` path).
 A distinct storage key avoids accidental collisions; it is not access control.
 
 Do not store passwords, tokens, credentials, confidential employer material, or

@@ -27,7 +27,7 @@ plan as proof of capability.
 | `src/focus/*` | One tab-local controller shared by compact/fullscreen timers, immediately persisted self-reports, retained history, and an inert calm-profile 3D backdrop. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
-| `vite.config.ts` | `/CareerHQ/` asset base; Vite emits the static deployment into `dist`. |
+| `vite.config.ts` | `/CareerOS/` asset base matching the renamed repository; Vite emits the static deployment into `dist`. |
 
 Large DSA problem references and System practice summaries are emitted into a
 separately cacheable static data chunk. They remain local bundled content, not a

@@ -5,7 +5,7 @@ const port = Number(process.env.CAREERHQ_E2E_PORT ?? 4173);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('CAREERHQ_E2E_PORT must be an integer from 1 to 65535.');
 }
-const baseURL = `http://127.0.0.1:${port}/CareerHQ/`;
+const baseURL = `http://127.0.0.1:${port}/CareerOS/`;
 
 export default defineConfig({
   testDir: './tests',
