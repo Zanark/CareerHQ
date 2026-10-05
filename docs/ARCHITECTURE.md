@@ -67,6 +67,14 @@ and explicit reveal follow only ring visibility; core glow is outside both switc
 Orbit selection highlights the complete orbit, independent of the selected stage/group.
 The selection glow is presentation geometry, not another ring, work node or prerequisite;
 membership tethers remain scoped to the selected group, with unchanged data and camera.
+Per-item visibility is an in-memory set of existing node/orbit IDs, outside workspace
+data. Tri-state groups derive from the same set, including overlapping mission and
+collection membership. The full source catalog stays searchable; only the rendered
+node/orbit arrays and edges with two visible endpoints are filtered.
+`framingNodes` supplies the pre-item-filter bounds so checkbox choices do not shift
+remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
+visible core, not a framing-only node. One non-animated initial render may occur
+below the fold to finish initialization; subsequent offscreen frames stay suspended.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 The optional periodic core heartbeat is separate from saved-status completion pulses.
 Its source is the real core node and its ten-second cadence uses active elapsed time.

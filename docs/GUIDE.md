@@ -111,6 +111,24 @@ core glow and your zoom stay unchanged. **Clear center** and **Focus ring** depe
 only on Rings. Re-enabling Rings restores your selected Clear center mode, and
 **Reveal orbit and members** never changes the Sparks setting. Like the other
 graph filters, these are view-only choices, not saved-progress changes.
+
+**Choose nodes** opens checkboxes for every mission/collection group, individual
+work node and ring, including the CareerOS core. Groups are batch choices over
+their current items; a partly checked group has mixed choices. An evidence node
+can belong to both its mission and Saved evidence, so its choice updates both groups.
+Expand **Individual nodes and rings** to search by name/context or limit the list
+to nodes or ring views. Hidden items stay in this chooser so you can restore them.
+**Select all items / Clear all items** change these choices, not the layer switches.
+The existing mission/layer filters still apply; chosen items suppressed by those
+filters say **Hidden by another filter**. Sparks remain separately controlled above.
+
+Hiding an item removes its displayed connections without moving remaining nodes,
+rings or the camera. Hiding the core also hides its glow and stops its heartbeat.
+Visibility choices last only while this graph page is open; new items start chosen.
+They do not delete records, change completion, or remove anything from backups.
+The existing **Reveal and inspect** and **Reveal orbit and members** actions restore
+the requested hidden items without changing your Sparks choice.
+
 Connection lines bend away from your cursor but stay attached to their endpoints.
 The push is stronger at the normal view and gradually weakens as you zoom closer.
 Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**

@@ -61,6 +61,8 @@ export interface CareerGraphSceneHandle {
 
 export interface CareerGraphSceneProps {
   graph: CareerGraph;
+  /** Bounds before item-level hiding, so checkbox choices do not shift remaining orbits. */
+  framingNodes?: readonly GraphNode[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   selectedOrbit?: CareerOrbitSelection | null;
@@ -492,7 +494,7 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private get canvas(): HTMLCanvasElement { return this.renderer.domElement; }
 
-  setGraph(graph: CareerGraph): void {
+  setGraph(graph: CareerGraph, framingNodes: readonly GraphNode[] = graph.nodes): void {
     const previous = this.graph;
     const pointsChanged = !previous || previous.nodes.length !== graph.nodes.length || graph.nodes.some((node, index) => {
       const before = previous.nodes[index];
@@ -522,11 +524,11 @@ class CareerScene implements CareerGraphSceneHandle {
     this.edgeGlowMaterial.opacity = this.visualProfile === 'focus' ? 0.08 : dense ? 0.1 : 0.16;
     this.nodeAuraMaterial.uniforms.uOpacity.value = this.visualProfile === 'focus' ? 0.08 : graph.nodes.length > 2000 ? 0.1 : 0.22;
     const box = new Box3();
-    for (const node of graph.nodes) box.expandByPoint(this.projected.fromArray(node.position));
+    for (const node of framingNodes) box.expandByPoint(this.projected.fromArray(node.position));
     if (!box.isEmpty()) {
       box.getCenter(this.bounds.center);
       let radiusSquared = 35 * 35;
-      for (const node of graph.nodes) {
+      for (const node of framingNodes) {
         radiusSquared = Math.max(radiusSquared, this.projected.fromArray(node.position).distanceToSquared(this.bounds.center));
       }
       this.bounds.radius = Math.sqrt(radiusSquared);
@@ -543,7 +545,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? this.corePosition : undefined);
     this.heartbeat.setSource(core ? this.corePosition : undefined, this.focusBounds.radius, this.bounds.radius);
     this.refreshHeartbeat();
-    this.hologram.object.visible = graph.nodes.length > 0;
+    this.hologram.object.visible = framingNodes.length > 0;
     this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
     this.root.dataset.orbitCount = String(this.orbits.orbitCount);
     this.canvas.dataset.orbitCount = String(this.orbits.orbitCount);
@@ -877,7 +879,7 @@ class CareerScene implements CareerGraphSceneHandle {
   };
 
   private requestFrame = (): void => {
-    if (!this.frame && !this.disposed && !this.lost && this.intersecting && !document.hidden) {
+    if (!this.frame && !this.disposed && !this.lost && (this.intersecting || !this.reportedReady) && !document.hidden) {
       this.frame = requestAnimationFrame(this.render);
     }
   };
@@ -892,10 +894,10 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private render = (time: number): void => {
     this.frame = 0;
-    if (this.disposed || this.lost || !this.intersecting || document.hidden) return;
+    if (this.disposed || this.lost || (!this.intersecting && this.reportedReady) || document.hidden) return;
     if (this.motionPreference.matches !== this.lastReducedMotion) this.refreshMotionPreference();
-    const ambient = this.animate && this.automaticMotionAllowed && Boolean(this.graph?.nodes.length || this.graph?.orbits.length);
-    const rotating = this.autoRotate && this.automaticMotionAllowed && this.pointers.size === 0;
+    const ambient = this.intersecting && this.animate && this.automaticMotionAllowed && Boolean(this.graph?.nodes.length || this.graph?.orbits.length);
+    const rotating = this.intersecting && this.autoRotate && this.automaticMotionAllowed && this.pointers.size === 0;
     if ((ambient || rotating || this.cursorSettling) && time - this.lastDraw < FRAME_INTERVAL) {
       this.requestFrame();
       return;
@@ -938,7 +940,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.renderer.autoClear = true;
     this.lastDraw = time;
     if (ambient && delta > 0) this.animationRevision++;
-    this.updateAnimationState(ambient ? 'running' : 'paused', time);
+    this.updateAnimationState(!this.intersecting ? 'suspended' : ambient ? 'running' : 'paused', time);
     if (this.visualProfile === 'career') {
       this.updateLabels();
     }
@@ -1380,6 +1382,8 @@ class CareerScene implements CareerGraphSceneHandle {
       this.clearHover();
       this.clearCursor(true);
       this.updateAnimationState('suspended');
+      // Initialize once below the fold so controls become usable; later offscreen frames stay suspended.
+      if (!this.reportedReady && !document.hidden) this.requestFrame();
     } else {
       this.lastDraw = performance.now();
       this.requestFrame();
@@ -1459,7 +1463,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1535,7 +1539,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
     };
   }, [instructionsId, visualProfile]);
 
-  useEffect(() => { runtimeRef.current?.setGraph(graph); }, [graph, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setGraph(graph, framingNodes); }, [graph, framingNodes, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId, visualProfile]);
   const selectedOrbitId = selectedOrbit?.orbitId;
   const selectedOrbitSegmentId = selectedOrbit?.segmentId;

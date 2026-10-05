@@ -81,6 +81,12 @@ export const steps: TutorialStep[] = [
     body: 'Explore ring views lists nine saved missions and six record/reference collections. Select a card to light up its entire ring. Active missions have colored moving outer rings; background/planned missions keep smaller gray stationary rings. Bring into focus controls this, not Make primary mission. Rings and Sparks hide each layer separately. Stage selection keeps the whole ring highlighted; tethers show only that group, not new prerequisites or completion credit.',
   },
   {
+    id: 'career-graph-visibility', chapter: 'career-graph', kind: 'explain', route: 'home',
+    targets: ['career-graph-visibility'],
+    title: 'Choose exactly what appears',
+    body: 'Choose nodes opens visibility checkboxes. Groups choose their nodes and ring together; Individual nodes and rings lets you search and toggle anything, including the core. A partly checked group has mixed choices. Select all items restores choices, but the mission and layer filters still apply. This only changes the current view: nothing is deleted or completed.',
+  },
+  {
     id: 'career-graph-search', chapter: 'career-graph', kind: 'action',
     targets: ['career-graph-search'],
     title: 'Find a real checkpoint',

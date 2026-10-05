@@ -34,6 +34,10 @@ clipboard only after you click it; review the contents before sharing elsewhere.
 The application has no connected AI backend. Renderer diagnostics must not include
 private record text.
 
+Graph visibility checkboxes are temporary presentation choices, not deletion or
+access control. Hidden items remain in this browser's workspace, backups and any
+applicable copied mission brief. Review exports and clipboard contents before sharing.
+
 ## What stays in this browser
 
 Progress, evidence text and links, plans, history, readiness, and opportunities are

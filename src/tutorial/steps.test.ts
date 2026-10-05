@@ -23,7 +23,7 @@ describe('current tutorial curriculum', () => {
       'dsa-library', 'dsa-library-section', 'dsa-library-filter',
       'system-concepts-intro', 'system-concepts-search',
       'system-practice-intro', 'system-practice-select', 'system-practice-transfer',
-      'career-graph-intro', 'career-graph-orbits', 'career-graph-search', 'career-graph-select',
+      'career-graph-intro', 'career-graph-orbits', 'career-graph-visibility', 'career-graph-search', 'career-graph-select',
       'pack-open', 'pack-reference', 'pack-exercises', 'pack-guide', 'pack-gate',
       'focus-room-open', 'focus-room-run', 'focus-room-report', 'focus-room-data', 'focus-room-close', 'focus-room-history',
     ]) expect(ids.has(id), id).toBe(true);

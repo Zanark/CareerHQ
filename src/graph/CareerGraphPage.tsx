@@ -10,6 +10,8 @@ import { buildCareerGraph } from './careerGraphModel';
 import type { CareerGraphEdge, CareerGraphKind, CareerGraphNode } from './careerGraphModel';
 import { CareerGraphConnections } from './CareerGraphConnections';
 import { CareerOrbitInspector } from './CareerOrbitInspector';
+import { CareerGraphVisibility } from './CareerGraphVisibility';
+import { setCareerItemsVisible } from './careerVisibility';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
 import './career-graph.css';
@@ -54,6 +56,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
   const [includeRings, setIncludeRings] = useState(true);
   const [includeSparks, setIncludeSparks] = useState(true);
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
@@ -74,21 +77,26 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const inspectorRef = useRef<HTMLElement>(null);
   const orbitInspectorRef = useRef<HTMLElement>(null);
   const orbitIndexRef = useRef<HTMLDetailsElement>(null);
+  const visibilityRef = useRef<HTMLDetailsElement>(null);
   const inspectFromList = useRef(false);
   const inspectOrbitFromList = useRef(false);
   const previousFilter = useRef(`${scope}:${includeRecords}:${includeReferences}`);
   const missionNodes = graph.nodes.filter(node => node.kind === 'mission');
   const nodeMap = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph]);
-  const visible = useMemo(() => {
-    const nodes = graph.nodes.filter(node => matchesScope(node, scope) &&
+  const framingNodes = useMemo(() => graph.nodes.filter(node => matchesScope(node, scope) &&
       (includeRecords || !recordKinds.has(node.kind)) &&
-      (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference'));
+      (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference')),
+    [graph, scope, includeRecords, includeReferences]);
+  const visible = useMemo(() => {
+    const nodes = framingNodes.filter(node => !hiddenIds.has(node.id));
     const ids = new Set(nodes.map(node => node.id));
-    const orbits = graph.orbits.filter(orbit => scope === 'all' || orbit.kind !== 'mission' || orbit.missionId === scope);
+    const orbits = graph.orbits.filter(orbit => !hiddenIds.has(orbit.id) &&
+      (scope === 'all' || orbit.kind !== 'mission' || orbit.missionId === scope));
     return { ...graph, nodes, orbits, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
       (includeSharedSkills || edge.kind !== 'shared-skill')) };
-  }, [graph, scope, includeRecords, includeReferences, includeSharedSkills]);
+  }, [graph, framingNodes, hiddenIds, scope, includeSharedSkills]);
   const visibleIds = useMemo(() => new Set(visible.nodes.map(node => node.id)), [visible.nodes]);
+  const visibleOrbitIds = useMemo(() => new Set(includeRings ? visible.orbits.map(orbit => orbit.id) : []), [visible.orbits, includeRings]);
   const selected = visible.nodes.find(node => node.id === selectedId);
   const selectedOrbit = graph.orbits.find(orbit => orbit.id === orbitSelection?.orbitId);
   const selectedSegment = selectedOrbit?.segments.find(segment => segment.id === orbitSelection?.segmentId);
@@ -114,6 +122,9 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     setOrbitSelection(selection);
     setSelectedId(null);
   }, []);
+  const changeVisibility = useCallback((ids: readonly string[], show: boolean) => {
+    setHiddenIds(current => setCareerItemsVisible(current, ids, show));
+  }, []);
   useLayoutEffect(() => {
     if (!selected || !inspectFromList.current) return;
     inspectFromList.current = false;
@@ -131,6 +142,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
       const active = document.fullscreenElement === stageRef.current;
       setFullscreen(active);
       if (active && orbitIndexRef.current) orbitIndexRef.current.open = false;
+      if (active && visibilityRef.current) visibilityRef.current.open = false;
     };
     document.addEventListener('fullscreenchange', update);
     return () => document.removeEventListener('fullscreenchange', update);
@@ -186,6 +198,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   }
 
   function inspectOrbitMember(node: CareerGraphNode) {
+    changeVisibility([node.id], true);
     if (!matchesScope(node, scope)) setScope('all');
     if (node.status === 'reference' && node.kind !== 'core' && node.kind !== 'mission') setIncludeReferences(true);
     if (recordKinds.has(node.kind)) setIncludeRecords(true);
@@ -218,12 +231,22 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     if (!selectedOrbit) return;
     setScope(selectedOrbit.kind === 'mission' ? selectedOrbit.missionId! : 'all');
     const ids = selectedSegment ? selectedSegment.members.map(member => member.nodeId) : selectedOrbit.memberIds;
+    changeVisibility([selectedOrbit.id, selectedOrbit.hubNodeId, ...ids], true);
     const members = ids.map(id => nodeMap.get(id)!);
     if (members.some(node => recordKinds.has(node.kind))) setIncludeRecords(true);
     if (members.some(node => node.status === 'reference')) setIncludeReferences(true);
     setIncludeRings(true);
     setQuery('');
     setListCount(40);
+  }
+
+  function openVisibility() {
+    if (!visibilityRef.current) return;
+    visibilityRef.current.open = true;
+    if (orbitIndexRef.current) orbitIndexRef.current.open = false;
+    const summary = visibilityRef.current.querySelector('summary');
+    summary?.focus({ preventScroll: true });
+    if (!fullscreen) summary?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }
 
   return <div className="career-graph-page">
@@ -252,12 +275,13 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
             <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
             <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
             <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
+            <button className="button secondary career-visibility-open" aria-label="Choose visible nodes and rings" onClick={openVisibility}>Choose nodes</button>
           </div>
         </div>
         <div className="career-graph-stage" data-tour="career-graph-stage">
           <GraphSceneBoundary onFailure={onSceneFailure}>
             <Suspense fallback={<div className="career-graph-loading" role="status">Loading the 3D career network...</div>}>
-              <CareerGraphScene ref={controls} graph={visible} selectedId={selected?.id ?? null} onSelect={selectNode}
+              <CareerGraphScene ref={controls} graph={visible} framingNodes={framingNodes} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
                 rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
@@ -308,7 +332,8 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
           <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
           <p className="career-graph-orbit-key">{visible.orbits.length} ring views · active missions: colored outer rings · background/planned: small, gray, stationary inner rings.</p>
         </div>
-        <details ref={orbitIndexRef} className="career-orbit-index" data-tour="career-graph-orbits">
+        <details ref={orbitIndexRef} className="career-orbit-index" data-tour="career-graph-orbits"
+          onToggle={event => { if (event.currentTarget.open && visibilityRef.current) visibilityRef.current.open = false; }}>
           <summary>Explore ring views ({graph.orbits.length})</summary>
           <p>Nine saved-mission views and six record/reference collections. Mission rings follow Bring into focus / Move to background, not just the primary mission. Inspect any ring here, even without 3D.</p>
           <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
@@ -319,6 +344,9 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
               <small>{orbit.summary}</small></span>
           </button>)}</div>
         </details>
+        <CareerGraphVisibility ref={visibilityRef} graph={graph} hiddenIds={hiddenIds}
+          visibleNodeIds={visibleIds} visibleOrbitIds={visibleOrbitIds} kindLabels={kindLabels}
+          onChange={changeVisibility} onOpen={() => { if (orbitIndexRef.current) orbitIndexRef.current.open = false; }} />
         {fullscreenError && <p className="career-graph-render-notice" role="alert">{fullscreenError}</p>}
         {(sceneStatus === 'unavailable' || sceneStatus === 'lost') && <p className="career-graph-render-notice" role="status">{sceneMessage || 'The 3D renderer is unavailable. The node list and your saved data remain accessible.'}</p>}
         <details className="career-graph-keyboard"><summary>Keyboard rotation controls</summary><div className="button-row">
