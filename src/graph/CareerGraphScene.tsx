@@ -1,10 +1,12 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import {
+  AdditiveBlending,
   Box3,
   BufferGeometry,
   Color,
   Float32BufferAttribute,
-  LineSegments,
+  Fog,
+  InstancedBufferAttribute,
   MathUtils,
   MOUSE,
   PerspectiveCamera,
@@ -22,11 +24,15 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
+import { edgeRepulsionShader } from './edgeRepulsion';
 import type { CareerGraph } from './careerGraphModel';
 import './career-graph-scene.css';
 
@@ -47,6 +53,12 @@ export interface CareerGraphSceneProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   autoRotate: boolean;
+  /** Ambient motion only; defaults to true, or autoRotate in the focus profile. */
+  animate?: boolean;
+  /** Explicit user opt-in only; clear when the OS changes to reduced motion. */
+  allowReducedMotion?: boolean;
+  /** Clip the shell's projected interior; defaults to false, or true in focus. */
+  rimOnly?: boolean;
   onInteraction?: () => void;
   onStatusChange?: (status: SceneStatus, message?: string) => void;
   visualProfile?: 'career' | 'focus';
@@ -64,21 +76,19 @@ const STATUS_COLORS = {
   reference: new Color('#268BD2'),
 };
 const CORE_COLOR = new Color('#EEE8D5');
-const EDGE_COLORS = {
-  contains: new Color('#268BD2'),
-  prerequisite: new Color('#6C71C4'),
-  related: new Color('#D33682'),
-  evidence: new Color('#00A591'),
-};
+// Every supplied relationship, including shared-skill, uses the same palette orange.
+const EDGE_COLOR = new Color('#F34B00');
 const HOME_DIRECTION = new Vector3(0.58, 0.32, 1).normalize();
 const FRAME_INTERVAL = 1000 / 30;
 const VIEW_ATTRIBUTE_INTERVAL = 120;
+const CURSOR_EPSILON = 0.0001;
 
 const pointVertexShader = `
   attribute float aSize;
   attribute float aKind;
   uniform float uHeight;
   uniform float uPixelRatio;
+  uniform float uSizeScale;
   varying vec3 vColor;
   varying float vKind;
   varying float vDepth;
@@ -88,7 +98,7 @@ const pointVertexShader = `
     vKind = aKind;
     vDepth = -viewPosition.z;
     gl_Position = projectionMatrix * viewPosition;
-    gl_PointSize = clamp(aSize * uHeight / max(1.0, vDepth), 7.0 * uPixelRatio, 90.0 * uPixelRatio);
+    gl_PointSize = clamp(aSize * uHeight / max(1.0, vDepth), 7.0 * uPixelRatio, 90.0 * uPixelRatio) * uSizeScale;
   }
 `;
 
@@ -137,26 +147,20 @@ const selectionFragmentShader = `
   }
 `;
 
-const edgeVertexShader = `
-  varying vec3 vColor;
-  varying float vDepth;
-  void main() {
-    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-    vDepth = -viewPosition.z;
-    vColor = color;
-    gl_Position = projectionMatrix * viewPosition;
-  }
-`;
-
-const edgeFragmentShader = `
+const nodeAuraFragmentShader = `
   uniform float uNear;
   uniform float uFar;
   uniform float uOpacity;
   varying vec3 vColor;
+  varying float vKind;
   varying float vDepth;
   void main() {
-    float depth = mix(1.0, 0.24, smoothstep(uNear, uFar, vDepth));
-    gl_FragColor = vec4(vColor, uOpacity * depth);
+    float r = length(gl_PointCoord - 0.5) * 2.0;
+    if (r > 1.0) discard;
+    float depth = mix(1.0, 0.25, smoothstep(uNear, uFar, vDepth));
+    float glow = exp(-5.0 * r * r) * (1.0 - smoothstep(0.7, 1.0, r));
+    float emphasis = vKind > 1.5 ? 1.0 : 0.18;
+    gl_FragColor = vec4(vColor * 3.2, glow * uOpacity * depth * emphasis);
     #include <colorspace_fragment>
   }
 `;
@@ -168,33 +172,37 @@ function nodeSize(node: GraphNode): number {
   return node.current ? 6 : 4;
 }
 
-function pointMaterial(selected = false): ShaderMaterial {
+function pointMaterial(selected = false, aura = false): ShaderMaterial {
   return new ShaderMaterial({
     vertexShader: pointVertexShader,
-    fragmentShader: selected ? selectionFragmentShader : pointFragmentShader,
+    fragmentShader: selected ? selectionFragmentShader : aura ? nodeAuraFragmentShader : pointFragmentShader,
     vertexColors: true,
     uniforms: {
       uHeight: { value: 1 },
       uPixelRatio: { value: 1 },
+      uSizeScale: { value: aura ? 1.35 : 1 },
       uNear: { value: 100 },
       uFar: { value: 500 },
+      uOpacity: { value: 0.5 },
     },
     transparent: true,
     depthWrite: false,
     depthTest: !selected,
     toneMapped: false,
+    ...(aura ? { blending: AdditiveBlending } : {}),
   });
 }
 
-function edgeMaterial(opacity: number): ShaderMaterial {
-  return new ShaderMaterial({
-    vertexShader: edgeVertexShader,
-    fragmentShader: edgeFragmentShader,
-    vertexColors: true,
-    uniforms: { uNear: { value: 100 }, uFar: { value: 500 }, uOpacity: { value: opacity } },
+function edgeMaterial(opacity: number, width: number, glow = false): LineMaterial {
+  return new LineMaterial({
+    color: EDGE_COLOR.clone().multiplyScalar(glow ? 1.8 : 1),
+    linewidth: width,
+    worldUnits: false,
+    opacity,
     transparent: true,
     depthWrite: false,
     toneMapped: false,
+    fog: true,
   });
 }
 
@@ -218,15 +226,17 @@ function writePointGeometry(geometry: BufferGeometry, nodes: readonly GraphNode[
 }
 
 function writeEdgeGeometry(
-  geometry: BufferGeometry,
+  geometry: LineSegmentsGeometry,
   edges: CareerGraph['edges'],
   nodes: ReadonlyMap<string, GraphNode>,
-  selected = false,
+  segments: number,
 ): void {
   const validEdges = edges.filter(edge => nodes.has(edge.source) && nodes.has(edge.target));
-  const segments = edges.length > 2000 ? 4 : 12;
+  // Adjacent curve segments share endpoints; per-segment round caps multiply
+  // overdraw and bloom at every sample, so draw only the ribbon bodies.
+  geometry.setDrawRange(6, 6);
   const positions = new Float32Array(validEdges.length * segments * 6);
-  const colors = new Float32Array(validEdges.length * segments * 6);
+  const curveTimes = new Float32Array(validEdges.length * segments * 2);
   validEdges.forEach((edge, index) => {
     const source = nodes.get(edge.source)!;
     const target = nodes.get(edge.target)!;
@@ -235,18 +245,19 @@ function writeEdgeGeometry(
     const middle = start.clone().add(end).multiplyScalar(0.5);
     middle.addScaledVector(middle.clone().normalize(), Math.min(8, start.distanceTo(end) * 0.17));
     const curve = new QuadraticBezierCurve3(start, middle, end);
-    const color = selected ? CORE_COLOR : EDGE_COLORS[edge.kind];
+    const sample = new Vector3();
     for (let segment = 0; segment < segments; segment++) {
-      const offset = (index * segments + segment) * 6;
-      curve.getPoint(segment / segments).toArray(positions, offset);
-      curve.getPoint((segment + 1) / segments).toArray(positions, offset + 3);
-      color.toArray(colors, offset);
-      color.toArray(colors, offset + 3);
+      const instance = index * segments + segment;
+      const from = segment / segments;
+      const to = (segment + 1) / segments;
+      curve.getPoint(from, sample).toArray(positions, instance * 6);
+      curve.getPoint(to, sample).toArray(positions, instance * 6 + 3);
+      curveTimes[instance * 2] = from;
+      curveTimes[instance * 2 + 1] = to;
     }
   });
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-  geometry.computeBoundingSphere();
+  geometry.setPositions(positions);
+  geometry.setAttribute('aCurveT', new InstancedBufferAttribute(curveTimes, 2));
 }
 
 function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
@@ -263,20 +274,27 @@ function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
 class CareerScene implements CareerGraphSceneHandle {
   private readonly scene = new Scene();
   private readonly workScene = new Scene();
+  private readonly fog = new Fog('#000F13', 100, 500);
   private readonly camera = new PerspectiveCamera(46, 1, 0.1, 3000);
   private readonly controls: OrbitControls;
   private readonly nodeGeometry = new BufferGeometry();
-  private readonly edgeGeometry = new BufferGeometry();
+  private readonly edgeGeometry = new LineSegmentsGeometry();
   private readonly selectedGeometry = new BufferGeometry();
-  private readonly selectedEdgeGeometry = new BufferGeometry();
+  private readonly selectedEdgeGeometry = new LineSegmentsGeometry();
   private readonly nodesMaterial = pointMaterial();
   private readonly selectionMaterial = pointMaterial(true);
-  private readonly edgesMaterial = edgeMaterial(0.4);
-  private readonly selectedEdgesMaterial = edgeMaterial(0.7);
+  private readonly nodeAuraMaterial = pointMaterial(false, true);
+  private readonly edgesMaterial = edgeMaterial(0.5, 1.7);
+  private readonly selectedEdgesMaterial = edgeMaterial(0.85, 2.8);
+  private readonly edgeGlowMaterial = edgeMaterial(0.16, 2.8, true);
+  private readonly selectedEdgeGlowMaterial = edgeMaterial(0.38, 3.8, true);
   private readonly points = new Points(this.nodeGeometry, this.nodesMaterial);
+  private readonly nodeAuras = new Points(this.nodeGeometry, this.nodeAuraMaterial);
   private readonly selection = new Points(this.selectedGeometry, this.selectionMaterial);
-  private readonly edges = new LineSegments(this.edgeGeometry, this.edgesMaterial);
-  private readonly selectedEdges = new LineSegments(this.selectedEdgeGeometry, this.selectedEdgesMaterial);
+  private readonly edges = new LineSegments2(this.edgeGeometry, this.edgesMaterial);
+  private readonly selectedEdges = new LineSegments2(this.selectedEdgeGeometry, this.selectedEdgesMaterial);
+  private readonly edgeGlow = new LineSegments2(this.edgeGeometry, this.edgeGlowMaterial);
+  private readonly selectedEdgeGlow = new LineSegments2(this.selectedEdgeGeometry, this.selectedEdgeGlowMaterial);
   private readonly hologram: HolographicCore;
   private readonly composer: EffectComposer;
   private readonly renderPass: RenderPass;
@@ -289,6 +307,20 @@ class CareerScene implements CareerGraphSceneHandle {
   private readonly resizeObserver: ResizeObserver;
   private readonly intersectionObserver: IntersectionObserver;
   private readonly motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private lastReducedMotion = this.motionPreference.matches;
+  private readonly cursorUniforms = {
+    uCursor: { value: new Vector2() },
+    uCursorViewport: { value: new Vector2(1, 1) },
+    uCursorStrength: { value: 0 },
+    uCursorRadius: { value: 115 },
+    uCursorOffset: { value: 28 },
+  };
+  private readonly cursorTarget = new Vector2();
+  private cursorTargetStrength = 0;
+  private cursorHasPosition = false;
+  private cursorRevision = 0;
+  private lastCursorAttribute = 0;
+  private edgeSegments = 24;
   private graph: CareerGraph | null = null;
   private nodeMap = new Map<string, GraphNode>();
   private selectedId: string | null = null;
@@ -296,6 +328,8 @@ class CareerScene implements CareerGraphSceneHandle {
   private labelId: string | null = null;
   private missionLabels: { node: GraphNode; element: HTMLSpanElement; width: number; height: number }[] = [];
   private autoRotate = false;
+  private animate = false;
+  private allowReducedMotion = false;
   private intersecting = true;
   private lost = false;
   private disposed = false;
@@ -303,6 +337,8 @@ class CareerScene implements CareerGraphSceneHandle {
   private reportedReady = false;
   private frame = 0;
   private lastDraw = 0;
+  private animationRevision = 0;
+  private lastAnimationAttribute = 0;
   private viewRevision = 0;
   private lastViewAttribute = 0;
   private viewTimer = 0;
@@ -327,6 +363,8 @@ class CareerScene implements CareerGraphSceneHandle {
   ) {
     this.hologram = new HolographicCore(visualProfile === 'focus');
     this.scene.background = new Color('#000F13');
+    this.scene.fog = this.fog;
+    this.workScene.fog = this.fog;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.camera.position.copy(HOME_DIRECTION).multiplyScalar(340);
     this.controls = new OrbitControls(this.camera, this.canvas);
@@ -344,24 +382,52 @@ class CareerScene implements CareerGraphSceneHandle {
     this.controls.addEventListener('change', this.onCameraChange);
     this.controls.addEventListener('start', this.onControlStart);
 
+    for (const material of [this.edgesMaterial, this.selectedEdgesMaterial, this.edgeGlowMaterial, this.selectedEdgeGlowMaterial]) {
+      Object.assign(material.uniforms, this.cursorUniforms);
+      material.vertexShader = material.vertexShader
+        .replace('#include <fog_pars_vertex>', `#include <fog_pars_vertex>\n${edgeRepulsionShader}`)
+        .replace('vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );', `
+          vec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );
+          if (uCursorStrength > 0.0) {
+            start = repelInterior(start, aCurveT.x);
+            end = repelInterior(end, aCurveT.y);
+          }
+        `);
+    }
+
     this.composer = new EffectComposer(this.renderer);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(this.outputPass);
     this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.55, 0.2, 0.06, 0.01];
-    if (visualProfile === 'focus') this.bloomPass.strength = 0.35;
+    if (visualProfile === 'focus') {
+      this.bloomPass.strength = 0.35;
+      this.edgesMaterial.linewidth = 1.2;
+      this.edgeGlow.visible = this.selectedEdgeGlow.visible = this.nodeAuras.visible = false;
+    } else {
+      this.bloomPass.threshold = 0.06;
+      this.bloomPass.strength = 0.44;
+      this.bloomPass.radius = 0;
+      this.bloomPass.compositeMaterial.uniforms.bloomFactors.value = [1, 0.08, 0, 0, 0];
+    }
     this.root.dataset.ambience = 'procedural-unpickable';
-    this.root.dataset.decorationMode = 'outer-rim-only';
     this.root.dataset.postprocessing = 'gpu-bloom';
+    this.root.dataset.edgeStyle = 'orange-screen-space-ribbons';
+    this.root.dataset.edgeColor = '#F34B00';
+    this.root.dataset.edgeRepulsion = visualProfile === 'focus' ? 'disabled' : 'view-space-interiors';
+    this.root.dataset.cursorState = visualProfile === 'focus' ? 'disabled' : 'idle';
     this.points.frustumCulled = false;
+    this.nodeAuras.frustumCulled = false;
+    this.edges.frustumCulled = this.selectedEdges.frustumCulled = false;
+    this.edgeGlow.frustumCulled = this.selectedEdgeGlow.frustumCulled = false;
     this.selection.frustumCulled = false;
     this.selection.visible = false;
     this.selection.renderOrder = 3;
     this.edges.renderOrder = 0;
-    this.points.renderOrder = 1;
-    this.selectedEdges.renderOrder = 2;
-    this.scene.add(this.hologram.object);
+    this.points.renderOrder = 2;
+    this.selectedEdges.renderOrder = 1;
+    this.scene.add(this.hologram.object, this.edgeGlow, this.selectedEdgeGlow, this.nodeAuras);
     this.workScene.add(this.edges, this.points, this.selectedEdges, this.selection);
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown, true);
@@ -382,6 +448,7 @@ class CareerScene implements CareerGraphSceneHandle {
       this.syncVisibility();
     }, { threshold: 0 });
     this.intersectionObserver.observe(this.root);
+    this.setRimOnly(visualProfile === 'focus');
     this.resize();
   }
 
@@ -394,8 +461,13 @@ class CareerScene implements CareerGraphSceneHandle {
     this.nodeGeometry.dispose();
     this.edgeGeometry.dispose();
     writePointGeometry(this.nodeGeometry, graph.nodes);
-    writeEdgeGeometry(this.edgeGeometry, graph.edges, this.nodeMap);
-    this.edgesMaterial.uniforms.uOpacity.value = graph.nodes.length > 2000 ? 0.16 : 0.3;
+    this.edgeSegments = graph.edges.length > 2000 ? 6 : 12;
+    if (this.visualProfile === 'focus') this.edgeSegments /= 2;
+    writeEdgeGeometry(this.edgeGeometry, graph.edges, this.nodeMap, this.edgeSegments);
+    const dense = graph.edges.length > 2000;
+    this.edgesMaterial.opacity = this.visualProfile === 'focus' ? 0.18 : dense ? 0.32 : 0.5;
+    this.edgeGlowMaterial.opacity = dense ? 0.1 : 0.16;
+    this.nodeAuraMaterial.uniforms.uOpacity.value = graph.nodes.length > 2000 ? 0.1 : 0.22;
     const box = new Box3();
     for (const node of graph.nodes) box.expandByPoint(this.projected.fromArray(node.position));
     if (!box.isEmpty()) {
@@ -444,16 +516,27 @@ class CareerScene implements CareerGraphSceneHandle {
       this.selectedEdgeGeometry,
       this.graph?.edges.filter(edge => edge.source === id || edge.target === id) ?? [],
       this.nodeMap,
-      true,
+      this.edgeSegments,
     );
     this.canvas.dataset.selectedNodeId = node?.id ?? '';
     this.marker.dataset.nodeId = node?.id ?? '';
     this.requestFrame();
   }
 
-  setAutoRotate(value: boolean): void {
-    this.autoRotate = value;
-    if (!value) this.controls.autoRotate = false;
+  setMotion(autoRotate: boolean, animate: boolean, allowReducedMotion: boolean): void {
+    this.autoRotate = autoRotate;
+    this.animate = animate;
+    this.lastReducedMotion = this.motionPreference.matches;
+    this.allowReducedMotion = allowReducedMotion && (autoRotate || animate);
+    this.controls.autoRotate = false;
+    // Start from the resumed frame, never from time spent paused or hidden.
+    this.lastDraw = performance.now();
+    this.requestFrame();
+  }
+
+  setRimOnly(value: boolean): void {
+    this.hologram.setRimOnly(value);
+    this.root.dataset.decorationMode = value ? 'outer-rim-only' : 'full-shell';
     this.requestFrame();
   }
 
@@ -518,6 +601,8 @@ class CareerScene implements CareerGraphSceneHandle {
   private resize = (): void => {
     this.width = Math.max(1, this.viewport.clientWidth);
     this.height = Math.max(1, this.viewport.clientHeight);
+    this.cursorUniforms.uCursorViewport.value.set(this.width, this.height);
+    this.clearCursor(true);
     const compact = this.width < 700;
     this.pixelRatio = Math.min(window.devicePixelRatio || 1, this.visualProfile === 'focus' ? 1 : compact ? 1.25 : 1.5);
     this.renderer.setPixelRatio(this.pixelRatio);
@@ -532,7 +617,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
     for (const label of this.missionLabels) label.width = 0;
-    for (const material of [this.nodesMaterial, this.selectionMaterial]) {
+    for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial]) {
       material.uniforms.uHeight.value = this.height * this.pixelRatio;
       material.uniforms.uPixelRatio.value = this.pixelRatio;
     }
@@ -545,22 +630,32 @@ class CareerScene implements CareerGraphSceneHandle {
     }
   };
 
+  private get automaticMotionAllowed(): boolean {
+    return !this.motionPreference.matches || this.allowReducedMotion;
+  }
+
   private render = (time: number): void => {
     this.frame = 0;
     if (this.disposed || this.lost || !this.intersecting || document.hidden) return;
-    const rotating = this.autoRotate && !this.motionPreference.matches && this.pointers.size === 0;
-    if (rotating && time - this.lastDraw < FRAME_INTERVAL) {
+    if (this.motionPreference.matches !== this.lastReducedMotion) this.refreshMotionPreference();
+    const ambient = this.animate && this.automaticMotionAllowed && Boolean(this.graph?.nodes.length);
+    const rotating = this.autoRotate && this.automaticMotionAllowed && this.pointers.size === 0;
+    if ((ambient || rotating || this.cursorSettling) && time - this.lastDraw < FRAME_INTERVAL) {
       this.requestFrame();
       return;
     }
     this.controls.autoRotate = rotating;
-    if (rotating) this.controls.update(Math.min((time - this.lastDraw) / 1000, 0.05));
+    const delta = Math.max(0, Math.min((time - this.lastDraw) / 1000, 0.05));
+    if (rotating) this.controls.update(delta);
+    this.updateCursor(delta, time);
     const distance = this.controls.getDistance();
-    for (const material of [this.nodesMaterial, this.edgesMaterial, this.selectedEdgesMaterial]) {
+    this.fog.near = Math.max(1, distance - this.bounds.radius * 0.7);
+    this.fog.far = distance + this.bounds.radius * 2;
+    for (const material of [this.nodesMaterial, this.nodeAuraMaterial]) {
       material.uniforms.uNear.value = Math.max(1, distance - this.bounds.radius);
       material.uniforms.uFar.value = distance + this.bounds.radius * 1.3;
     }
-    this.hologram.update(this.camera, rotating ? Math.min((time - this.lastDraw) / 1000, 0.05) : 0);
+    this.hologram.update(this.camera, ambient ? delta : 0);
     this.composer.render();
     // Work markers bypass bloom: decorative brightness must not bleach status
     // colors, hide selection, or become an apparent completion indicator.
@@ -569,6 +664,8 @@ class CareerScene implements CareerGraphSceneHandle {
     this.renderer.render(this.workScene, this.camera);
     this.renderer.autoClear = true;
     this.lastDraw = time;
+    if (ambient && delta > 0) this.animationRevision++;
+    this.updateAnimationState(ambient ? 'running' : 'paused', time);
     if (this.visualProfile === 'career') {
       this.updateLabels();
       this.updateMissionLabels();
@@ -577,8 +674,18 @@ class CareerScene implements CareerGraphSceneHandle {
       this.reportedReady = true;
       this.callbacks.onStatusChange('ready');
     }
-    if (rotating) this.requestFrame();
+    if (ambient || rotating || this.cursorSettling) this.requestFrame();
   };
+
+  private updateAnimationState(state: string, time = performance.now()): void {
+    const changed = this.root.dataset.animationState !== state;
+    if (changed) this.root.dataset.animationState = state;
+    if (changed || time - this.lastAnimationAttribute >= VIEW_ATTRIBUTE_INTERVAL) {
+      this.root.dataset.animationRevision = String(this.animationRevision);
+      this.root.dataset.animationTime = this.hologram.animationTime.toFixed(3);
+      this.lastAnimationAttribute = time;
+    }
+  }
 
   private onCameraChange = (): void => {
     this.viewRevision++;
@@ -601,6 +708,7 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private onPointerDown = (event: PointerEvent): void => {
     if (this.visualProfile === 'focus') return;
+    if (event.pointerType === 'touch') this.clearCursor();
     this.pointers.add(event.pointerId);
     this.clearHover();
     if (this.pointers.size === 1) {
@@ -615,6 +723,8 @@ class CareerScene implements CareerGraphSceneHandle {
 
   private onPointerMove = (event: PointerEvent): void => {
     if (this.visualProfile === 'focus') return;
+    if (event.pointerType === 'mouse' || event.pointerType === 'pen') this.trackCursor(event);
+    else this.clearCursor();
     if (this.gesture && Math.hypot(event.clientX - this.gesture.x, event.clientY - this.gesture.y) > 5) {
       this.gesture.moved = true;
     }
@@ -649,10 +759,66 @@ class CareerScene implements CareerGraphSceneHandle {
   private onPointerCancel = (event: PointerEvent): void => {
     this.pointers.delete(event.pointerId);
     this.gesture = null;
+    if (event.type === 'pointercancel') this.clearCursor();
     this.requestFrame();
   };
 
-  private onPointerLeave = (): void => { this.clearHover(); };
+  private onPointerLeave = (): void => { this.clearHover(); this.clearCursor(); };
+
+  private get cursorSettling(): boolean {
+    return Math.abs(this.cursorUniforms.uCursorStrength.value - this.cursorTargetStrength) > CURSOR_EPSILON
+      || this.cursorUniforms.uCursor.value.distanceToSquared(this.cursorTarget) > CURSOR_EPSILON * CURSOR_EPSILON;
+  }
+
+  private trackCursor(event: PointerEvent): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    if (!rect.width || !rect.height || x < 0 || y < 0 || x > rect.width || y > rect.height) {
+      this.clearCursor();
+      return;
+    }
+    this.cursorTarget.set(x / rect.width * 2 - 1, 1 - y / rect.height * 2);
+    if (!this.cursorHasPosition) this.cursorUniforms.uCursor.value.copy(this.cursorTarget);
+    this.cursorHasPosition = true;
+    this.cursorTargetStrength = 1;
+    this.requestFrame();
+  }
+
+  private clearCursor(immediate = false): void {
+    this.cursorTargetStrength = 0;
+    this.cursorTarget.copy(this.cursorUniforms.uCursor.value);
+    if (immediate) {
+      this.cursorUniforms.uCursorStrength.value = 0;
+      this.cursorHasPosition = false;
+      this.updateCursor(0, performance.now());
+    }
+    this.requestFrame();
+  }
+
+  private updateCursor(delta: number, time: number): void {
+    const position = this.cursorUniforms.uCursor.value;
+    const strength = this.cursorUniforms.uCursorStrength;
+    const beforeX = position.x;
+    const beforeY = position.y;
+    const beforeStrength = strength.value;
+    const blend = this.motionPreference.matches ? 1 : 1 - Math.exp(-delta * 18);
+    position.lerp(this.cursorTarget, blend);
+    strength.value = MathUtils.lerp(strength.value, this.cursorTargetStrength, blend);
+    if (position.distanceToSquared(this.cursorTarget) <= CURSOR_EPSILON * CURSOR_EPSILON) position.copy(this.cursorTarget);
+    if (Math.abs(strength.value - this.cursorTargetStrength) <= CURSOR_EPSILON) strength.value = this.cursorTargetStrength;
+    if (strength.value === 0) this.cursorHasPosition = false;
+    const moved = position.x !== beforeX || position.y !== beforeY || strength.value !== beforeStrength;
+    if (moved) this.cursorRevision++;
+    const state = this.visualProfile === 'focus' ? 'disabled' : this.cursorTargetStrength ? 'active' : strength.value ? 'settling' : 'idle';
+    const changed = this.root.dataset.cursorState !== state;
+    if (changed) this.root.dataset.cursorState = state;
+    if (changed || time - this.lastCursorAttribute >= VIEW_ATTRIBUTE_INTERVAL || (moved && !this.cursorSettling)) {
+      this.root.dataset.cursorRevision = String(this.cursorRevision);
+      this.root.dataset.cursorStrength = strength.value.toFixed(4);
+      this.lastCursorAttribute = time;
+    }
+  }
 
   private clearHover(): void {
     window.clearTimeout(this.hoverTimer);
@@ -799,7 +965,21 @@ class CareerScene implements CareerGraphSceneHandle {
     event.stopPropagation();
   };
 
-  private onMotionChange = (): void => { this.requestFrame(); };
+  private refreshMotionPreference(): void {
+    const reduced = this.motionPreference.matches;
+    if (reduced === this.lastReducedMotion) return;
+    this.lastReducedMotion = reduced;
+    if (this.lastReducedMotion) {
+      this.allowReducedMotion = false;
+      this.controls.autoRotate = false;
+    }
+  }
+
+  private onMotionChange = (): void => {
+    this.lastDraw = performance.now();
+    this.refreshMotionPreference();
+    this.requestFrame();
+  };
   private onVisibilityChange = (): void => { this.syncVisibility(); };
 
   private syncVisibility(): void {
@@ -807,6 +987,8 @@ class CareerScene implements CareerGraphSceneHandle {
       cancelAnimationFrame(this.frame);
       this.frame = 0;
       this.clearHover();
+      this.clearCursor(true);
+      this.updateAnimationState('suspended');
     } else {
       this.lastDraw = performance.now();
       this.requestFrame();
@@ -821,9 +1003,11 @@ class CareerScene implements CareerGraphSceneHandle {
     cancelAnimationFrame(this.frame);
     this.frame = 0;
     this.clearHover();
+    this.clearCursor(true);
     this.label.hidden = true;
     this.marker.hidden = true;
     this.missionLabelLayer.hidden = true;
+    this.updateAnimationState('lost');
     this.callbacks.onStatusChange('lost', 'The 3D graphics context was lost. The graph will reconnect if the browser restores it. Your saved work is unchanged; the node list remains available.');
   };
 
@@ -858,7 +1042,7 @@ class CareerScene implements CareerGraphSceneHandle {
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
     for (const geometry of [this.nodeGeometry, this.edgeGeometry, this.selectedGeometry, this.selectedEdgeGeometry]) geometry.dispose();
-    for (const material of [this.nodesMaterial, this.selectionMaterial, this.edgesMaterial, this.selectedEdgesMaterial]) material.dispose();
+    for (const material of [this.nodesMaterial, this.selectionMaterial, this.nodeAuraMaterial, this.edgesMaterial, this.selectedEdgesMaterial, this.edgeGlowMaterial, this.selectedEdgeGlowMaterial]) material.dispose();
     this.hologram.dispose();
     this.renderPass.dispose();
     this.bloomPass.dispose();
@@ -875,7 +1059,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, selectedId, onSelect, autoRotate, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, selectedId, onSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -925,6 +1109,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
       const reason = error instanceof Error ? error.message : 'The browser could not initialize 3D graphics.';
       const message = `3D view unavailable. ${reason} ${visualProfile === 'focus' ? 'The timer and distraction recording remain available.' : 'Use the accessible node list to explore the same career data.'}`;
       setState({ status: 'unavailable', message });
+      root.dataset.animationState = 'unavailable';
       callbacks.current.onStatusChange?.('unavailable', message);
       canvas.remove();
       return;
@@ -946,10 +1131,13 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
 
   useEffect(() => { runtimeRef.current?.setGraph(graph); }, [graph, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId, visualProfile]);
-  useEffect(() => { runtimeRef.current?.setAutoRotate(autoRotate); }, [autoRotate, visualProfile]);
+  const animateAmbient = animate ?? (visualProfile === 'focus' ? autoRotate : true);
+  const maskInterior = rimOnly ?? (visualProfile === 'focus');
+  useEffect(() => { runtimeRef.current?.setMotion(autoRotate, animateAmbient, allowReducedMotion); }, [autoRotate, animateAmbient, allowReducedMotion, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setRimOnly(maskInterior); }, [maskInterior, visualProfile]);
 
   return (
-    <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
+    <div ref={rootRef} className="career-graph-scene" data-visual-profile={visualProfile} data-scene-state={state.status} data-view-revision="0" data-animation-state="loading" data-animation-revision="0" data-animation-time="0.000" data-cursor-strength="0.0000" data-cursor-revision="0" role={visualProfile === 'career' ? 'region' : undefined} aria-label={visualProfile === 'career' ? 'Career graph in 3D' : undefined} aria-hidden={visualProfile === 'focus' || undefined}>
       <div ref={viewportRef} className="career-graph-scene__viewport" />
       <div ref={missionLabelLayerRef} className="career-graph-scene__mission-labels" aria-hidden="true" hidden />
       <div ref={markerRef} className="career-graph-scene__selected-marker" data-screen-visible="false" aria-hidden="true" hidden />
@@ -957,7 +1145,8 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
       <p id={instructionsId} className="career-graph-scene__sr-only">
         Drag to rotate. Scroll or pinch to zoom. Use two fingers or the right mouse button to pan.
         With the canvas focused, arrow keys rotate, plus and minus zoom, and Home fits the graph.
-        Select a ringed point to inspect real work. Interior lines represent graph connections; the outer rim is decorative, not an additional relationship.
+        Select a ringed point to inspect real work. Bright orange links connect actual nodes; the multicolor shell and sparks are decorative, not additional relationships.
+        Moving the pointer gently bends link interiors without moving their endpoints, including while automatic animation is paused.
         The accessible node list offers the same selections without the canvas.
       </p>
       <div className="career-graph-scene__status" role="status" aria-live="polite" aria-atomic="true">
@@ -965,7 +1154,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
         {(state.status === 'unavailable' || state.status === 'lost') && <p>{state.message}</p>}
         {state.status === 'ready' && graph.nodes.length === 0 && <p>No nodes in this view. Adjust the graph filters.</p>}
       </div>
-      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">Interior lines: connections · Outer rim: decoration</span>}
+      {state.status === 'ready' && visualProfile === 'career' && <span className="career-graph-scene__space-note" aria-hidden="true">{maskInterior ? 'Interior links: connections · Outer rim: decoration' : 'Orange links: connections · Multicolor shell: decoration'}</span>}
     </div>
   );
 });

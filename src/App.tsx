@@ -85,7 +85,7 @@ export default function App() {
   }, [practice.end, practiceFocus.discard]);
   const visible = practice.active ? practice : workspace;
   if (!visible.state) {
-    return <div className="recovery-screen"><div className="recovery-toolbar"><BrandMark /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREERHQ / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
+    return <div className="recovery-screen"><div className="recovery-toolbar"><BrandMark /><ThemeToggle appearance={appearance} /></div><span className="eyebrow">CAREEROS / SAFE RECOVERY</span><h1>Your existing data comes first.</h1>{appearance.notice && <p role="status">{appearance.notice}</p>}<p>The workspace could not be opened. It has not been reset or overwritten. Storage may be unavailable, or the saved data may need a compatible version.</p><pre>{workspace.error}</pre><div className="button-row">{workspace.recoveryRaw && <button className="button primary" onClick={() => downloadFile(workspace.recoveryRaw!, `careerhq-backup-recovery-${localDate()}.json`)}>Download original data</button>}<button className="button secondary" onClick={() => location.reload()}>Try again</button><button className="button secondary" onClick={() => {
       if (window.confirm('Start over on this browser? Download your original data first. This replaces the unreadable workspace.')) workspace.replace(createInitialState(false));
     }}>Start a clean workspace</button></div></div>;
   }
@@ -148,7 +148,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('hashchange', onHash); window.removeEventListener('keydown', onKey); };
   }, []);
-  useEffect(() => { document.title = `${title} - CareerHQ`; headingRef.current?.focus({ preventScroll: true }); }, [route, title]);
+  useEffect(() => { document.title = `${title} - CareerOS`; headingRef.current?.focus({ preventScroll: true }); }, [route, title]);
   useEffect(() => { if (!toast) return; const id = window.setTimeout(() => setToast(''), 4500); return () => window.clearTimeout(id); }, [toast]);
 
   function change(title: string, transform: (current: AppState) => AppState, missionId?: MissionId) {
@@ -212,7 +212,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         setQuery('');
       }
     }}>
-      <a href="#/home" className="brand" aria-label="CareerHQ - Career operating system"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">HQ</span></span><small className="brand-tagline">Career OS</small></span></a>
+      <a href="#/home" className="brand" aria-label="CareerOS - Career operating system"><BrandMark /><span className="brand-copy"><span className="brand-name">Career<span className="brand-hq">OS</span></span><small className="brand-tagline">Career OS</small></span></a>
       <span className="nav-label">TRACKING</span>
       <nav>{mainNav.map(navButton)}</nav>
       <span className="nav-label second">CAREER</span>
@@ -227,7 +227,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     </aside>
     <div className="main-shell">
       <header className="topbar">
-        <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => { setMenuOpen(!menuOpen); setQuery(''); searchRef.current?.blur(); }} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>CareerHQ</span><ChevronRight size={13} /><strong>{title}</strong></div>
+        <div className="breadcrumbs"><button className="icon-button mobile-menu" onClick={() => { setMenuOpen(!menuOpen); setQuery(''); searchRef.current?.blur(); }} aria-label="Open navigation" aria-expanded={menuOpen}><Menu size={22} /></button><span>CareerOS</span><ChevronRight size={13} /><strong>{title}</strong></div>
         <div className="top-actions"><div className={`search-wrap${query ? ' has-results' : ''}`}><Search size={16} /><input ref={searchRef} data-tour="global-search" placeholder="Search missions and work" aria-label="Search missions and evidence" value={query} onChange={event => setQuery(event.target.value)} /><kbd>Ctrl K</kbd>
           {query && <div className="search-results"><span className="eyebrow">MISSIONS, WORK & CURRICULUM</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission, topic or artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
         </div><ThemeToggle appearance={appearance} /><button className="tutorial-launch" onClick={onStartTutorial} aria-label={practice ? 'Restart tutorial' : 'Start tutorial'} title="Interactive tutorial"><CircleHelp size={17} /><span>Tutorial</span></button></div>

@@ -59,6 +59,25 @@
 .career-graph-node-detail { max-height: 190px; overflow: auto; white-space: pre-line; }
 .career-graph-inspector > .button { margin-top: 16px; font-size: .625rem; }
 .career-graph-current { display: flex; align-items: center; gap: 6px; margin-top: 12px; color: #00A591; }
+.career-graph-connections { margin-top: 18px; border-top: 1px solid #268BD255; padding-top: 12px; font-size: .625rem; line-height: 1.6; }
+.career-graph-connections summary { cursor: pointer; color: #EEE8D5; }
+.career-graph-connections > summary > span { display: block; margin-left: 15px; color: #00A591; font-size: .5625rem; }
+.career-graph-connections p { margin-top: 8px; }
+.career-graph-connections ul { list-style: none; padding: 0; margin: 12px 0 0; }
+.career-graph-connections li { border-top: 1px solid #268BD244; padding: 12px 0; }
+.career-graph-connections li > strong, .career-graph-connections small { display: block; }
+.career-graph-connections li > strong { color: #EEE8D5; margin: 5px 0; }
+.career-graph-connections small { font-size: .5625rem; }
+.career-graph-connection-kind { font-size: .5rem; color: #93A1A1; text-transform: uppercase; letter-spacing: .05em; }
+.career-graph-connection-kind.shared-skill { color: #00A591; }
+.career-graph-connection-reason { margin-top: 12px; }
+.career-graph-connection-reason > b { color: #EEE8D5; }
+.career-graph-connection-reason details { margin-top: 10px; font-size: .5625rem; }
+.career-graph-connection-reason details span { display: block; }
+.career-graph-connection-hidden { color: #EBE565; }
+.career-graph-connections .button { margin-top: 12px; font-size: .5625rem; white-space: normal; text-align: left; }
+.career-graph-link-key { flex-basis: 100%; display: flex; gap: 7px; align-items: center; color: #93A1A1; font-size: .5rem; }
+.career-graph-link-key > i { flex: none; width: 16px; height: 2px; background: #F34B00; }
 .career-graph-stage-wrap:fullscreen { display: flex; flex-direction: column; width: 100%; height: 100%; border: 0; border-radius: 0; padding-bottom: 8px; }
 .career-graph-stage-wrap:fullscreen .career-graph-stage { height: auto; flex: 1; min-height: 0; }
 .career-graph-stage-wrap:fullscreen .career-graph-commandbar,

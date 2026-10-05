@@ -71,7 +71,7 @@ describe('Career OS graph: real saved progress', () => {
     expect(graph.updates).toEqual([]);
     expect(graph.nodes).toHaveLength(total + missionIds.length + 1);
     expect(node(graph, 'core:careerhq')).toMatchObject({
-      kind: 'core', status: 'reference', label: 'CareerHQ', detail: state.objective, position: [0, 0, 0],
+      kind: 'core', status: 'reference', label: 'CareerOS', detail: state.objective, position: [0, 0, 0],
     });
     expect(node(graph, 'core:careerhq').context).toContain('Career OS');
     expect(graph.nodes.filter(item => item.status === 'complete')).toEqual([]);

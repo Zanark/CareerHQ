@@ -1,9 +1,11 @@
 import {
-  checkpointIdentity, getLatestMission, getMissionVersion, getMissions, prerequisitesFor, recordRoadmapVersion,
+  checkpointIdentity, getCheckpoint, getLatestMission, getMissionVersion, getMissions, prerequisitesFor, recordRoadmapVersion,
 } from '../domain/catalog';
 import { localDate } from '../domain/engine';
 import { missionIds } from '../domain/types';
 import type { AppState, Checkpoint, Mission, MissionId, RoadmapVersion, SourceReference } from '../domain/types';
+import { careerSkillLinks } from './careerSkillLinks';
+import type { CareerSkillAnchor } from './careerSkillLinks';
 
 export type CareerGraphStatus = 'complete' | 'incomplete' | 'reference';
 export type CareerGraphKind = 'core' | 'mission' | 'checkpoint' | 'evidence' | 'opportunity' | 'freelance' | 'history' | 'curriculum' | 'action';
@@ -23,12 +25,23 @@ export interface CareerGraphNode {
   position: [number, number, number];
 }
 
-export interface CareerGraphEdge {
+export interface CareerGraphSkillReason {
+  id: string;
+  concept: string;
+  reason: string;
+  sources: { nodeId: string; reference: SourceReference }[];
+}
+
+interface CareerGraphEdgeEndpoints {
   id: string;
   source: string;
   target: string;
-  kind: 'contains' | 'prerequisite' | 'related' | 'evidence';
 }
+
+export type CareerGraphEdge = CareerGraphEdgeEndpoints & (
+  { kind: 'contains' | 'prerequisite' | 'related' | 'evidence' } |
+  { kind: 'shared-skill'; reasons: CareerGraphSkillReason[] }
+);
 
 export interface CareerGraph {
   nodes: CareerGraphNode[];
@@ -108,7 +121,7 @@ export function buildCareerGraph(state: AppState): CareerGraph {
   const updates: MissionId[] = [];
   const missions = getMissions(state);
 
-  function addEdge(source: string, target: string, kind: CareerGraphEdge['kind']) {
+  function addEdge(source: string, target: string, kind: Exclude<CareerGraphEdge['kind'], 'shared-skill'>) {
     if (source === target || !nodes.has(source) || !nodes.has(target)) return;
     if (kind === 'related' && source > target) [source, target] = [target, source];
     const id = `edge:${kind}:${JSON.stringify([source, target])}`;
@@ -152,7 +165,7 @@ export function buildCareerGraph(state: AppState): CareerGraph {
   }
 
   nodes.set(coreId, {
-    id: coreId, kind: 'core', status: 'reference', label: 'CareerHQ',
+    id: coreId, kind: 'core', status: 'reference', label: 'CareerOS',
     detail: state.objective,
     context: `Career OS · ${state.sampleData ? 'sample-containing workspace' : 'browser-local workspace'}`,
     href: '#/hq', position: [0, 0, 0],
@@ -210,6 +223,28 @@ export function buildCareerGraph(state: AppState): CareerGraph {
         addEdge(checkpointNodeId(mission, prerequisite), checkpointNodeId(mission, checkpoint.id), 'prerequisite');
       }
     }
+  }
+
+  function skillEndpoint(anchor: CareerSkillAnchor) {
+    const checkpoint = getCheckpoint(anchor.missionId, anchor.checkpointId, anchor.roadmapVersion);
+    if (!checkpoint.source) throw new Error(`Shared skill anchor ${anchor.checkpointId} has no source citation.`);
+    const id = checkpointNodeId(getMissionVersion(anchor.missionId, anchor.roadmapVersion), checkpoint.id);
+    const node = nodes.get(id);
+    // An archived or different-version node is not a substitute for this curated definition.
+    if (!node || node.archived || node.roadmapVersion !== anchor.roadmapVersion) return undefined;
+    return { nodeId: id, reference: checkpoint.source };
+  }
+
+  for (const link of careerSkillLinks) {
+    const first = skillEndpoint(link.source);
+    const second = skillEndpoint(link.target);
+    if (!first || !second || first.nodeId === second.nodeId) continue;
+    const [source, target] = [first.nodeId, second.nodeId].sort();
+    const id = `edge:shared-skill:${JSON.stringify([source, target])}`;
+    const reason = { id: link.id, concept: link.concept, reason: link.reason, sources: [first, second] };
+    const existing = edges.get(id);
+    if (existing?.kind === 'shared-skill') existing.reasons.push(reason);
+    else edges.set(id, { id, source, target, kind: 'shared-skill', reasons: [reason] });
   }
 
   for (const evidence of state.evidence) {

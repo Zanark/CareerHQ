@@ -1,6 +1,6 @@
 # Architecture
 
-CareerHQ separates an authored roadmap from a person's changing browser workspace.
+CareerOS separates an authored roadmap from a person's changing browser workspace.
 That makes a checkpoint resumable without treating activity, time spent, or a generated
 plan as proof of capability.
 
@@ -37,9 +37,17 @@ the selected workbook. Loading failures are explicit and offer a reload without
 replacing workspace data. Search/filter/navigation remain read-only.
 The Three.js renderer is loaded separately for the Career graph route. The named
 node list remains available while loading or when WebGL is unavailable.
-Only `graph.edges` supplies interior line geometry. Decorative arcs/particles sit
-outside the enclosing data sphere and use a camera-space silhouette mask, preventing
-front/back shell segments from appearing as invented interior connections after orbit/pan.
+Only `graph.edges` supplies node-to-node line geometry. `careerSkillLinks.ts` is a
+curated, exact-version registry of cross-mission comparisons, with a specific reason
+and both checkpoint citations on each shared-skill edge. It never reads private prose,
+changes the domain prerequisites, awards progress or substitutes an archived definition.
+Multiple reasons for the same unordered pair share one edge. View filters may hide
+lines, but the collapsible connection inspector retains reasons and explicit reveal actions.
+
+Decorative arcs orbit outside the enclosing data sphere. Full-shell projection is
+the default; an optional camera-space silhouette mask provides the Clear center view.
+The animation pause control is independent of inspection and camera manipulation.
+Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 
 There is no backend, authentication layer, remote database, agent execution service,
 or model call. All nine latest missions now have documented tracking units, totaling

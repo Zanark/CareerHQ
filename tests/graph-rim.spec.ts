@@ -7,6 +7,7 @@ test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', 
 for (const position of [[0, 0, 240], [220, 90, 160], [-150, 130, -220], [8, -5, 20]]) {
   test(`decorative shaders leave the sphere interior empty from camera ${position.join(',')}`, async ({ page }) => {
     const core = new HolographicCore();
+    core.setRimOnly(true);
     const center = new Vector3(8, -5, 2);
     const radius = 60;
     const camera = new PerspectiveCamera(45, 1, 0.1, 1000);

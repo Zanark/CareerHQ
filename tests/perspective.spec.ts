@@ -51,7 +51,7 @@ test('Keep going stays optional and contains no research, generic encouragement 
   await expect(page.locator('.personal-proof-card, .perspective-receipt')).toHaveCount(0);
   await expect(page.locator('.perspective-page')).not.toContainText(/Harkin|Dunlosky|hard is not|hopeless|missed day|whole life tonight|research averages/i);
   await page.reload();
-  await expect(page).toHaveTitle('Keep going - CareerHQ');
+  await expect(page).toHaveTitle('Keep going - CareerOS');
   await page.getByRole('link', { name: 'Back to Overview', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Overview', exact: true, level: 1 })).toBeVisible();
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(before);

@@ -8,6 +8,8 @@ const key = 'careerhq.workspace.v1';
 async function ready(page: Page) {
   await expect(page.locator('.career-graph-scene')).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
   await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  const pause = page.getByRole('button', { name: 'Pause animation', exact: true });
+  if (await pause.count()) await pause.click();
 }
 
 async function seed(page: Page, state: AppState) {

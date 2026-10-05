@@ -17,13 +17,13 @@ export function DsaNotebookCompanion({ sectionNumber }: { sectionNumber?: number
   }
   return <details className="dsa-notebook-companion" data-tour="dsa-notebook-companion">
     <summary>NotebookLM companion - keep one tracker</summary>
-    <p>Use NotebookLM and the sourcebook for daily coaching. Keep CareerHQ as the existing checkpoint and evidence tracker: no second 90-day checklist, new badges or automatic progress changes.</p>
+    <p>Use NotebookLM and the sourcebook for daily coaching. Keep CareerOS as the existing checkpoint and evidence tracker: no second 90-day checklist, new badges or automatic progress changes.</p>
     <ol>
-      <li>Follow one study task in NotebookLM; its day number or R0 label is context, not another CareerHQ checkpoint.</li>
+      <li>Follow one study task in NotebookLM; its day number or R0 label is context, not another CareerOS checkpoint.</li>
       <li>After working, put a short handoff in your existing evidence note. Record practice without advancing unless the current checkpoint's criteria are genuinely met.</li>
       <li>Use existing Recall practice for closed-source attempts. Reading, listening and historical completion are not new proof of retained skill.</li>
     </ol>
-    <p>The sourcebook's coaching labels and seven-day retention standard are not synced app statuses. CareerHQ's existing recall rules and saved records remain unchanged.</p>
+    <p>The sourcebook's coaching labels and seven-day retention standard are not synced app statuses. CareerOS's existing recall rules and saved records remain unchanged.</p>
     <details className="dsa-notebook-handoff">
       <summary>A short handoff prompt for NotebookLM</summary>
       <p>No extra form to maintain: ask for this summary, then paste the actual result into the existing evidence description.</p>

@@ -22,11 +22,17 @@ function seededRandom(): () => number {
 }
 
 const filamentVertex = `
+  attribute vec3 aOrbitAxis;
+  attribute float aOrbitSpeed;
+  uniform float uPhase;
   varying vec3 vColor;
   varying float vDepth;
   varying vec3 vViewPosition;
   void main() {
-    vec4 p = modelViewMatrix * vec4(position, 1.0);
+    float angle = uPhase * aOrbitSpeed;
+    vec3 rotated = position * cos(angle) + cross(aOrbitAxis, position) * sin(angle)
+      + aOrbitAxis * dot(aOrbitAxis, position) * (1.0 - cos(angle));
+    vec4 p = modelViewMatrix * vec4(rotated, 1.0);
     vDepth = -p.z;
     vViewPosition = p.xyz;
     vColor = color;
@@ -36,8 +42,10 @@ const filamentVertex = `
 const rimMask = `
   uniform vec3 uCenterView;
   uniform float uRadius;
+  uniform float uRimOnly;
   varying vec3 vViewPosition;
   float rimVisibility() {
+    if (uRimOnly < 0.5) return 1.0;
     float clearance = length(cross(uCenterView, normalize(vViewPosition))) / uRadius;
     if (clearance < 1.035) discard;
     return smoothstep(1.035, 1.075, clearance);
@@ -57,9 +65,9 @@ const filamentFragment = `
 `;
 
 /**
- * Decorative arcs stay outside the data sphere AND outside its projected
- * silhouette. Surface placement alone would still draw front/back arcs across
- * the interior when the camera turns.
+ * Decorative geometry always stays outside the data sphere. The optional rim
+ * mask also clips its projected silhouette; it does not remove real links.
+ * This helper retains its masked default; CareerGraphScene selects each profile's default.
  */
 export class HolographicCore {
   readonly object = new Group();
@@ -88,18 +96,26 @@ export class HolographicCore {
 
     const beltPositions: number[] = [];
     const beltColors: number[] = [];
+    const beltAxes: number[] = [];
+    const beltSpeeds: number[] = [];
     for (let belt = 0; belt < 15; belt++) {
       const q = new Quaternion().setFromEuler(new Euler(0.28 + belt * 0.213, belt * 0.41, -0.6 + belt * 0.19));
+      const axis = new Vector3(0, 0, 1).applyQuaternion(q);
+      const speeds = Array.from({ length: 4 }, (_, arc) =>
+        (0.028 + random() * 0.085) * ((belt + arc) % 3 === 0 ? -1 : 1));
       const radius = 1.06 + belt / 15 * 0.13;
       const color = belt % 5 === 0 ? TEAL : belt % 5 === 1 ? BLUE : belt % 5 === 2 ? VIOLET : GOLD;
       for (let lane = 0; lane < 3; lane++) {
         const r = radius + lane * 0.005;
         for (let segment = 0; segment < 280; segment++) {
           if ((segment + belt * 11) % 70 > 49 || (belt % 3 === 0 && segment % 5 === 0)) continue;
+          const speed = speeds[Math.floor(((segment + belt * 11) % 280) / 70)];
           for (let end = 0; end < 2; end++) {
             const angle = (segment + end) / 280 * TAU;
             point.set(Math.cos(angle) * r, Math.sin(angle) * r, 0).applyQuaternion(q);
             beltPositions.push(point.x, point.y, point.z);
+            beltAxes.push(axis.x, axis.y, axis.z);
+            beltSpeeds.push(speed);
             const brightness = lane === 1 ? 1.5 : 0.55;
             beltColors.push(color.r * brightness, color.g * brightness, color.b * brightness);
           }
@@ -108,21 +124,25 @@ export class HolographicCore {
             for (const tick of [r + 0.008, r + (segment % 21 === 0 ? 0.042 : 0.024)]) {
               point.set(Math.cos(angle) * tick, Math.sin(angle) * tick, 0).applyQuaternion(q);
               beltPositions.push(point.x, point.y, point.z);
+              beltAxes.push(axis.x, axis.y, axis.z);
+              beltSpeeds.push(speed);
               beltColors.push(color.r * 1.1, color.g * 1.1, color.b * 1.1);
             }
           }
         }
       }
     }
-    this.rim.add(this.lineObject(beltPositions, beltColors, 0.55));
+    this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
 
-    while (sparks.length / 3 < 1200) {
+    while (sparks.length / 3 < 3600) {
       const z = random() * 2 - 1;
       const a = random() * TAU;
       const radial = Math.sqrt(1 - z * z);
       const r = 1.07 + random() * 0.14;
       point.set(radial * Math.cos(a) * r, z * r, radial * Math.sin(a) * r);
-      pushSpark(point, random() > 0.2 ? GOLD : YELLOW, 0.5 + random(), 0.35 + random() * 0.6);
+      pushSpark(point, random() > 0.2 ? GOLD : YELLOW,
+        calm ? 0.5 + random() : 0.65 + random() * 1.5,
+        calm ? 0.35 + random() * 0.6 : 0.4 + random() * 0.8);
     }
     const sparkGeometry = new BufferGeometry();
     sparkGeometry.setAttribute('position', new Float32BufferAttribute(sparks, 3));
@@ -130,7 +150,7 @@ export class HolographicCore {
     sparkGeometry.setAttribute('aSize', new Float32BufferAttribute(sparkSizes, 1));
     this.geometries.push(sparkGeometry);
     const sparkMaterial = new ShaderMaterial({
-      uniforms: { uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 }, uCenterView: { value: this.centerView }, uBrightness: { value: calm ? 0.45 : 1 } },
+      uniforms: { uScale: { value: 700 }, uRatio: { value: 1 }, uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uBrightness: { value: calm ? 0.45 : 1 } },
       vertexShader: `
         attribute float aSize;
         uniform float uScale;
@@ -144,7 +164,7 @@ export class HolographicCore {
           vDepth = -p.z;
           vViewPosition = p.xyz;
           gl_Position = projectionMatrix * p;
-          gl_PointSize = clamp(aSize * uScale / max(1.0, -p.z), 0.8 * uRatio, 4.0 * uRatio);
+          gl_PointSize = clamp(aSize * uScale / max(1.0, -p.z), 0.8 * uRatio, 5.0 * uRatio);
         }
       `,
       fragmentShader: `
@@ -177,16 +197,18 @@ export class HolographicCore {
     this.heart.name = 'Existing core node aura';
     this.heart.visible = false;
     this.object.add(this.rim, this.heart);
-    this.object.name = 'Outer-rim decoration - not graph connections';
+    this.object.name = 'Outer-shell decoration - not graph connections';
   }
 
-  private lineObject(positions: number[], colors: number[], opacity: number): LineSegments<BufferGeometry, ShaderMaterial> {
+  private lineObject(positions: number[], colors: number[], axes: number[], speeds: number[], opacity: number): LineSegments<BufferGeometry, ShaderMaterial> {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('aOrbitAxis', new Float32BufferAttribute(axes, 3));
+    geometry.setAttribute('aOrbitSpeed', new Float32BufferAttribute(speeds, 1));
     const material = new ShaderMaterial({
       vertexShader: filamentVertex, fragmentShader: filamentFragment,
-      uniforms: { uDistance: { value: 300 }, uRadius: { value: 80 }, uCenterView: { value: this.centerView }, uOpacity: { value: opacity * (this.calm ? 0.48 : 1) } },
+      uniforms: { uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uOpacity: { value: this.calm ? 0.55 * 0.48 : opacity }, uPhase: { value: 0 } },
       transparent: true, vertexColors: true, depthWrite: false, blending: AdditiveBlending,
     });
     this.geometries.push(geometry);
@@ -205,17 +227,27 @@ export class HolographicCore {
     this.heart.scale.setScalar(radius);
   }
 
+  setRimOnly(value: boolean): void {
+    for (const material of [...this.filaments, this.particles.material]) {
+      material.uniforms.uRimOnly.value = value ? 1 : 0;
+    }
+  }
+
+  get animationTime(): number { return this.phase; }
+
   resize(height: number, pixelRatio: number, compact: boolean): void {
     this.particles.material.uniforms.uScale.value = height * pixelRatio;
     this.particles.material.uniforms.uRatio.value = pixelRatio;
-    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 350 : 600) : (compact ? 650 : 1200));
+    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 350 : 600) : (compact ? 1800 : 3600));
   }
 
   update(camera: PerspectiveCamera, delta: number): void {
     if (delta > 0) {
       this.phase += delta;
       const motionScale = this.calm ? 0.22 : 1;
-      this.rim.rotation.y = this.phase * 0.017 * motionScale;
+      for (const material of this.filaments) material.uniforms.uPhase.value = this.phase * (this.calm ? 0.055 : 1);
+      this.particles.rotation.y = this.phase * 0.012 * motionScale;
+      this.particles.rotation.z = this.phase * 0.004 * motionScale;
       if (this.calm) this.heart.scale.setScalar(this.radius * (1 + 0.012 * Math.sin(this.phase * TAU / 8)));
     }
     camera.updateMatrixWorld();

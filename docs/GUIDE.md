@@ -1,7 +1,10 @@
-# CareerHQ guide
+# CareerOS guide
 
 Track current checkpoints, daily actions, and saved work.
 Built with React, TypeScript, and Vite; data stays in your browser.
+
+The site is now named **CareerOS**. Its existing `/CareerHQ/` address, storage keys
+and backup format remain unchanged, so the rename does not move or reset your progress.
 
 [Website](https://zanark.github.io/CareerHQ/) ·
 [Overview](../README.md) · [Architecture](ARCHITECTURE.md) · [Themes](THEMES.md) · [Privacy](PRIVACY.md) ·
@@ -67,15 +70,30 @@ references and untracked expanded curriculum remain distinct reference nodes.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
-Interior lines represent actual graph connections. Decorative arcs stay on the outer
-rim of the spherical view, including as the camera rotates; they are not extra links.
+Thicker, glowing orange links represent actual graph connections. Decorative arcs
+orbit the outside of the sphere at individual speeds; their front/back segments
+remain visible by default. **Clear center** optionally masks those projected shell
+segments without hiding real connections. Sparks and glow are atmosphere, not extra nodes.
+Connection lines bend away from your cursor but stay attached to their endpoints.
+Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**
+is a separate control; **Auto-rotate** controls the camera orbit. Reduced motion
+starts paused, and manual navigation remains available.
+
+**Shared skill links** connect specifically related checkpoints across the
+roadmaps. Select a node and expand **Connections** to see the reason, the two
+curriculum citations, and a button to inspect its neighbor. These are curated
+comparisons, not source-declared prerequisites or equivalent mastery. Different
+roadmap versions and archived work are not guessed into new relationships.
+The toggle hides these lines without hiding nodes or changing progress. Connections
+outside your current filters remain listed with an explicit **Reveal and inspect**
+action; it reveals the necessary view filters. The inspector stays collapsible.
 
 **Copy brief for AI** copies a local snapshot for you to review and paste into your
-chosen assistant. CareerHQ does not send it to an AI service or automatically make
+chosen assistant. CareerOS does not send it to an AI service or automatically make
 career decisions. If WebGL is unavailable, the page says so and keeps the named
 node list usable; it does not pretend a flat fallback is a 3D visualization.
 
-**CareerHQ provides study material and tracks evidence; it is not an autonomous teacher or grader.**
+**CareerOS provides study material and tracks evidence; it is not an autonomous teacher or grader.**
 Use the built-in prompts with your editor, authorized lab or coach. Record actual results
 on the saved tracker. No reading, diagram click or elapsed time proves the work was done.
 
@@ -134,7 +152,7 @@ one tracker** panel appears on DSA and its practice library. Keep day-by-day coa
 in NotebookLM; copy its short handoff into the existing evidence description rather
 than maintaining a second tracker. Relevant sections include a few correctness reminders.
 No 90-day checklist, R0 checkpoint, progress reset or extra recording fields are added.
-The sourcebook's coaching/retention labels do not replace CareerHQ's existing recall rules.
+The sourcebook's coaching/retention labels do not replace CareerOS's existing recall rules.
 
 The expanded 105-page DSA/LeetCode PDF, now named **LeetCode_RoadMap.pdf**, is part of **Pattern Forge v3**.
 The original five HashMap checkpoints and their branches are unchanged.
@@ -290,7 +308,7 @@ Copy brief, use the text preview and Skip step rather than treating a failed cop
 
 ### A normal working session
 
-**For work you did before using CareerHQ:** open **Keep going**. Use **Load personal
+**For work you did before using CareerOS:** open **Keep going**. Use **Load personal
 history** to review a privately supplied history file, or **Add a past accomplishment**
 to record it yourself with its source. The history import adds records without replacing
 the workspace; duplicate IDs are not added again, and conflicting replacements are rejected.

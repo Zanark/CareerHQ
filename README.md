@@ -1,6 +1,6 @@
-[![CareerHQ: a local-first tracker for roadmaps, daily actions, and saved work.](docs/images/readme-cover.png)](https://zanark.github.io/CareerHQ/)
+[![CareerOS: a local-first tracker for roadmaps, daily actions, and saved work.](docs/images/readme-cover.png)](https://zanark.github.io/CareerHQ/)
 
-**[Open CareerHQ](https://zanark.github.io/CareerHQ/)** · [How to use it](docs/GUIDE.md#start-using-it) · [Developer setup](docs/GUIDE.md#develop-and-verify)
+**[Open CareerOS](https://zanark.github.io/CareerHQ/)** · [How to use it](docs/GUIDE.md#start-using-it) · [Developer setup](docs/GUIDE.md#develop-and-verify)
 
 ## Your documents, made usable
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="820" viewBox="0 0 1080 820" role="img" aria-labelledby="cover-title cover-desc" font-family="Segoe UI, Arial, sans-serif">
-  <title id="cover-title">CareerHQ - Track your learning. Keep your proof.</title>
-  <desc id="cover-desc">An illustrated introduction to CareerHQ. A folded roadmap, a daily calendar and a folder of saved work form a connected path. These represent roadmaps, a daily plan and saved evidence, not a screenshot or sample progress.</desc>
+  <title id="cover-title">CareerOS - Track your learning. Keep your proof.</title>
+  <desc id="cover-desc">An illustrated introduction to CareerOS. A folded roadmap, a daily calendar and a folder of saved work form a connected path. These represent roadmaps, a daily plan and saved evidence, not a screenshot or sample progress.</desc>
   <defs>
     <clipPath id="cover-frame">
       <rect width="1080" height="820" rx="28"/>
@@ -25,7 +25,7 @@
     <path d="M124 77H912" stroke="#EEE8D5" stroke-opacity=".2"/>
     <text x="1016" y="86" text-anchor="end" fill="#EEE8D5" opacity=".65" font-size="24" letter-spacing="2">01 / 04</text>
 
-    <text x="64" y="191" fill="#EEE8D5" font-size="90" font-weight="700" letter-spacing="-4">CareerHQ</text>
+    <text x="64" y="191" fill="#EEE8D5" font-size="90" font-weight="700" letter-spacing="-4">CareerOS</text>
     <text x="64" y="290" fill="#EEE8D5" font-size="66" font-weight="400" letter-spacing="-2">Track your learning.</text>
     <text x="64" y="367" fill="#00A591" font-size="66" font-weight="600" letter-spacing="-2">Keep your proof.</text>
 

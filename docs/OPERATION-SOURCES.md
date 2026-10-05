@@ -5,7 +5,7 @@
 `Operation_Pattern_Forge_90_Day_DSA_Sourcebook.pdf` was reviewed directly from the
 supplied 71-page attachment. It supplies a coaching workflow, repaired explanations,
 practice material and a proposed 90-day study sequence. It explicitly separates that
-sequence from changes to the external CareerHQ tracker.
+sequence from changes to the external CareerOS tracker.
 
 The user requested simple tracking, so the addition is limited to an optional collapsed
 handoff guide and relevant correctness reminders. A3/A6/D1/D7 (pp7,10,47,63) inform the

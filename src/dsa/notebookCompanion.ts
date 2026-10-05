@@ -1,6 +1,6 @@
 export const DSA_SOURCEBOOK = 'Operation_Pattern_Forge_90_Day_DSA_Sourcebook.pdf';
 
-export const notebookHandoffPrompt = `Summarize only the work I actually submitted in this study session as a short note for CareerHQ:
+export const notebookHandoffPrompt = `Summarize only the work I actually submitted in this study session as a short note for CareerOS:
 Problem / sourcebook section:
 Attempt: guided or independent, with the highest hint used (distinguish C# syntax help from algorithm help):
 Evidence: explanation, code run and cases actually shown; say when a result is unverified:

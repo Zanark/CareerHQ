@@ -1,4 +1,4 @@
-# CareerHQ appearance
+# CareerOS appearance
 
 **DeepSeaFoam** is the default dark theme. The header switch changes to **Harbor
 Daylight**, its warm-paper and sea-glass light companion, with a brief sunrise or
@@ -33,7 +33,7 @@ and the interface explains that it could not save the choice.
 
 ## Career OS identity
 
-CareerHQ is a **Career OS**, not a general life-management operating system.
+CareerOS is a **career operating system**, not a general life-management operating system.
 The logo is an original connected network sphere around a luminous core,
 using DeepSeaFoam seafoam, blue, violet and warm light. It replaces the earlier
 interlocking-loop mark. Film-reference images are not used as application assets.
@@ -45,15 +45,16 @@ tile and canonical seafoam, ivory and yellow stay consistent in both themes;
 the surrounding wordmark follows the current theme's heading and muted roles.
 
 The home graph is a real WebGL 3D scene with an original procedural core, layered
-outer-rim arcs and luminous depth. Its stage remains deep-water in both themes.
+outer-shell arcs, sparks and luminous depth. Its stage remains deep-water in both themes.
 Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
-notes do not award mastery. Interior lines come only from graph relationships. Decorative
-arcs and fine particles stay outside the data sphere and are masked to its projected rim
-when the camera turns or pans; front/back arcs cannot masquerade as interior connections.
-The compact core aura and outer-rim accents are decorative,
-not additional tasks, relationships or evidence of a connected AI. Reduced motion
-suppresses automatic motion, while direct pointer/keyboard navigation remains available.
+notes do not award mastery. Real connections use thicker, glowing DeepSeaFoam orange
+`#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
+their endpoints. Decorative outer arcs have independent orbital speeds. Full-shell
+projection is the default; **Clear center** restores the optional projected-rim mask.
+Glow, sparks and outer arcs are not additional tasks, relationships or evidence of a
+connected AI. **Pause animation** is separate from camera orbit and inspection.
+Reduced motion starts paused, while direct pointer/keyboard navigation remains available.
 The Three.js runtime is distributed with its [MIT notice](../public/licenses/Three-MIT.txt).
 
 ## Roles and integration
@@ -115,7 +116,7 @@ composited states, keyboard operation, responsive layouts and reduced motion.
 - The upstream [MIT notice](https://github.com/Zanark/DeepSeaFoam/blob/main/licenses/MIT.txt)
   is copied to [`public/licenses/DeepSeaFoam-MIT.txt`](../public/licenses/DeepSeaFoam-MIT.txt).
 
-Everything needed at runtime is bundled in CareerHQ. No sibling checkout,
+Everything needed at runtime is bundled in CareerOS. No sibling checkout,
 external fonts, images, music, network theme service or private source-document
 assets are required. Theme integration does not establish GitHub Pages
 deployment; repository Pages configuration remains a separate owner action.
