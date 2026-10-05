@@ -6,6 +6,7 @@ import {
 import { heartbeatCoreScale, heartbeatGlow } from './coreHeartbeatTiming';
 import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import type { CareerRippleUniforms } from './careerRipple';
+import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY, sparkParticleCount } from './careerSparkDensity';
 
 const TAU = Math.PI * 2;
 const GOLD = new Color('#EDAE29');
@@ -87,6 +88,8 @@ export class HolographicCore {
   private phase = 0;
   private radius = 80;
   private heartbeatStrength = 0;
+  private density = DEFAULT_SPARK_DENSITY;
+  private compact = false;
 
   constructor(private readonly calm = false, decorativeRings = true) {
     const random = seededRandom();
@@ -149,7 +152,8 @@ export class HolographicCore {
     }
     if (decorativeRings) this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
 
-    while (sparks.length / 3 < (calm ? 300 : 1800)) {
+    const sparkCapacity = sparkParticleCount(MAX_SPARK_DENSITY, calm, false);
+    while (sparks.length / 3 < sparkCapacity) {
       const z = random() * 2 - 1;
       const a = random() * TAU;
       const radial = Math.sqrt(1 - z * z);
@@ -202,6 +206,7 @@ export class HolographicCore {
     });
     this.materials.push(sparkMaterial);
     this.particles = new Points(sparkGeometry, sparkMaterial);
+    this.setSparkDensity(this.density);
     this.rim.add(this.particles);
 
     const heartGeometry = new SphereGeometry(0.032, 24, 16);
@@ -259,6 +264,15 @@ export class HolographicCore {
     this.particles.visible = value;
   }
 
+  get sparkDensity(): number { return this.density; }
+  get sparkCount(): number { return this.particles.geometry.drawRange.count; }
+
+  setSparkDensity(density: number): void {
+    const count = sparkParticleCount(density, this.calm, this.compact);
+    this.density = density;
+    this.particles.geometry.setDrawRange(0, count);
+  }
+
   setHeartbeatStrength(value: number): void {
     this.heartbeatStrength = Math.max(0, Math.min(1, value));
     this.heart.scale.setScalar(this.radius * heartbeatCoreScale(this.heartbeatStrength, this.calm));
@@ -272,9 +286,10 @@ export class HolographicCore {
   get animationTime(): number { return this.phase; }
 
   resize(height: number, pixelRatio: number, compact: boolean): void {
+    this.compact = compact;
     this.particles.material.uniforms.uScale.value = height * pixelRatio;
     this.particles.material.uniforms.uRatio.value = pixelRatio;
-    this.particles.geometry.setDrawRange(0, this.calm ? (compact ? 175 : 300) : (compact ? 900 : 1800));
+    this.setSparkDensity(this.density);
   }
 
   update(camera: PerspectiveCamera, delta: number): void {

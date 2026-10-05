@@ -22,6 +22,12 @@
 .career-graph-filters { display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; }
 .career-graph-filters select { font-size: .625rem; min-width: 140px; max-width: 100%; padding: 7px 10px; }
 .graph-checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: .5625rem; line-height: 1.6; }
+.career-spark-controls { display: flex; align-items: center; gap: 10px; max-width: 100%; }
+.career-spark-density { display: flex; align-items: center; gap: 8px; width: 150px; min-width: 0; font-size: .5625rem; color: var(--dsf-heading); }
+.career-spark-density input[type="range"] { flex: 1; width: 100px; min-width: 0; height: 22px; padding: 0; margin: 0; border: 0; background: transparent; accent-color: var(--dsf-accent); }
+.career-spark-density input:focus-visible { outline: 2px solid var(--dsf-accent); outline-offset: 3px; }
+.career-spark-density input:disabled { opacity: .45; cursor: not-allowed; }
+.career-spark-density > span:last-child { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
 .career-graph-stage { position: relative; height: clamp(420px, calc(100dvh - 280px), 900px); min-width: 0; overflow: hidden; background: #000F13; }
 .career-graph-stage-label { position: absolute; left: 20px; top: 16px; display: flex; align-items: center; gap: 8px; color: #93A1A1; font-size: .4375rem; letter-spacing: .18em; pointer-events: none; opacity: .8; }
 .career-graph-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 13px 20px 0; border-top: 1px solid #268BD22B; }

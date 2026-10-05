@@ -112,6 +112,13 @@ only on Rings. Re-enabling Rings restores your selected Clear center mode, and
 **Reveal orbit and members** never changes the Sparks setting. Like the other
 graph filters, these are view-only choices, not saved-progress changes.
 
+The **Spark amount** slider beside Sparks ranges from **0%** (none) to **100%**
+(the previous full amount). It starts at **50%**, half as many dots as before.
+Arrow keys adjust it; Home/End choose the minimum/maximum. Turning Sparks off
+disables the slider but keeps its amount for re-enabling. Resizing retains the
+percentage while adapting the particle budget. The focus backdrop also starts
+at the new half-density default. No rings, work nodes, progress or timer records change.
+
 **Choose nodes** opens checkboxes for every mission/collection group, individual
 work node and ring, including the CareerOS core. Groups are batch choices over
 their current items; a partly checked group has mixed choices. An evidence node

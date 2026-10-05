@@ -12,6 +12,7 @@ import { CareerGraphConnections } from './CareerGraphConnections';
 import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
 import { setCareerItemsVisible } from './careerVisibility';
+import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
 import './career-graph.css';
@@ -56,6 +57,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
   const [includeRings, setIncludeRings] = useState(true);
   const [includeSparks, setIncludeSparks] = useState(true);
+  const [sparkDensity, setSparkDensity] = useState(DEFAULT_SPARK_DENSITY);
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -274,7 +276,16 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
             <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
             <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
             <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
-            <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
+            <div className="career-spark-controls">
+              <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
+              <label className="career-spark-density" title={includeSparks ? 'Spark amount: 0% shows none; 100% restores the previous full amount.' : 'Enable Sparks to adjust the amount.'}>
+                <span className="sr-only">Spark amount</span>
+                <input type="range" aria-label="Spark amount" min={0} max={MAX_SPARK_DENSITY} step={5}
+                  value={sparkDensity} aria-valuetext={`${sparkDensity}%`} disabled={!includeSparks}
+                  onChange={event => setSparkDensity(event.currentTarget.valueAsNumber)} />
+                <span aria-hidden="true">{sparkDensity}%</span>
+              </label>
+            </div>
             <button className="button secondary career-visibility-open" aria-label="Choose visible nodes and rings" onClick={openVisibility}>Choose nodes</button>
           </div>
         </div>
@@ -284,7 +295,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
               <CareerGraphScene ref={controls} graph={visible} framingNodes={framingNodes} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
-                rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
+                rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} sparkDensity={sparkDensity} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
           <div className="career-graph-stage-label"><Network size={15} /><span>{practice ? 'PRACTICE NETWORK' : 'CAREER NETWORK'}</span></div>

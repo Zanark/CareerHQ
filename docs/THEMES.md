@@ -71,6 +71,9 @@ retains quiet-ring stillness, and respects Rings visibility and Clear center.
 Full-shell projection is the default; **Clear center** masks ring paths rather
 than their data anchors. **Rings** hides the orbit paths, anchors and tethers;
 **Sparks** independently hides the decorative particles. Both start enabled.
+Spark amount defaults to 50% of the previous budget: 900 desktop / 450 compact dots
+in the main view and 150 / 88 in focus (half of the odd 175-point budget rounds to 88).
+The main-view slider spans 0-100%; 100% restores the previous full budget.
 Neither removes real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
 lines cannot show through; only the outer glow has a soft falloff.

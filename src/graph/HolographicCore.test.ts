@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LineSegments, Mesh, PerspectiveCamera, Points, ShaderMaterial, Vector3 } from 'three';
 import { HolographicCore } from './HolographicCore';
 import { CareerRippleField } from './careerRipple';
+import { sparkParticleCount } from './careerSparkDensity';
 
 function rimLines(core: HolographicCore): LineSegments {
   let lines: LineSegments | undefined;
@@ -302,7 +303,7 @@ describe('independently orbiting rim arcs', () => {
     core.dispose();
   });
 
-  it('halves particles in both profiles and keeps focus motion visibly slower than career motion', () => {
+  it('defaults to half the previous particle budgets and keeps focus motion slower than career motion', () => {
     const core = new HolographicCore();
     const calm = new HolographicCore(true);
     const camera = new PerspectiveCamera();
@@ -318,14 +319,50 @@ describe('independently orbiting rim arcs', () => {
       item.object.traverse(object => { if (object instanceof Points) count += object.geometry.drawRange.count; });
       return count;
     };
-    expect(particleCount(core)).toBe(1800);
-    expect(particleCount(calm)).toBe(300);
+    expect(particleCount(core)).toBe(900);
+    expect(particleCount(calm)).toBe(150);
     core.resize(400, 1.25, true);
     calm.resize(400, 1, true);
-    expect(particleCount(core)).toBe(900);
-    expect(particleCount(calm)).toBe(175);
+    expect(particleCount(core)).toBe(450);
+    expect(particleCount(calm)).toBe(88);
     core.dispose();
     calm.dispose();
+  });
+
+  it.each([false, true])('changes only the particle draw range, retaining density through resize and visibility (calm=%s)', calm => {
+    const core = new HolographicCore(calm, false);
+    core.setBounds(new Vector3(), 60, new Vector3());
+    const rim = core.object.getObjectByName('Decorative outer rim only')!;
+    const particles = rim.children.find((child): child is Points => child instanceof Points)!;
+    const geometry = particles.geometry;
+    const attributes = ['position', 'color', 'aSize'].map(name => geometry.getAttribute(name));
+    const dispose = vi.spyOn(geometry, 'dispose');
+    core.update(new PerspectiveCamera(), .5);
+    core.setSparksVisible(false);
+    for (const density of [0, 25, 100, 50, 75]) {
+      core.setSparkDensity(density);
+      for (const compact of [true, false, true]) {
+        core.resize(500, compact ? 1.25 : 1.5, compact);
+        expect(core.sparkDensity).toBe(density);
+        expect(core.sparkCount).toBe(sparkParticleCount(density, calm, compact));
+        expect(particles.visible).toBe(false);
+        expect(core.object.getObjectByName('Existing core node aura')?.visible).toBe(true);
+        expect(core.animationTime).toBe(.5);
+        ['position', 'color', 'aSize'].forEach((name, index) => expect(geometry.getAttribute(name)).toBe(attributes[index]));
+      }
+    }
+    expect(dispose).not.toHaveBeenCalled();
+    const count = core.sparkCount;
+    expect(() => core.setSparkDensity(NaN)).toThrow(RangeError);
+    expect(core.sparkDensity).toBe(75);
+    expect(core.sparkCount).toBe(count);
+    core.setSparksVisible(true);
+    core.setBounds(new Vector3(3, 5, 7), 80);
+    expect(core.sparkDensity).toBe(75);
+    expect(core.sparkCount).toBe(count);
+    expect(particles.visible).toBe(true);
+    core.dispose();
+    expect(dispose).toHaveBeenCalledOnce();
   });
 
   it('disposes every batched geometry and material exactly once', () => {

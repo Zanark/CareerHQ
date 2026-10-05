@@ -64,6 +64,9 @@ The animation pause control is independent of inspection and camera manipulation
 Separate view-only Rings and Sparks switches control `CareerOrbitVisuals` and
 the `HolographicCore` particle object independently. Ring picking, labels, focus
 and explicit reveal follow only ring visibility; core glow is outside both switches.
+Spark density is a validated 0-100% view setting, default 50. It changes only the
+existing particle geometry's draw range; resizing preserves density and recomputes
+the appropriate profile/compact budget without reallocating or reseeding particles.
 Orbit selection highlights the complete orbit, independent of the selected stage/group.
 The selection glow is presentation geometry, not another ring, work node or prerequisite;
 membership tethers remain scoped to the selected group, with unchanged data and camera.

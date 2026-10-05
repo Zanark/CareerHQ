@@ -32,6 +32,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
+import { DEFAULT_SPARK_DENSITY } from './careerSparkDensity';
 import { CoreHeartbeat } from './CoreHeartbeat';
 import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
@@ -78,6 +79,8 @@ export interface CareerGraphSceneProps {
   showRings?: boolean;
   /** Show decorative particles independently of rings and node glow. */
   showSparks?: boolean;
+  /** Percentage of the original particle budget; independent of the visibility switch. */
+  sparkDensity?: number;
   /** Independent visual rhythm from the actual core; still respects ambient motion preferences. */
   heartbeat?: boolean;
   onInteraction?: () => void;
@@ -719,6 +722,19 @@ class CareerScene implements CareerGraphSceneHandle {
     this.requestFrame();
   }
 
+  setSparkDensity(density: number): void {
+    this.hologram.setSparkDensity(density);
+    this.updateSparkAttributes();
+    this.requestFrame();
+  }
+
+  private updateSparkAttributes(): void {
+    for (const element of [this.root, this.canvas]) {
+      element.dataset.sparkDensity = String(this.hologram.sparkDensity);
+      element.dataset.sparkCount = String(this.hologram.sparkCount);
+    }
+  }
+
   setHeartbeat(value: boolean): void {
     this.heartbeat.setEnabled(value);
     this.refreshHeartbeat();
@@ -865,6 +881,7 @@ class CareerScene implements CareerGraphSceneHandle {
     const bloomScale = compact || this.visualProfile === 'focus' ? 0.5 : 0.7;
     this.bloomPass.setSize(this.width * this.pixelRatio * bloomScale, this.height * this.pixelRatio * bloomScale);
     this.hologram.resize(this.height, this.pixelRatio, compact);
+    this.updateSparkAttributes();
     this.orbits.resize(this.pixelRatio);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
@@ -1463,7 +1480,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, sparkDensity = DEFAULT_SPARK_DENSITY, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1554,6 +1571,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
   useEffect(() => { runtimeRef.current?.setRimOnly(maskInterior); }, [maskInterior, visualProfile]);
   useEffect(() => { runtimeRef.current?.setRingsVisible(showRings); }, [showRings, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSparksVisible(showSparks); }, [showSparks, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setSparkDensity(sparkDensity); }, [sparkDensity, visualProfile]);
   useEffect(() => { runtimeRef.current?.setHeartbeat(heartbeat); }, [heartbeat, visualProfile]);
 
   return (
