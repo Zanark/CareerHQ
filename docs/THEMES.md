@@ -34,14 +34,16 @@ and the interface explains that it could not save the choice.
 ## Career OS identity
 
 CareerOS is a **career operating system**, not a general life-management operating system.
-The logo is an original connected network sphere around a luminous core,
+The logo is an original orbital network around a luminous ivory core,
 using DeepSeaFoam seafoam, blue, violet and warm light. It replaces the earlier
 interlocking-loop mark. Film-reference images are not used as application assets.
 
 [`src/assets/careerhq-mark.svg`](../src/assets/careerhq-mark.svg) is the single
 editable source for navigation, safe recovery and the favicon. Vite emits a
-content-hashed asset so updated tabs and the app use the same mark. Its deep-water
-tile and canonical seafoam, ivory and yellow stay consistent in both themes;
+content-hashed asset so updated tabs and the app use the same mark. It echoes the
+current graph: green, blue and orange orbital lanes, shaded planet-like nodes,
+a smaller muted gray inner orbit, and orange network connections behind an opaque
+ivory core. The deep-water tile and canonical DeepSeaFoam colors stay consistent in both themes;
 the surrounding wordmark follows the current theme's heading and muted roles.
 
 The home graph is a real WebGL 3D scene with an original procedural core, meaningful

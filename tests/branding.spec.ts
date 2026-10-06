@@ -57,3 +57,60 @@ test('the recovery screen uses the same system mark without replacing unreadable
   expect(await mark.evaluate(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth === 64)).toBe(true);
   expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe(raw);
 });
+
+test('the graph-inspired mark retains its opaque core and colored orbital identity at favicon sizes', async ({ page }, testInfo) => {
+  await page.goto('./#/hq');
+  const mark = page.locator('.brand-mark');
+  const url = (await mark.getAttribute('src'))!;
+  const response = await page.request.get(url);
+  expect(response.ok()).toBe(true);
+  const source = await response.text();
+  const structure = await page.evaluate(svg => {
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    return {
+      errors: document.querySelectorAll('parsererror').length,
+      active: [...document.querySelectorAll('#active-orbits ellipse')].map(orbit => orbit.getAttribute('stroke')),
+      quiet: document.querySelector('#quiet-orbit')?.getAttribute('stroke'),
+      planets: document.querySelectorAll('#orbit-planets circle').length,
+      core: document.querySelector('#career-core')?.getAttribute('fill'),
+      externalOrExecutable: document.querySelectorAll('script, image, foreignObject, animate, animateTransform, [href], [xlink\\:href]').length,
+    };
+  }, source);
+  expect(structure).toEqual({
+    errors: 0, active: ['#45D072', '#268BD2', '#F34B00'], quiet: '#657B83',
+    planets: 4, core: '#EEE8D5', externalOrExecutable: 0,
+  });
+  const samples = await page.evaluate(async url => {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return [16, 24, 32, 44, 96].map(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0, size, size);
+      const { data } = context.getImageData(0, 0, size, size);
+      const center = (Math.floor(size / 2) * size + Math.floor(size / 2)) * 4;
+      let green = 0, blue = 0, orange = 0;
+      for (let pixel = 0; pixel < data.length; pixel += 4) {
+        const [r, g, b, a] = data.subarray(pixel, pixel + 4);
+        if (a < 200) continue;
+        if (g > r + 12 && g > b + 8) green++;
+        if (b > r + 12 && b > g + 8) blue++;
+        if (r > g + 20 && r > b + 25) orange++;
+      }
+      return { size, core: Array.from(data.subarray(center, center + 4)), green, blue, orange };
+    });
+  }, url);
+  for (const sample of samples) {
+    expect(sample.core[0]).toBeGreaterThan(200);
+    expect(sample.core[1]).toBeGreaterThan(190);
+    expect(sample.core[2]).toBeGreaterThan(165);
+    expect(sample.core[3]).toBe(255);
+    if (sample.size >= 24) expect(sample.core).toEqual([238, 232, 213, 255]);
+    expect(sample.green).toBeGreaterThan(0);
+    expect(sample.blue).toBeGreaterThan(0);
+    expect(sample.orange).toBeGreaterThan(0);
+  }
+  await testInfo.attach('graph-logo-size-samples', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
+});
