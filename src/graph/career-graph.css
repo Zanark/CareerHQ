@@ -23,6 +23,8 @@
 .career-graph-summary strong { font-size: .6875rem; font-weight: 500; color: #EEE8D5; font-variant-numeric: tabular-nums; }
 .career-graph-summary strong > span { color: #93A1A1; }
 .career-graph-summary > div > span { font-size: .5625rem; line-height: 1.6; color: #93A1A1; }
+.career-graph-label-toggle { white-space: nowrap; }
+.career-graph-page[data-node-labels="false"] :is(.career-graph-scene__mission-labels, .career-graph-scene__orbit-labels, .career-graph-scene__node-label) { display: none !important; }
 .career-graph-panel-openers { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .career-graph-panel-openers .button { min-height: 34px; padding: 6px 9px; gap: 6px; font-size: .625rem; white-space: nowrap; }
 .career-graph-panel-openers .button[aria-expanded="true"] { outline: 1px solid #268BD2; outline-offset: -1px; }
@@ -53,6 +55,7 @@
 .career-graph-stage-wrap :is(button, a, input, select, summary):focus-visible,
 .career-graph-panel:focus-visible { outline: 2px solid #268BD2; outline-offset: 2px; }
 .career-graph-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; align-items: center; }
+.career-graph-focus-note { grid-column: 1 / -1; margin: 0; color: var(--dsf-text); font-size: .5625rem; line-height: 1.6; }
 .career-graph-mission-filter { display: grid; grid-column: 1 / -1; gap: 5px; font-size: .625rem; }
 .career-graph-filters select { width: 100%; font-size: .625rem; padding: 8px 10px; }
 .career-node-spacing { display: grid; grid-column: 1 / -1; gap: 6px; }

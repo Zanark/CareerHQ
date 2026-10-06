@@ -43,16 +43,16 @@ async function isolatedPixels(page: Page, node: CareerGraphNode) {
   return { image, green, colored };
 }
 
-test('actual completed checkpoint pixels are green, but a recorded accomplishment is not', async ({ page }, testInfo) => {
+test('actual completed checkpoint pixels are green, but a recorded accepted application is not', async ({ page }, testInfo) => {
   let state = createInitialState(false);
   state = recordEvidence(state, {
     missionId: 'pattern', checkpointId: state.missions.pattern.checkpointId,
     title: 'Synthetic completed exercise', summary: 'Confirmed the defined checkpoint criteria in a fictional test workspace.',
     kind: 'exercise', url: '', advance: true, criteriaConfirmed: true,
   });
-  state.personalProof = [{
-    id: 'synthetic-proof-color', title: 'Synthetic parser project',
-    detail: 'A fictional past accomplishment, not a completed curriculum checkpoint.', source: 'Test fixture', url: '',
+  state.opportunities = [{
+    id: 'synthetic-accepted-color', company: 'Synthetic company', role: 'Synthetic role', stage: 'Accepted',
+    notes: 'A fictional accepted application, not a completed curriculum checkpoint.', createdAt: state.updatedAt, url: '',
   }];
   const graph = buildCareerGraph(state);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -62,10 +62,10 @@ test('actual completed checkpoint pixels are green, but a recorded accomplishmen
   const raw = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
   const completed = await isolatedPixels(page, graph.nodes.find(node => node.kind === 'checkpoint' && node.status === 'complete')!);
   expect(completed.green).toBeGreaterThan(40);
-  const history = await isolatedPixels(page, graph.nodes.find(node => node.kind === 'history')!);
+  const history = await isolatedPixels(page, graph.nodes.find(node => node.kind === 'opportunity')!);
   expect(history.colored).toBeGreaterThan(40);
   expect(history.green).toBe(0);
   await testInfo.attach('completed-checkpoint-green', { body: completed.image, contentType: 'image/png' });
-  await testInfo.attach('recorded-accomplishment-identity', { body: history.image, contentType: 'image/png' });
+  await testInfo.attach('recorded-application-identity', { body: history.image, contentType: 'image/png' });
   expect(await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'))).toBe(raw);
 });

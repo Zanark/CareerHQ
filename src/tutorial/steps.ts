@@ -84,13 +84,13 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-orbits'],
     title: 'Read the mission rings',
-    body: 'Nine mission rings start visible; six optional collection rings start hidden. Rings still lists all fifteen: inspect a hidden collection, then Reveal orbit and members to enable it. Mission hues match Missions. Flat dot borders brighten after saved evidence/progress or recall today. Active missions revolve outside; background/planned stay smaller and still. Tethers mean membership, not prerequisites. Collection borders claim no mission activity.',
+    body: 'Rings represent missions only. In-focus missions show checkpoints and connections; other missions stay isolated nodes. Complete a checkpoint outside focus to reveal that mission’s full graph for today, without changing its mode. It collapses again tomorrow unless in focus. Rings lists all nine missions; an optional inactive ring does not reveal its hidden checkpoints. Other data stays on existing pages and in relevant details.',
   },
   {
     id: 'career-graph-checkpoints-hide', chapter: 'career-graph', kind: 'action', route: 'home',
     targets: ['career-graph-checkpoints'],
     title: 'Hide the checkpoint layer',
-    body: 'Open View, then uncheck Checkpoints (on by default). This hides tracked, archived and untracked curriculum checkpoint nodes, not mission hubs, rings or work records. The framing stays stable and no work is deleted. Rings and Sparks have separate switches; Spark amount starts at 50%.',
+    body: 'Open View, then uncheck Checkpoints (on by default). This hides tracked, archived and untracked curriculum checkpoint nodes, not mission hubs, rings or work records. The framing stays stable and no work is deleted. Labels beside the graph counts hides only text tags. Rings and Sparks have separate switches; Spark amount starts at 10%.',
     checkUi: root => graphCheckpointToggle(root)?.checked === false,
   },
   {
@@ -104,7 +104,7 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-visibility', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-visibility'],
     title: 'Choose exactly what appears',
-    body: 'Nodes opens group and individual visibility checkboxes, including the core. A partly checked group has mixed choices. For more room, View has Node spacing: 1.0x to 3.0x the original distances, without changing zoom. Use Frame all if nodes leave the view; 1.0x restores their layout. These choices last on this page only. Nothing is deleted or completed.',
+    body: 'Nodes opens group and individual visibility checkboxes, including the core. A partly checked group has mixed choices. View has Node spacing: 1.0x to 3.0x relative spread redistributes crowded nodes rather than enlarging the whole graph. Frame all restores the clearest starting angle; 1.0x resets spread. These choices last on this page only. Nothing is deleted or completed.',
   },
   {
     id: 'career-graph-search', chapter: 'career-graph', kind: 'action', route: 'home', command: 'open-graph-search',
@@ -315,7 +315,7 @@ export const steps: TutorialStep[] = [
     id: 'control-background', chapter: 'control', kind: 'action',
     targets: ['mission-mode'],
     title: 'Keep a mission in the background',
-    body: 'Click Move to background. Its checkpoint and evidence stay intact, but it no longer gets a daily action.',
+    body: 'Click Move to background. Its work stays intact but it no longer gets a daily action. You can still record practice or complete its current checkpoint from its mission page. Only an actual checkpoint completion reveals its full graph for today; unfinished practice and recall do not.',
     check: ({ state }) => state.missions.fabric.mode === 'background',
   },
   {
@@ -339,7 +339,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'focus-room-data', chapter: 'focus-room', kind: 'explain',
     targets: ['focus-room-count'], title: 'Keep the data, not a judgment',
-    body: 'The log retains presses, pause/resume transitions and session endings. Reset does not delete reports; timer activity never earns a mission work day or checkpoint completion. The backdrop is a fixed graph snapshot. At local midnight its old activity borders dim, even with Ambient motion off, without rebuilding the snapshot.',
+    body: 'The log retains presses, pause/resume transitions and session endings. Reset does not delete reports; timer activity earns no mission work day or completion. The backdrop keeps captured work. At midnight, old activity borders dim and temporary outside-focus checkpoint views collapse, even with Ambient motion off. Records are not deleted.',
   },
   {
     id: 'focus-room-close', chapter: 'focus-room', kind: 'action',

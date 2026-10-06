@@ -47,6 +47,8 @@ export type CareerGraphEdge = CareerGraphEdgeEndpoints & (
 
 export interface CareerGraph {
   nodes: CareerGraphNode[];
+  /** View-only isolation for quiet mission hubs, including their orbit membership tethers. */
+  disconnectedNodeIds?: ReadonlySet<string>;
   edges: CareerGraphEdge[];
   orbits: CareerOrbit[];
   stats: {

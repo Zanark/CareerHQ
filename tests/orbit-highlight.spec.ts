@@ -98,6 +98,8 @@ test('switching cards, Clear center, ring hiding and node inspection cleanly con
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', dsa);
   const inactive = 'orbit:mission:fabric';
   const inspector = await select(page, inactive);
+  await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'false');
+  await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', inactive);
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
   await setGraphScope(page, 'fabric');

@@ -170,14 +170,16 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
     setToast(practice ? 'Tutorial example downloaded. This is not your real backup.' : 'Backup downloaded. Keep it private.');
   }
 
-  function openEvidence(missionId = state.focusMissionId, action?: DailyAction) {
-    const progress = state.missions[missionId];
-    if (progress.mode !== 'active' || progress.status === 'completed' || progress.blocker) {
-      const eligible = active.find(item => !state.missions[item.id].blocker);
-      if (!eligible) { setToast('Activate an unblocked mission before recording evidence.'); return; }
-      missionId = eligible.id;
+  function openEvidence(missionId?: MissionId, action?: DailyAction) {
+    const eligible = missions.filter(item => !item.planned && state.missions[item.id].mode !== 'planned' &&
+      state.missions[item.id].status !== 'completed' && !state.missions[item.id].blocker.trim());
+    const selected = eligible.find(item => item.id === (missionId ?? state.focusMissionId)) ??
+      (missionId === undefined && !action ? eligible.find(item => state.missions[item.id].mode === 'active') ?? eligible[0] : undefined);
+    if (!selected || (action && state.missions[selected.id].mode !== 'active')) {
+      setToast('This mission is unavailable for this action. Record evidence from an unblocked mission with a current checkpoint.');
+      return;
     }
-    setEvidenceDialog({ missionId, action });
+    setEvidenceDialog({ missionId: selected.id, action });
   }
 
   function setCapacity(capacity: Capacity) {
@@ -355,7 +357,7 @@ function MissionPage({ mission, state, commit, onEvidence, onResume, notify, onF
     <SourcePanel missionId={mission.id} state={state} commit={commit} />
     {mission.planned ? <MissionFlowchart mission={mission} state={state} /> : <>
       <section className={`save-state-card ${mission.color}`} style={missionAccentStyle(mission.id)} data-tour="save-state"><div className="save-state-header"><span className="eyebrow"><Flag size={14} />CURRENT CHECKPOINT</span><Badge>{statusLabels[save.status]}</Badge></div><div className="save-state-main"><MissionIcon mission={mission} size={27} /><div><span>{save.stage}</span><h2>{save.checkpoint?.title}</h2></div><span className="save-count">{save.completed}<small> / {save.total} complete</small></span></div><Progress value={save.completed / save.total * 100} label="Mission checkpoint progress" /><div className="save-state-bottom"><span><LockKeyhole size={14} /><strong>Next unlock:</strong> {save.next}</span><button className="text-link" data-tour="mission-primary" onClick={() => update('Primary mission updated', current => ({ ...current, focusMissionId: mission.id }))}>{state.focusMissionId === mission.id ? 'Your primary mission' : 'Make primary mission'}<Target size={14} /></button></div></section>
-      <div className="dashboard-grid mission-detail"><div><section className="panel next-action"><span className="eyebrow">NEXT ACTION</span>      <h2>{save.status === 'completed' ? (mission.completionLabel ?? 'Mission completed') : save.checkpoint?.action}</h2><p>{save.status === 'completed' ? 'Your saved work and history are retained.' : mission.purpose}</p>{save.status !== 'completed' && <><div className="criteria-list"><h4>Completion criteria</h4>{save.checkpoint?.criteria.map(criterion => <div key={criterion}><span className="tiny-circle" />{criterion}</div>)}</div><div className="button-row"><button className="button primary" data-tour="record-evidence" onClick={onEvidence} disabled={progress.mode !== 'active' || !!progress.blocker}><Plus size={16} />Record evidence</button>{progress.status === 'not-started' && <button className="button secondary" onClick={() => onResume(mission.id)} disabled={progress.mode !== 'active' || !!progress.blocker}>Begin checkpoint<Play size={14} /></button>}<span className="muted small"><Clock3 size={13} />About {save.checkpoint?.minutes} min</span></div>{progress.mode !== 'active' && <p className="attention-text">Bring this mission into focus to start or record new evidence.</p>}</>}</section>
+      <div className="dashboard-grid mission-detail"><div><section className="panel next-action"><span className="eyebrow">NEXT ACTION</span>      <h2>{save.status === 'completed' ? (mission.completionLabel ?? 'Mission completed') : save.checkpoint?.action}</h2><p>{save.status === 'completed' ? 'Your saved work and history are retained.' : mission.purpose}</p>{save.status !== 'completed' && <><div className="criteria-list"><h4>Completion criteria</h4>{save.checkpoint?.criteria.map(criterion => <div key={criterion}><span className="tiny-circle" />{criterion}</div>)}</div><div className="button-row"><button className="button primary" data-tour="record-evidence" onClick={onEvidence} disabled={progress.mode === 'planned' || !!progress.blocker}><Plus size={16} />Record evidence</button>{progress.status === 'not-started' && progress.mode === 'active' && <button className="button secondary" onClick={() => onResume(mission.id)} disabled={!!progress.blocker}>Begin checkpoint<Play size={14} /></button>}<span className="muted small"><Clock3 size={13} />About {save.checkpoint?.minutes} min</span></div>{progress.mode === 'background' && <p className="attention-text">Record practice or complete this checkpoint without changing focus. Daily plans still use only in-focus missions.</p>}</>}</section>
         {alternatives.length > 0 && <section className="panel available-checkpoints"><h4>Other available checkpoints</h4><p className="muted small">Choose one current checkpoint. This does not complete the previous one.</p><div className="button-row">{alternatives.map(checkpoint => <button key={checkpoint.id} className="button secondary" onClick={() => {
           if (commit(current => activateCheckpoint(current, mission.id, checkpoint.id))) notify('Current checkpoint changed. Existing evidence is preserved.');
         }}>Make current: {checkpoint.title}</button>)}</div></section>}

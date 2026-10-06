@@ -24,12 +24,19 @@ export const CAREER_ORBIT_PLANES = Array.from({ length: 15 }, (_, index) => {
   return {
     x: new Vector3(1, 0, 0).applyQuaternion(rotation),
     y: new Vector3(0, 1, 0).applyQuaternion(rotation),
-    radius: 1.06 + index / 15 * 0.13,
+    radius: 1.3 + index / 15 * 0.18,
     speed: original[0] * multiplier,
     multiplier,
     anchorAngle: index * 2.399963229728653,
   };
 });
+
+/** Includes the raised member track and the largest permitted heartbeat displacement. */
+export const CAREER_ORBIT_SHELL_RADIUS = Math.max(...CAREER_ORBIT_PLANES.map(plane => plane.radius)) + 0.012 + 0.04;
+
+export function careerOrbitFrameRadius(dataRadius: number, centerOffset = 0): number {
+  return (dataRadius * CAREER_ORBIT_SHELL_RADIUS + centerOffset) * 1.08;
+}
 
 export interface CareerOrbitMotion {
   quiet: boolean;

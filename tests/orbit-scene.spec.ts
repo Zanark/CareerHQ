@@ -10,7 +10,7 @@ async function open(page: Page, paused = true) {
   await page.goto('./#/home');
   const scene = page.locator('.career-graph-scene');
   await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-  await expect(scene).toHaveAttribute('data-orbit-count', '9');
+  await expect(scene).toHaveAttribute('data-orbit-count', '3');
   return scene;
 }
 

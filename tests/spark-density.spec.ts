@@ -14,7 +14,7 @@ async function capture(page: Page, canvas: Locator, scene: Locator) {
 }
 
 for (const width of [1440, 320]) {
-  test(`spark amount is adjustable and defaults to half the old count at ${width}px`, async ({ page }, testInfo) => {
+  test(`spark amount is adjustable and defaults to ten percent at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./#/home');
@@ -24,9 +24,9 @@ for (const width of [1440, 320]) {
     const full = width === 1440 ? 1800 : 900;
     await expect(slider).toHaveAttribute('min', '0');
     await expect(slider).toHaveAttribute('max', '100');
-    await expect(slider).toHaveValue('50');
-    await expect(scene).toHaveAttribute('data-spark-density', '50');
-    await expect(scene).toHaveAttribute('data-spark-count', String(full / 2));
+    await expect(slider).toHaveValue('10');
+    await expect(scene).toHaveAttribute('data-spark-density', '10');
+    await expect(scene).toHaveAttribute('data-spark-count', String(full / 10));
     const raw = await page.evaluate(key => localStorage.getItem(key), key);
     const counts = await scene.evaluate(element => [element.getAttribute('data-node-count'), element.getAttribute('data-edge-count'), element.getAttribute('data-orbit-count')]);
     const canvas = scene.locator('canvas');
@@ -78,7 +78,7 @@ for (const width of [1440, 320]) {
     await page.screenshot({ path: testInfo.outputPath('spark-slider.png') });
   });
 
-  test(`focus ambience also starts at half its previous spark budget at ${width}px`, async ({ page }) => {
+  test(`focus ambience also starts at ten percent of its spark budget at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./#/plan');
@@ -86,8 +86,8 @@ for (const width of [1440, 320]) {
     await page.locator('[data-tour="focus-room-open"]').click();
     const scene = page.locator('.focus-room .career-graph-scene');
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-    await expect(scene).toHaveAttribute('data-spark-density', '50');
-    await expect(scene).toHaveAttribute('data-spark-count', width === 1440 ? '150' : '88');
+    await expect(scene).toHaveAttribute('data-spark-density', '10');
+    await expect(scene).toHaveAttribute('data-spark-count', width === 1440 ? '30' : '18');
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
   });
 }

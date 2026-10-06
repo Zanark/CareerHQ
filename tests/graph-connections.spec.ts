@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { checkpointIdentity, getCheckpoint } from '../src/domain/catalog';
+import { getCheckpoint } from '../src/domain/catalog';
 import { createInitialState, generatePlan, localDate, upgradeRoadmap } from '../src/domain/engine';
 import type { AppState } from '../src/domain/types';
 import { careerSkillLinks } from '../src/graph/careerSkillLinks';
-import { buildCareerGraph } from '../src/graph/careerGraphModel';
+import { focusedGraphForState } from './mission-ring-policy';
 import { graphCheckbox, searchGraphNodes, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
@@ -33,7 +33,7 @@ async function inspectSource(page: Page) {
 
 test('shared links add only edges, have a visibility toggle, and do not recreate the scene or save progress', async ({ page }) => {
   const state = createInitialState(false);
-  const expected = buildCareerGraph(state).edges.filter(edge => edge.kind === 'shared-skill').length;
+  const expected = focusedGraphForState(state).edges.filter(edge => edge.kind === 'shared-skill').length;
   const raw = await openGraph(page, state);
   const scene = page.locator('.career-graph-scene');
   const count = Number(await scene.getAttribute('data-edge-count'));
@@ -63,11 +63,12 @@ for (const width of [1440, 320]) {
     await expect(entry).toContainText(target.source!.document);
     await expect(entry).toContainText(`p. ${target.source!.page}`);
     await testInfo.attach('connection-reason', { body: await page.screenshot(), contentType: 'image/png' });
-    await entry.getByRole('button', { name: `Inspect ${target.title}`, exact: true }).click();
+    await entry.getByRole('button', { name: `Reveal and inspect ${target.title}`, exact: true }).click();
     await expect(inspector.getByRole('heading', { level: 2 })).toHaveText(target.title);
     await expect(inspector).toBeFocused();
-    await expect(page.locator('.career-graph-stage canvas')).toHaveAttribute('data-selected-node-id',
-      `checkpoint:${checkpointIdentity(link.target.missionId, link.target.checkpointId, link.target.roadmapVersion)}`);
+    await expect(inspector).toContainText('Details only: this mission is outside focus');
+    await expect(page.getByRole('button', { name: 'Focus node', exact: true })).toBeDisabled();
+    await expect(page.locator('.career-graph-stage canvas')).toHaveAttribute('data-selected-node-id', '');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
   });

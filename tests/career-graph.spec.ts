@@ -125,9 +125,9 @@ test('recorded completion becomes green while proof records do not invent checkp
   await expect(page.locator('.career-graph-inspector .graph-status-tag')).toHaveText('Recorded done');
   await selectNamedNode(page, 'Synthetic completed HashMap work');
   await expect(page.locator('.career-graph-inspector .graph-status-tag')).toHaveText('Reference');
-  await selectNamedNode(page, 'Built a fictional parser');
-  await expect(page.locator('.career-graph-inspector .graph-status-tag')).toHaveText('Recorded done');
   await expect(page.locator('.career-graph-summary')).toContainText('1 / 497');
+  await page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Keep going', exact: true }).click();
+  await expect(page.getByText('Built a fictional parser', { exact: true })).toBeVisible();
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 

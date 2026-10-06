@@ -4,34 +4,57 @@ import { buildCareerGraph } from './careerGraphModel';
 import { DEFAULT_NODE_SPACING, MAX_NODE_SPACING, spaceCareerGraph } from './careerNodeSpacing';
 
 describe('view-only node spacing', () => {
-  it('preserves the original layout by default and restores it exactly without cumulative drift', () => {
+  it('applies the roomier default and restores it exactly without mutating or compounding the source', () => {
     const graph = buildCareerGraph(createInitialState(false));
     const before = JSON.stringify(graph);
     expect(DEFAULT_NODE_SPACING).toBe(100);
-    expect(spaceCareerGraph(graph, 100)).toBe(graph);
+    const initial = spaceCareerGraph(graph, 100);
+    expect(initial.nodes).not.toEqual(graph.nodes);
     for (const spacing of [130, 200, 300, 180, 100]) {
       spaceCareerGraph(graph, spacing);
       expect(JSON.stringify(graph)).toBe(before);
     }
-    expect(spaceCareerGraph(graph, 100)).toBe(graph);
+    expect(spaceCareerGraph(graph, 100)).toEqual(initial);
   });
 
-  it.each([150, 200, MAX_NODE_SPACING])('expands every pairwise distance by %s percent, not just camera zoom', spacing => {
+  it.each([100, 150, 200, MAX_NODE_SPACING])('redistributes nodes inside bounded geometry at %s, retaining all semantic data', spacing => {
     const graph = buildCareerGraph(createInitialState(false, '2.0.0'));
     const spaced = spaceCareerGraph(graph, spacing);
-    const distance = (a: number[], b: number[]) => Math.hypot(...a.map((value, index) => value - b[index]));
-    let largestError = 0;
-    for (let a = 0; a < graph.nodes.length; a++) for (let b = a + 1; b < graph.nodes.length; b++) {
-      largestError = Math.max(largestError, Math.abs(distance(spaced.nodes[a].position, spaced.nodes[b].position)
-        - distance(graph.nodes[a].position, graph.nodes[b].position) * spacing / 100));
-    }
-    expect(largestError).toBeLessThan(1e-9);
+    const radii = spaced.nodes.filter(node => node.kind !== 'core').map(node => Math.hypot(...node.position));
+    expect(Math.min(...radii)).toBeGreaterThan(50);
+    expect(Math.max(...radii)).toBeLessThan(137);
+    const ratios = spaced.nodes.filter(node => node.kind !== 'core').map(node =>
+      Math.hypot(...node.position) / Math.hypot(...graph.nodes.find(source => source.id === node.id)!.position));
+    expect(Math.max(...ratios) - Math.min(...ratios)).toBeGreaterThan(0.5);
     expect(spaced.edges).toBe(graph.edges);
     expect(spaced.orbits).toBe(graph.orbits);
     expect(spaced.stats).toBe(graph.stats);
     expect(spaced.updates).toBe(graph.updates);
     expect(spaced.nodes.map(({ position: _position, ...node }) => node))
       .toEqual(graph.nodes.map(({ position: _position, ...node }) => node));
+  });
+
+  it('keeps chosen positions when item and mission filters run after the full projection', () => {
+    const projected = spaceCareerGraph(buildCareerGraph(createInitialState(false)), 300);
+    const positions = new Map(projected.nodes.map(node => [node.id, node.position]));
+    for (const filtered of [
+      projected.nodes.filter(node => node.missionId === 'pattern'),
+      projected.nodes.filter(node => node.kind !== 'checkpoint'),
+      projected.nodes.filter((_, index) => index % 3 === 0),
+    ]) {
+      for (const node of filtered) expect(node.position).toBe(positions.get(node.id));
+    }
+  });
+
+  it('does not relayout progress-only updates or collapse the last slider steps into a no-op', () => {
+    const graph = buildCareerGraph(createInitialState(false));
+    const updated = { ...graph, nodes: graph.nodes.map(node => ({ ...node, status: 'complete' as const, current: false })) };
+    for (const spacing of [100, 200, 300]) {
+      expect(spaceCareerGraph(updated, spacing).nodes.map(node => node.position))
+        .toEqual(spaceCareerGraph(graph, spacing).nodes.map(node => node.position));
+    }
+    expect(spaceCareerGraph(graph, 290).nodes.map(node => node.position))
+      .not.toEqual(spaceCareerGraph(graph, 300).nodes.map(node => node.position));
   });
 
   it('pins a non-origin core and preserves identities across reordering, filtering and new records', () => {
@@ -60,5 +83,23 @@ describe('view-only node spacing', () => {
     expect(() => spaceCareerGraph({ ...graph, nodes: graph.nodes.filter(node => node.kind !== 'core') }, 200)).toThrow('unfiltered graph');
     const empty = { ...graph, nodes: [] };
     expect(spaceCareerGraph(empty, 200)).toBe(empty);
+  });
+
+  it('handles more than ten thousand coincident records without dropping nodes or pairwise relaxation', () => {
+    const graph = buildCareerGraph(createInitialState(false));
+    const example = graph.nodes.find(node => node.kind === 'checkpoint')!;
+    const crowded = {
+      ...graph,
+      nodes: [...graph.nodes, ...Array.from({ length: 10_500 }, (_, index) => ({
+        ...example, id: `history:synthetic-${index}`, kind: 'history' as const, missionId: undefined,
+        position: [0, 0, 0] as [number, number, number],
+      }))],
+    };
+    const start = performance.now();
+    const result = spaceCareerGraph(crowded, 300);
+    expect(result.nodes).toHaveLength(crowded.nodes.length);
+    expect(result.nodes.every(node => node.position.every(Number.isFinite))).toBe(true);
+    expect(new Set(result.nodes.map(node => node.position.join(','))).size).toBe(result.nodes.length);
+    expect(performance.now() - start).toBeLessThan(3000);
   });
 });

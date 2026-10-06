@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { AppState } from '../src/domain/types';
 import { focusSessionSummary } from '../src/domain/focusSession';
-import { buildCareerGraph } from '../src/graph/careerGraphModel';
+import { focusedGraphForState } from './mission-ring-policy';
 import { PNG } from './png';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
@@ -311,11 +311,56 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 }
 
 test.describe('genuine calm 3D focus room', () => {
+  test('mission-only motion remains visible through the frost with fallback fonts in short fixed intervals', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await prepare(page, { graphics: true, fullscreen: false });
+    await page.addStyleTag({ content: 'body { font-family: Arial, sans-serif; }' });
+    await openRoom(page);
+    const scene = room(page).locator('.career-graph-scene');
+    await expect.poll(async () => {
+      await page.clock.runFor(100);
+      return page.evaluate(() => document.querySelector('.focus-room .career-graph-scene')?.getAttribute('data-scene-state') ?? 'loading');
+    }, { timeout: 20_000 }).toBe('ready');
+    await expect(scene).toHaveAttribute('data-orbit-count', '3');
+    const before = await raw(page);
+    const ambient = room(page).locator('[data-tour="focus-room-ambient"]');
+    const captureSession = await page.context().newCDPSession(page);
+    const capture = async () => {
+      const { data } = await captureSession.send('Page.captureScreenshot', {
+        format: 'png', optimizeForSpeed: true, captureBeyondViewport: false,
+      });
+      return Buffer.from(data, 'base64');
+    };
+    try {
+      for (let interval = 0; interval < 2; interval++) {
+        await ambient.uncheck();
+        await page.clock.runFor(50);
+        const first = await capture();
+        await ambient.check();
+        await page.clock.runFor(1100);
+        await ambient.uncheck();
+        await page.clock.runFor(50);
+        const second = await capture();
+        const a = PNG.sync.read(first), b = PNG.sync.read(second);
+        let visibleChanges = 0;
+        for (let index = 0; index < a.data.length; index += 4) {
+          if (Math.abs(a.data[index] - b.data[index]) + Math.abs(a.data[index + 1] - b.data[index + 1])
+            + Math.abs(a.data[index + 2] - b.data[index + 2]) > 12) visibleChanges++;
+        }
+        await testInfo.attach(`mission-only-frost-${interval}`, { body: second, contentType: 'image/png' });
+        expect(visibleChanges, 'Nine mission rings must retain visible short-interval motion behind real frost').toBeGreaterThan(100);
+      }
+    } finally {
+      await captureSession.detach();
+    }
+    expect(await raw(page)).toBe(before);
+  });
+
   test('the current full-shell graph visibly moves before starting without recording a session', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await prepare(page, { graphics: true, fullscreen: false, clock: false });
     const initial = await stored(page);
-    const expected = buildCareerGraph(initial);
+    const expected = focusedGraphForState(initial);
     const before = await raw(page);
     await openRoom(page);
     const scene = room(page).locator('.career-graph-scene');

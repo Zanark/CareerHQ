@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { closeGraphPanels, openGraphPanel, searchGraphNodes, setGraphCheckbox, setGraphScope } from './graph-ui';
 import { PNG } from './png';
+import { Vector3 } from 'three';
+import { buildCareerGraph } from '../src/graph/careerGraphModel';
+import { DEFAULT_NODE_SPACING, spaceCareerGraph } from '../src/graph/careerNodeSpacing';
+import { captureFittedSpatialProjection, observeSpatialProjection, projectedSeparation } from './spatial-projection';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -34,7 +38,7 @@ async function doubleSpacing(page: Page) {
   await expect(slider).toHaveValue('200');
 }
 
-test('spacing expands real projected node gaps without zooming, preserves picking and exactly restores the original layout', async ({ page }, testInfo) => {
+test('spacing redistributes actual nodes without zooming, preserves picking and exactly restores the default layout', async ({ page }, testInfo) => {
   const scene = await open(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
   await setGraphCheckbox(page, 'Sparks', false);
@@ -51,15 +55,15 @@ test('spacing expands real projected node gaps without zooming, preserves pickin
   await openGraphPanel(page, 'view');
   const slider = page.getByRole('slider', { name: 'Node spacing', exact: true });
   await expect(slider).toHaveValue('100');
+  await expect(slider).toHaveAccessibleDescription('Spread crowded nodes within the layout, rather than enlarging the graph. Frame all restores the clearest starting view. 1.0x resets the spread.');
   for (let step = 0; step < 5; step++) await slider.press('ArrowRight');
   await expect(slider).toHaveValue('150');
-  await expect(slider).toHaveAttribute('aria-valuetext', '1.5 times original distance');
-  await expect.poll(async () => Number(await scene.getAttribute('data-orbit-data-radius'))).toBeCloseTo(radius * 1.5, 5);
+  await expect(page.locator('.career-graph-page')).toHaveAttribute('data-node-spacing', '150');
   const widerFirst = await select(page, 'HashMap Fundamentals');
   const widerSecond = await select(page, 'Seen Before');
-  const gap = Math.hypot(first.x - second.x, first.y - second.y);
-  const widerGap = Math.hypot(widerFirst.x - widerSecond.x, widerFirst.y - widerSecond.y);
-  expect(widerGap, 'Rendered nodes must become farther apart, not just the slider value').toBeGreaterThan(gap * 1.35);
+  expect(widerFirst, 'The rendered node must move, not just the slider label').not.toEqual(first);
+  expect(widerSecond).not.toEqual(second);
+  expect(Number(await scene.getAttribute('data-orbit-data-radius'))).toBeLessThan(radius * 1.12);
   await expect(scene).toHaveAttribute('data-view-revision', revision!);
   expect(await scene.evaluate(element => [element.dataset.coreScreenX, element.dataset.coreScreenY])).toEqual(core);
   expect(await scene.evaluate(element => [element.dataset.nodeCount, element.dataset.edgeCount, element.dataset.orbitCount])).toEqual(counts);
@@ -92,6 +96,51 @@ test('spacing expands real projected node gaps without zooming, preserves pickin
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
   await testInfo.attach('original-spacing', { body: before, contentType: 'image/png' });
   await testInfo.attach('expanded-spacing', { body: expanded, contentType: 'image/png' });
+});
+
+test('Frame all preserves better projected gaps at 100/200/300 and fits the widened outer rings', async ({ page }, testInfo) => {
+  await observeSpatialProjection(page);
+  const scene = await open(page);
+  await expect(scene).toHaveAttribute('data-orbit-count', '3');
+  const raw = await page.evaluate(key => localStorage.getItem(key), key);
+  const readings = [];
+  for (const spacing of [100, 200, 300]) {
+    await openGraphPanel(page, 'view');
+    const slider = page.getByRole('slider', { name: 'Node spacing', exact: true });
+    if (spacing === 100) await slider.press('Home');
+    else for (let step = 0; step < 10; step++) await slider.press('ArrowRight');
+    await expect(slider).toHaveValue(String(spacing));
+    await expect(slider).toHaveAttribute('aria-valuetext', `${(spacing / 100).toFixed(1)} relative spread`);
+    await expect(page.locator('.career-node-spacing output')).toHaveText(`${(spacing / 100).toFixed(1)}x`);
+    await closeGraphPanels(page);
+    const captured = await captureFittedSpatialProjection(page);
+    expect(captured.points).toHaveLength(Number(await scene.getAttribute('data-node-count')));
+    readings.push({ ...projectedSeparation(captured.points.slice(1)), radius: Number(await scene.getAttribute('data-orbit-data-radius')) });
+  }
+  for (let index = 1; index < readings.length; index++) {
+    expect(readings[index].p10).toBeGreaterThan(readings[index - 1].p10 * 1.05);
+    expect(readings[index].median).toBeGreaterThan(readings[index - 1].median * 1.05);
+    expect(readings[index].radius / readings[0].radius).toBeGreaterThan(0.9);
+    expect(readings[index].radius / readings[0].radius).toBeLessThan(1.1);
+  }
+  await openGraphPanel(page, 'visibility');
+  await page.getByRole('button', { name: 'Select all items', exact: true }).click();
+  await closeGraphPanels(page);
+  await captureFittedSpatialProjection(page);
+  await expect(scene).toHaveAttribute('data-orbit-count', '9');
+  const bounds = await scene.locator('canvas').boundingBox();
+  if (!bounds) throw new Error('Expected the fitted outer-ring canvas.');
+  const anchors = scene.locator('.career-graph-scene__orbit-diagnostic');
+  await expect(anchors).toHaveCount(9);
+  for (const anchor of await anchors.all()) {
+    await expect(anchor).toHaveAttribute('data-screen-visible', 'true');
+    const x = Number(await anchor.getAttribute('data-screen-x')), y = Number(await anchor.getAttribute('data-screen-y'));
+    expect(Math.min(x, y, bounds.width - x, bounds.height - y)).toBeGreaterThan(20);
+  }
+  await expect(scene).toHaveAttribute('data-orbit-pulse-count', '0');
+  expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
+  if (process.env.CAREERHQ_LAYOUT_METRICS) console.info('Fitted spacing measurements:', JSON.stringify(readings));
+  await testInfo.attach('fitted-node-separation', { body: JSON.stringify(readings, null, 2), contentType: 'application/json' });
 });
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
@@ -138,13 +187,16 @@ test('spacing survives real recorded work without compounding the expansion or c
   await expect(page.locator('.career-graph-page')).toHaveAttribute('data-node-spacing', '200');
   expect(await select(page, 'HashMap Fundamentals')).toEqual(first);
   await expect(scene).toHaveAttribute('data-orbit-pulse-count', '0');
-  const unexpandedRadius = Number(await scene.getAttribute('data-orbit-data-radius')) / 2;
   const saved = await page.evaluate(key => localStorage.getItem(key), key);
+  const defaultGraph = spaceCareerGraph(buildCareerGraph(JSON.parse(saved!)), DEFAULT_NODE_SPACING);
+  const positions = defaultGraph.nodes.map(node => new Vector3().fromArray(node.position));
+  const center = new Vector3().fromArray(defaultGraph.nodes.find(node => node.kind === 'core')!.position);
+  const defaultRadius = Math.max(35, ...positions.map(position => position.distanceTo(center)));
   await page.goto('./#/plan');
   await page.locator('[data-tour="focus-room-open"]').click();
   const focus = page.locator('.focus-room .career-graph-scene');
   await expect(focus).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-  expect(Number(await focus.getAttribute('data-orbit-data-radius'))).toBeCloseTo(unexpandedRadius, 5);
+  expect(Number(await focus.getAttribute('data-orbit-data-radius'))).toBeCloseTo(defaultRadius, 5);
   await page.goto('./#/home');
   await expect(page.locator('.career-graph-page')).toHaveAttribute('data-node-spacing', '100');
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(saved);

@@ -23,7 +23,9 @@ export function EvidenceDialog({ state, initialMission, action, practice = false
   const [kind, setKind] = useState<EvidenceKind>('explanation');
   const mission = getMission(missionId, state);
   const save = getSaveState(mission, state);
-  const eligible = getMissions(state).filter(item => !item.planned && state.missions[item.id].mode === 'active' && state.missions[item.id].status !== 'completed' && !state.missions[item.id].blocker);
+  const eligible = getMissions(state).filter(item => !item.planned && state.missions[item.id].mode !== 'planned' &&
+    (!action || state.missions[item.id].mode === 'active') &&
+    state.missions[item.id].status !== 'completed' && !state.missions[item.id].blocker.trim());
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

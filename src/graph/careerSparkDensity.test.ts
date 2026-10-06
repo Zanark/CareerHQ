@@ -3,13 +3,13 @@ import { DEFAULT_SPARK_DENSITY, sparkParticleCount } from './careerSparkDensity'
 
 describe('spark density budgets', () => {
   it.each([
-    { calm: false, compact: false, full: 1800, half: 900 },
-    { calm: false, compact: true, full: 900, half: 450 },
-    { calm: true, compact: false, full: 300, half: 150 },
-    { calm: true, compact: true, full: 175, half: 88 },
-  ])('defaults to half the previous budget (calm=$calm, compact=$compact)', ({ calm, compact, full, half }) => {
-    expect(DEFAULT_SPARK_DENSITY).toBe(50);
-    expect(sparkParticleCount(DEFAULT_SPARK_DENSITY, calm, compact)).toBe(half);
+    { calm: false, compact: false, full: 1800, initial: 180 },
+    { calm: false, compact: true, full: 900, initial: 90 },
+    { calm: true, compact: false, full: 300, initial: 30 },
+    { calm: true, compact: true, full: 175, initial: 18 },
+  ])('defaults to ten percent of the full budget (calm=$calm, compact=$compact)', ({ calm, compact, full, initial }) => {
+    expect(DEFAULT_SPARK_DENSITY).toBe(10);
+    expect(sparkParticleCount(DEFAULT_SPARK_DENSITY, calm, compact)).toBe(initial);
     expect(sparkParticleCount(0, calm, compact)).toBe(0);
     expect(sparkParticleCount(100, calm, compact)).toBe(full);
     let previous = 0;

@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createInitialState, parseState, recordEvidence, upgradeRoadmap } from '../src/domain/engine';
-import { buildCareerGraph } from '../src/graph/careerGraphModel';
 import type { AppState } from '../src/domain/types';
 import { MISSION_COLORS, CHECKPOINT_COMPLETE_COLOR } from '../src/missionVisuals';
 import { openGraphPanel, closeGraphPanels, setGraphCheckbox, searchGraphNodes } from './graph-ui';
+import { focusedGraphForState } from './mission-ring-policy';
 
 test.use({
   timezoneId: 'Asia/Kolkata',
@@ -40,7 +40,7 @@ async function ready(page: Page) {
   return page.locator('.career-graph-scene');
 }
 
-test('all fifteen ring hues are unique and the nine mission hues match Missions exactly', async ({ page }) => {
+test('the nine selectable mission ring hues are unique and match Missions exactly', async ({ page }) => {
   await seed(page, recordedState([]));
   await page.goto('./#/missions');
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
@@ -52,14 +52,15 @@ test('all fifteen ring hues are unique and the nine mission hues match Missions 
   }
   await page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Career graph', exact: true }).click();
   const scene = await ready(page);
-  await expect(scene).toHaveAttribute('data-orbit-count', '9');
+  await expect(scene).toHaveAttribute('data-orbit-count', '3');
   await openGraphPanel(page, 'visibility');
   await page.getByRole('button', { name: 'Select all items', exact: true }).click();
   await page.clock.runFor(100);
   const identities = await scene.locator('.career-graph-scene__orbit-diagnostic').evaluateAll(elements =>
     elements.map(element => ({ id: element.getAttribute('data-orbit-id')!, color: element.getAttribute('data-orbit-color')! })));
-  expect(identities).toHaveLength(15);
-  expect(new Set(identities.map(item => item.color)).size).toBe(15);
+  expect(identities).toHaveLength(9);
+  expect(new Set(identities.map(item => item.color)).size).toBe(9);
+  expect(identities.every(item => item.id.startsWith('orbit:mission:'))).toBe(true);
   expect(identities.map(item => item.color)).not.toContain(CHECKPOINT_COMPLETE_COLOR);
   for (const [id, color] of Object.entries(MISSION_COLORS)) {
     expect(identities.find(item => item.id === `orbit:mission:${id}`)?.color).toBe(color);
@@ -141,7 +142,7 @@ test('Checkpoints hides saved, archived and untracked checkpoint clouds without 
   await page.goto('./#/home');
   const scene = await ready(page);
   const raw = (await page.evaluate(key => localStorage.getItem(key), key))!;
-  const graph = buildCareerGraph(parseState(JSON.parse(raw)));
+  const graph = focusedGraphForState(parseState(JSON.parse(raw)), '2026-10-06');
   expect(graph.nodes.some(node => node.kind === 'checkpoint' && node.archived)).toBe(true);
   const nonCheckpoints = graph.nodes.filter(node => node.kind !== 'checkpoint' && node.kind !== 'curriculum');
   const remaining = new Set(nonCheckpoints.map(node => node.id));
@@ -150,7 +151,7 @@ test('Checkpoints hides saved, archived and untracked checkpoint clouds without 
   await page.clock.runFor(100);
   await expect(scene).toHaveAttribute('data-node-count', String(nonCheckpoints.length));
   await expect(scene).toHaveAttribute('data-edge-count', String(graph.edges.filter(edge => remaining.has(edge.source) && remaining.has(edge.target)).length));
-  await expect(scene).toHaveAttribute('data-orbit-count', '9');
+  await expect(scene).toHaveAttribute('data-orbit-count', '3');
   await expect(scene).toHaveAttribute('data-orbit-data-radius', radius!);
   await searchGraphNodes(page, 'HashMap Fundamentals');
   await expect(page.locator('.career-graph-node-list > button')).toHaveCount(0);

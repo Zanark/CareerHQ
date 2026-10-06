@@ -8,11 +8,12 @@ export interface CareerVisibilityGroup {
 }
 
 export function getCareerVisibilityItemIds(graph: CareerGraph): string[] {
-  return [...new Set([...graph.nodes.map(node => node.id), ...graph.orbits.map(orbit => orbit.id)])];
+  return [...new Set([...graph.nodes.map(node => node.id), ...graph.orbits.filter(orbit => orbit.kind === 'mission').map(orbit => orbit.id)])];
 }
 
-export function getDefaultHiddenCareerRingIds(graph: Pick<CareerGraph, 'orbits'>): ReadonlySet<string> {
-  return new Set(graph.orbits.filter(orbit => orbit.kind !== 'mission').map(orbit => orbit.id));
+export function getDefaultHiddenCareerRingIds(graph: Pick<CareerGraph, 'orbits'>, completedTodayMissionIds: ReadonlySet<string> = new Set()): ReadonlySet<string> {
+  return new Set(graph.orbits.filter(orbit => orbit.kind !== 'mission'
+    || (orbit.missionMode !== 'active' && !completedTodayMissionIds.has(orbit.missionId!))).map(orbit => orbit.id));
 }
 
 export function setCareerItemsVisible(
@@ -68,7 +69,7 @@ export function createCareerVisibilityGroups(graph: CareerGraph): CareerVisibili
         [orbit.id, ...(orbit.missionId ? byMission.get(orbit.missionId) ?? [] : [])]);
     } else {
       addGroup(`collection:${orbit.kind}`, orbit.label, orbit.color, [
-        orbit.id, ...orbit.memberIds.filter(id => nodeIds.has(id)), ...(byKind.get(orbit.kind) ?? []),
+        ...orbit.memberIds.filter(id => nodeIds.has(id)), ...(byKind.get(orbit.kind) ?? []),
       ]);
     }
   }

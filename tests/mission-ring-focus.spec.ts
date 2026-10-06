@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createInitialState, parseState } from '../src/domain/engine';
 import { openGraphPanel, setGraphCheckbox, setGraphScope } from './graph-ui';
+import { chooseMissionRings } from './mission-ring-policy';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -32,7 +33,7 @@ async function open(page: Page, profile: 'main' | 'focus') {
 }
 
 for (const profile of ['main', 'focus'] as const) {
-  test(`${profile}: active rings revolve while smaller quiet mission rings stay fixed through the heartbeat`, async ({ page }, testInfo) => {
+  test(`${profile}: saved active rings revolve, with inactive rings absent unless explicitly enabled`, async ({ page }, testInfo) => {
     const scene = await open(page, profile);
     await expect(scene).toHaveAttribute('data-camera-rotation-speed', profile === 'focus' ? '0.24' : '0.3');
     await expect(scene).toHaveAttribute('data-rings-visible', 'true');
@@ -43,44 +44,45 @@ for (const profile of ['main', 'focus'] as const) {
     const background = diagnostic(scene, orbitId('fabric'));
     const planned = diagnostic(scene, orbitId('algorithm'));
     const collection = diagnostic(scene, 'orbit:action');
+    await expect(scene).toHaveAttribute('data-orbit-count', '3');
     await expect(collection).toHaveCount(0);
+    await expect(background).toHaveCount(0);
+    await expect(planned).toHaveCount(0);
     if (profile === 'main') {
-      await openGraphPanel(page, 'rings');
-      await page.locator('.career-orbit-list > button[data-orbit-id="orbit:action"]').click();
-      const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
-      await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
-      await inspector.getByRole('button', { name: 'Close orbit details', exact: true }).click();
+      await chooseMissionRings(page, ['fabric', 'algorithm']);
       await page.clock.runFor(100);
-      await expect(collection).toHaveAttribute('data-mission-mode', 'collection');
-      await expect(collection).toHaveAttribute('data-orbit-revolving', 'true');
+      await expect(scene).toHaveAttribute('data-orbit-count', '5');
+      await expect(background).toHaveAttribute('data-mission-mode', 'background');
+      await expect(planned).toHaveAttribute('data-mission-mode', 'planned');
     }
     await expect(active).toHaveAttribute('data-mission-mode', 'active');
     await expect(active).toHaveAttribute('data-orbit-revolving', 'true');
-    await expect(background).toHaveAttribute('data-mission-mode', 'background');
-    await expect(planned).toHaveAttribute('data-mission-mode', 'planned');
     const activeRadius = Number(await active.getAttribute('data-orbit-radius'));
     expect(activeRadius).toBeGreaterThan(1);
-    for (const quiet of [background, planned]) {
+    const quietRings = profile === 'main' ? [background, planned] : [];
+    for (const quiet of quietRings) {
       await expect(quiet).toHaveAttribute('data-orbit-revolving', 'false');
       const radius = Number(await quiet.getAttribute('data-orbit-radius'));
       expect(radius).toBeGreaterThan(.3);
       expect(radius).toBeLessThan(activeRadius * .7);
     }
-    const initial = { active: await point(active), background: await point(background), planned: await point(planned),
-      collection: profile === 'main' ? await point(collection) : [] };
-    expect(Object.values(initial).flat().every(Number.isFinite)).toBe(true);
+    const initial = { active: await point(active), quiet: await Promise.all(quietRings.map(point)) };
+    expect([initial.active, ...initial.quiet].flat().every(Number.isFinite)).toBe(true);
     let waveObserved = false;
     for (const elapsed of [1500, 1500, 2000, 4000, 2000]) {
       await page.clock.fastForward(elapsed);
       await page.clock.runFor(50);
       waveObserved ||= await scene.getAttribute('data-heartbeat-wave-active') === 'true';
-      expect(await point(background)).toEqual(initial.background);
-      expect(await point(planned)).toEqual(initial.planned);
+      for (const [index, quiet] of quietRings.entries()) expect(await point(quiet)).toEqual(initial.quiet[index]);
     }
     expect(waveObserved).toBe(true);
     expect(await point(active)).not.toEqual(initial.active);
-    if (profile === 'main') expect(await point(collection)).not.toEqual(initial.collection);
-    else await expect(collection).toHaveCount(0);
+    await expect(collection).toHaveCount(0);
+    if (profile === 'focus') {
+      await expect(background).toHaveCount(0);
+      await expect(planned).toHaveCount(0);
+      await expect(scene).toHaveAttribute('data-orbit-count', '3');
+    }
     await expect(scene).toHaveAttribute('data-orbit-pulse-count', '0');
     expect(await scene.evaluate(element => [element.getAttribute('data-node-count'), element.getAttribute('data-edge-count')])).toEqual(counts);
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
@@ -90,6 +92,7 @@ for (const profile of ['main', 'focus'] as const) {
 
 test('a quiet inner ring remains pickable, inspectable and quiet after selection and filtering', async ({ page }) => {
   const scene = await open(page, 'main');
+  await chooseMissionRings(page, ['fabric']);
   await setGraphCheckbox(page, 'Auto-rotate', false);
   await setGraphScope(page, 'fabric');
   await page.clock.runFor(100);
@@ -129,7 +132,7 @@ test('a quiet inner ring remains pickable, inspectable and quiet after selection
   await page.clock.runFor(50);
   expect(await point(quiet)).toEqual(initial);
   await expect(quiet).toHaveAttribute('data-orbit-revolving', 'false');
-  await expect(inspector.getByRole('button', { name: 'Record evidence', exact: true })).toBeDisabled();
+  await expect(inspector.getByRole('button', { name: 'Record evidence', exact: true })).toBeEnabled();
   await inspector.getByRole('button', { name: /Current checkpoint:/ }).click();
   await expect(page.getByRole('complementary', { name: 'Selected career node', exact: true })).toBeVisible();
 });

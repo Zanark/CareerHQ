@@ -626,7 +626,8 @@ export function recordEvidence(state: AppState, input: EvidenceInput): AppState 
   const progress = next.missions[data.missionId];
   const checkpoint = mission.checkpoints.find((candidate) => candidate.id === data.checkpointId);
   ensure(checkpoint, `Unknown checkpoint "${data.checkpointId}" for ${data.missionId}`);
-  ensure(!mission.planned && progress.mode === 'active', 'Evidence requires an active mission');
+  ensure(!mission.planned && (progress.mode === 'active' || progress.mode === 'background'), 'Evidence requires an available mission');
+  ensure(data.actionId === undefined || progress.mode === 'active', 'Daily plan evidence requires an active mission');
   ensure(!progress.blocker.trim(), 'Resolve the mission blocker before recording evidence');
   ensure(progress.status !== 'completed', 'This mission is already complete');
   ensure(progress.checkpointId === data.checkpointId, 'Evidence must target the current checkpoint');

@@ -337,6 +337,49 @@ describe('evidence, DAG checkpoint gates, and immutable history', () => {
     expect(state.updatedAt > before.updatedAt).toBe(true);
   });
 
+  it.each([false, true])('records background work without changing focus, mode, or plans (complete=%s)', (complete) => {
+    const before = planned(createInitialState(false));
+    before.focusMissionId = 'pattern';
+    const current = before.missions.fabric;
+    expect(current.mode).toBe('background');
+    const snapshot = JSON.stringify(before);
+    freeze(before);
+    const state = recordEvidence(before, input(before, 'fabric', { advance: complete, criteriaConfirmed: complete }));
+    expect(state.missions.fabric.mode).toBe('background');
+    expect(state.focusMissionId).toBe(before.focusMissionId);
+    expect(state.evidence).toHaveLength(1);
+    expect(state.evidence[0]).toMatchObject({
+      missionId: 'fabric', checkpointId: current.checkpointId,
+      roadmapVersion: current.roadmapVersion, completedCheckpoint: complete,
+    });
+    expect(state.missions.fabric.completedCheckpointIds).toEqual(complete ? [current.checkpointId] : []);
+    if (complete) expect(state.missions.fabric.checkpointId).not.toBe(current.checkpointId);
+    else expect(state.missions.fabric).toEqual({ ...current, status: 'in-progress' });
+    expect(state.plans).toEqual(before.plans);
+    expect(generatePlan(state, '2026-10-05').some(action => action.missionId === 'fabric')).toBe(false);
+    expect(state.schemaVersion).toBe(before.schemaVersion);
+    expect(state.roadmapVersion).toBe(before.roadmapVersion);
+    expect(state.readiness).toEqual(before.readiness);
+    expect(missionIds.filter(id => id !== 'fabric').map(id => state.missions[id]))
+      .toEqual(missionIds.filter(id => id !== 'fabric').map(id => before.missions[id]));
+    expect(JSON.stringify(before)).toBe(snapshot);
+    expect(parseState(JSON.parse(JSON.stringify(state)))).toEqual(state);
+  });
+
+  it('keeps background evidence on its saved roadmap and rejects reference-only or planned checkpoints', () => {
+    const before = createInitialState(false, '2.0.0');
+    expect(() => recordEvidence(before, input(before, 'fabric', {
+      checkpointId: getMission('fabric').checkpoints[0].id,
+    }))).toThrow('Unknown checkpoint');
+    expect(() => recordEvidence(before, input(before, 'algorithm', {
+      checkpointId: getMission('algorithm').checkpoints[0].id,
+    }))).toThrow('Unknown checkpoint');
+    const state = recordEvidence(before, input(before, 'fabric'));
+    expect(state.evidence[0].roadmapVersion).toBe('2.0.0');
+    expect(state.missions.fabric.roadmapVersion).toBe('2.0.0');
+    expect(state.missions.fabric.mode).toBe('background');
+  });
+
   it('completes a daily action without advancing its checkpoint', () => {
     const before = planned();
     const action = before.plans[localDate()][0];
@@ -372,6 +415,11 @@ describe('evidence, DAG checkpoint gates, and immutable history', () => {
     expect(state.evidence.at(-1)?.completedCheckpoint).toBe(false);
     expect(() => recordEvidence(state, input(state, 'system', { actionId: systemAction.id })))
       .toThrow('active mission');
+    const background = recordEvidence(state, input(state, 'system'));
+    expect(background.missions.system.mode).toBe('background');
+    expect(background.focusMissionId).toBe('escape');
+    expect(background.plans).toEqual(state.plans);
+    expect(background.evidence.at(-1)?.completedCheckpoint).toBe(false);
     expect(() => parseState(state)).not.toThrow();
   });
 
@@ -441,11 +489,12 @@ describe('evidence, DAG checkpoint gates, and immutable history', () => {
     expect(before.evidence).toEqual([]);
   });
 
-  it('only records evidence on active, unblocked, current checkpoints', () => {
+  it.each(['active', 'background'] as const)('requires unblocked current checkpoints and confirmed criteria in %s missions', (mode) => {
     const state = createInitialState(false);
+    state.missions.pattern.mode = mode;
     const otherMissionCheckpointId = getMission('system').checkpoints[0].id;
     const sameMissionLaterCheckpointId = getMission('pattern').checkpoints[1].id;
-    expect(() => recordEvidence(state, input(state, 'fabric'))).toThrow('active mission');
+    expect(() => recordEvidence(state, input(state, 'pattern', { advance: true }))).toThrow('Confirm all');
     expect(() => recordEvidence(state, input(state, 'algorithm', { checkpointId: 'algorithm-invented' }))).toThrow('Unknown checkpoint');
     expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: otherMissionCheckpointId }))).toThrow('Unknown checkpoint');
     expect(() => recordEvidence(state, input(state, 'pattern', { checkpointId: sameMissionLaterCheckpointId }))).toThrow('current checkpoint');

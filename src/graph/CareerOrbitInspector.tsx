@@ -41,8 +41,10 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
   onSelect: (selection: CareerOrbitSelection) => void;
   onReveal: () => void;
   onInspect: (node: CareerGraphNode) => void;
+  detailsAvailable?: boolean;
+  completedToday?: boolean;
   onRecord?: () => void;
-}>(function CareerOrbitInspector({ orbit, segment, nodes, visibleIds, ringsVisible, onClose, onSelect, onReveal, onInspect, onRecord }, ref) {
+}>(function CareerOrbitInspector({ orbit, segment, nodes, visibleIds, ringsVisible, onClose, onSelect, onReveal, onInspect, onRecord, detailsAvailable = true, completedToday = false }, ref) {
   const ids = segment ? segment.members.map(member => member.nodeId) : orbit.memberIds;
   const visibleCount = ids.filter(id => visibleIds.has(id)).length;
   const current = orbit.currentNodeId ? nodes.get(orbit.currentNodeId) : undefined;
@@ -54,6 +56,8 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
     {orbit.missionMode && <p className="career-orbit-view-note">{orbit.missionMode === 'active'
       ? 'Active mission - colored outer ring; revolves when animation is on.'
       : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} mission - smaller stationary ring in its mission color near the core.`}</p>}
+    {!detailsAvailable && <p className="career-orbit-view-note">Outside focus: the mission node stays visible without checkpoints or connections. You can read checkpoint details here; completing one today reveals this mission's full graph for today.</p>}
+    {completedToday && orbit.missionMode !== 'active' && <p className="career-orbit-view-note">Revealed for today after checkpoint completion. This mission is still outside focus; its graph collapses again tomorrow unless brought into focus.</p>}
     {orbit.activity && <p className="career-orbit-view-note" data-worked-today={orbit.activity.workedToday}>
       {orbit.activity.streak} {orbit.activity.streak === 1 ? 'day' : 'days'} of recorded-work streak · {orbit.activity.workedToday ? 'Work recorded today' : 'No work recorded today'}.
       {' '}Saving progress/evidence or a recall review lights the dot border; it does not grant checkpoint completion.
@@ -71,7 +75,7 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
     </button>}
     <div className="career-orbit-actions">
       {current && <button className="button secondary" disabled={!onRecord} onClick={onRecord}
-        title={onRecord ? 'Use the existing evidence and completion-criteria form.' : 'Open the mission to activate or unblock it before recording.'}>Record evidence</button>}
+        title={onRecord ? 'Use the existing evidence and completion-criteria form.' : 'Open the mission to adopt its roadmap or resolve its blocker before recording.'}>Record evidence</button>}
       <a className="button primary" href={orbit.href}>Open {orbit.kind === 'mission' ? 'mission' : 'records'}<ArrowUpRight size={15} /></a>
     </div>
     {orbit.segments.length > 0 && <label className="career-orbit-segment-picker">{orbit.kind === 'mission' ? 'Stage' : 'Record group'}
@@ -83,8 +87,8 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
     </label>}
     {segment && <div className="career-orbit-segment-detail"><h3>{segment.label}</h3><p>{segment.summary}</p></div>}
     <p className="career-orbit-visibility">{visibleCount} of {ids.length} members visible in this graph view.</p>
-    {(!ringsVisible || visibleCount < ids.length) && <div className="career-orbit-reveal">
-      <p>{!ringsVisible ? 'Rings are hidden. ' : ''}{visibleCount < ids.length ? 'Some members are hidden by mission or layer filters. ' : ''}Reveal changes only the view.</p>
+    {(!ringsVisible || (detailsAvailable && visibleCount < ids.length)) && <div className="career-orbit-reveal">
+      <p>{!ringsVisible ? 'Rings are hidden. ' : ''}{detailsAvailable && visibleCount < ids.length ? 'Some members are hidden by mission or layer filters. ' : ''}Reveal changes only the view; outside-focus checkpoint and connection rules still apply.</p>
       <button className="button secondary" onClick={onReveal}>Reveal orbit and members</button>
     </div>}
     {!ids.length ? <p className="career-orbit-empty">{orbit.kind === 'mission' ? 'No tracked checkpoints in this saved view.' : 'No matching records in this workspace.'}</p>

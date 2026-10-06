@@ -67,13 +67,14 @@ stay listed with explicit reveal actions instead of silently becoming "no record
 Mission orbits carry their saved `missionMode`: only `active` missions revolve
 outside the enclosing data sphere. Background/planned mission rings use smaller
 stable radii near the core and no independent animation, but retain their mission hue.
-`MISSION_COLORS` and `COLLECTION_COLORS` supply fifteen distinct nongreen ring identities;
+`MISSION_COLORS` and `COLLECTION_COLORS` supply distinct nongreen node identities;
 `missionAccentStyle` uses the same mission hue throughout the Missions UI.
 `careerNodeColor` reserves green for `kind === 'checkpoint' && status === 'complete'`,
 including archived checkpoints, not mission hubs, completed actions or personal history.
 Ring ticks represent member status through intensity in the ring hue, not completion green.
-The single `focusMissionId` does not override this mode. Six collection orbits retain
-their existing behavior. Work-node positions, statuses and membership stay unchanged.
+The single `focusMissionId` does not override this mode. Only mission orbits are
+rendered or offered as ring choices. Collection metadata still supports record grouping,
+but never produces a ring, dot, tether or ring-selector option.
 Full-shell projection is the default; Clear center masks orbit paths but not
 their useful anchors. The accessible ring index and inspector work without WebGL.
 The animation pause control is independent of inspection and camera manipulation.
@@ -84,7 +85,9 @@ The default-on Checkpoints switch filters both `checkpoint` and `curriculum` nod
 including completed archives, but not hubs, rings or records. Other scope, reference,
 record and individual-item filters still compose with it. Explicit node/ring-member
 reveal may re-enable Checkpoints without enabling Sparks.
-Spark density is a validated 0-100% view setting, default 50. It changes only the
+The Labels checkbox beside the graph counts hides only the three DOM text-label
+layers; renderer geometry, marker diagnostics, picking and named inspection stay intact.
+Spark density is a validated 0-100% view setting, default 10. It changes only the
 existing particle geometry's draw range; resizing preserves density and recomputes
 the appropriate profile/compact budget without reallocating or reseeding particles.
 Orbit selection highlights the complete orbit, independent of the selected stage/group.
@@ -94,22 +97,42 @@ Per-item visibility is an in-memory set of existing node/orbit IDs, outside work
 data. Tri-state groups derive from the same set, including overlapping mission and
 collection membership. The full source catalog stays searchable; only the rendered
 node/orbit arrays and edges with two visible endpoints are filtered.
-`getDefaultHiddenCareerRingIds` initializes the main page's hidden-ID set with only
-non-mission orbit IDs. All nine mission rings and all real nodes remain chosen.
+`getDefaultHiddenCareerRingIds` initializes hidden ring choices from non-active missions
+and non-mission identities. Active mission rings and all real nodes remain chosen.
 Explicit per-ring selection/reveal changes this local set; workspace saves do not
-reapply defaults. Select all items deliberately restores all fifteen rings.
+reapply defaults. Select all items can restore nine mission rings, not collection rings.
 The focus room applies the same ring defaults once when taking its snapshot, retaining
 the full node/edge data and its existing independent presentation settings.
+`getCareerFocusVisibility` derives detailed mission IDs from saved active modes plus
+missions with an actual `completedCheckpoint` evidence record on the current local date.
+`focusCareerGraph` keeps every mission hub but includes checkpoint/record clouds only
+for those detailed missions. It filters every incident edge of a quiet hub, not just
+checkpoint links. `disconnectedNodeIds` also excludes those hubs from renderer orbit
+tether targets. Unscoped history remains on its existing page, not a focus graph cloud.
+The full source graph still supplies framing and read-only detail inspection.
+Explicit visibility choices overlay current defaults, so new same-day completion can
+reveal a previously default-hidden mission without overriding deliberately hidden items.
+Completing outside focus does not change saved mode, primary focus or daily planning.
+
+`recordEvidence` accepts available background missions as well as active ones. It still
+requires the current checkpoint, an unblocked mission, version validation and all
+completion criteria. Evidence tied to a daily-plan action remains active-only. Explicit
+mission selection never silently falls back to another eligible mission.
 `framingNodes` supplies bounds before the individual-item and Checkpoints filters so those choices do not shift
 remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
 visible core, not a framing-only node. One non-animated initial render may occur
 below the fold to finish initialization; subsequent offscreen frames stay suspended.
-`careerNodeSpacing.ts` expands presentation coordinates 1-3x around the actual core,
-before scope/item filtering. Each slider value derives from the immutable source graph,
-never a previously expanded result. IDs, status, relationships and activity stay unchanged;
-the existing renderer rebuilds connected geometry and ring bounds without replacing the
-canvas, reframing the camera or changing orbit phase. Frame all explicitly fits the
-expanded bounds. The slider is main-page view state, not saved data or focus-room state.
+`careerNodeSpacing.ts` deterministically redistributes nodes before scope/item filtering.
+A fixed home-view basis allocates bounded neighborhood cells with retained 3D depth and
+a clear central area. Higher relative spread increases local cell separation, not the
+overall scale; large record sets adapt cell size to finite available space. Stable
+priority/ID ordering, bounded neighbor searches and a linear free-cell fallback avoid
+an all-pairs force simulation. Every value derives from the source graph, never a
+previously expanded result. Rotating does not relayout nodes; other angles can overlap.
+IDs, statuses, edges and activity remain unchanged. The renderer rebuilds attached
+geometry without replacing the canvas, automatically reframing or resetting orbit phase.
+Outer ring radii and Frame all clearance are derived together. The focus snapshot uses
+default spread independently; custom slider state remains main-page-only.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 The optional periodic core heartbeat is separate from saved-status completion pulses.
 Its source is the real core node and its ten-second cadence uses active elapsed time.
@@ -211,8 +234,7 @@ streak field, schema migration or mastery inference.
 `buildCareerOrbits` attaches the same summary, including `asOfDate`, to each mission
 orbit. [`CareerOrbitVisuals.activityPresentation`](../src/graph/CareerOrbitVisuals.ts#L170)
 uses it for a flat, same-color glowing dot: the thicker circumference border is bright
-only when `workedToday` belongs to the current supplied date, dim otherwise. Six
-collection dots retain a constant border and have no mission-work summary. Selecting
+only when `workedToday` belongs to the current supplied date, dim otherwise. Selecting
 a ring highlights the ring path separately; it cannot manufacture a bright work-today border.
 
 The existing workspace local-date state refreshes every 30 seconds, independently of
@@ -222,6 +244,9 @@ border presentation and requests a frame even while paused. A stale snapshot's w
 claim is dimmed, not relabeled as fresh activity. The focus room keeps its original graph
 object until reopened; date rollover changes the presentation gate, not the snapshot,
 focus log or timer state.
+The focus room additionally captures its active IDs, today's completed IDs and date.
+At midnight, its view drops the completion-only extra IDs and recomputes the visible
+projection from that same captured graph. It never imports newer work into an open snapshot.
 
 `defineOperation` defaults to v2 to preserve every original definition and accepts an
 explicit v3 for new books. Per-checkpoint citations override stage-level citations.

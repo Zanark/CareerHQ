@@ -42,11 +42,9 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
       id: node.id, type: 'node', kind: node.kind, label: node.label, context: node.context,
       kindLabel: kindLabels[node.kind], accessibleName: `Show node: ${node.label} - ${node.context}`,
     }));
-    const orbits = graph.orbits.map(orbit => ({
+    const orbits = graph.orbits.filter(orbit => orbit.kind === 'mission').map(orbit => ({
       id: orbit.id, type: 'orbit', kind: orbit.kind, label: orbit.label,
-      context: orbit.kind === 'mission'
-        ? [orbit.roadmapVersion ? `Saved tracker v${orbit.roadmapVersion}` : 'Mission view', orbit.missionMode].filter(Boolean).join(' · ')
-        : 'Collection view',
+      context: [orbit.roadmapVersion ? `Saved tracker v${orbit.roadmapVersion}` : 'Mission view', orbit.missionMode].filter(Boolean).join(' · '),
       kindLabel: `Ring view · ${kindLabels[orbit.kind]}`, accessibleName: `Show ring: ${orbit.label}`,
     }));
     return [...new Map([...nodes, ...orbits].map(item => [item.id, item])).values()];
@@ -117,8 +115,8 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
     </details>
     <details className="career-visibility-help">
       <summary>How visibility works</summary>
-      <p>Groups select their current nodes and ring together; individual choices can leave a group partly selected. Shared items update across groups.</p>
-      <p>Choices combine with the mission and layer filters in View options. Counts are choices, not completion. Nodes and mission rings start chosen; the six collection rings start hidden. Sparks are controlled separately in View options.</p>
+      <p>Mission groups select their nodes and mission ring together. Record groups select only actual nodes. Individual choices can leave a group partly selected; shared items update across groups.</p>
+      <p>Choices combine with focus, mission and layer filters. Out-of-focus missions keep only their isolated hub unless a checkpoint was completed today. Selecting their hidden checkpoints does not override that rule. Rings start shown for active missions and today's completed missions; explicit choices do not change saved focus. Sparks are separate.</p>
       <p>These choices last only while this graph page is open. Nothing is deleted from your workspace or backups.</p>
     </details>
   </div>;

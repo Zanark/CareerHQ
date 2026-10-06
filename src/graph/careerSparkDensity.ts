@@ -1,4 +1,4 @@
-export const DEFAULT_SPARK_DENSITY = 50;
+export const DEFAULT_SPARK_DENSITY = 10;
 export const MAX_SPARK_DENSITY = 100;
 
 export function sparkParticleCount(density: number, calm: boolean, compact: boolean): number {

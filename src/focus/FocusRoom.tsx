@@ -1,13 +1,14 @@
 import {
   Component, forwardRef, lazy, Suspense, useCallback, useEffect, useId,
-  useImperativeHandle, useLayoutEffect, useRef, useState,
+  useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import type { ReactNode } from 'react';
 import { CircleDot, Maximize2, Minimize2, Pause, Play, RotateCcw, X } from 'lucide-react';
 import type { AppState } from '../domain/types';
 import { buildCareerGraph } from '../graph/careerGraphModel';
 import type { CareerGraph } from '../graph/careerGraphModel';
-import { getDefaultHiddenCareerRingIds } from '../graph/careerVisibility';
+import { DEFAULT_NODE_SPACING, spaceCareerGraph } from '../graph/careerNodeSpacing';
+import { focusCareerGraph, getCareerFocusVisibility, type CareerFocusVisibility } from '../graph/careerFocusVisibility';
 import type { FocusRoomHandle, FocusSessionController } from './focusTypes';
 import './focus-room.css';
 
@@ -48,10 +49,17 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   const lastFullscreenExit = useRef(-Infinity);
   const controlledFullscreenExit = useRef(false);
   const cleanupWarningReported = useRef(false);
-  const latest = useRef({ state, practice });
+  const latest = useRef({ state, practice, date });
   const titleId = useId();
   const [open, setOpen] = useState(false);
-  const [snapshot, setSnapshot] = useState<CareerGraph | null>(null);
+  const [snapshot, setSnapshot] = useState<{ graph: CareerGraph; focus: CareerFocusVisibility } | null>(null);
+  const snapshotView = useMemo(() => {
+    if (!snapshot) return null;
+    const eligible = snapshot.focus.date === date ? snapshot.focus.detailedMissionIds : snapshot.focus.activeMissionIds;
+    const graph = focusCareerGraph(snapshot.graph, eligible);
+    return { ...graph, orbits: graph.orbits.filter(orbit => orbit.kind === 'mission'
+      && orbit.missionId !== undefined && eligible.has(orbit.missionId)) };
+  }, [snapshot, date]);
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState('');
   const [ambientMotion, setAmbientMotion] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -62,7 +70,7 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
   const [acknowledgment, setAcknowledgment] = useState('');
   const [actionError, setActionError] = useState('');
 
-  useLayoutEffect(() => { latest.current = { state, practice }; }, [state, practice]);
+  useLayoutEffect(() => { latest.current = { state, practice, date }; }, [state, practice, date]);
   useEffect(() => {
     if (!session.error && !session.pendingSave) setActionError('');
   }, [session.error, session.pendingSave]);
@@ -143,9 +151,8 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
     if (!dialog || dialog.open) return;
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     routeRef.current = location.hash;
-    const graph = buildCareerGraph(latest.current.state);
-    const hiddenRings = getDefaultHiddenCareerRingIds(graph);
-    setSnapshot({ ...graph, orbits: graph.orbits.filter(orbit => !hiddenRings.has(orbit.id)) });
+    const graph = spaceCareerGraph(buildCareerGraph(latest.current.state), DEFAULT_NODE_SPACING);
+    setSnapshot({ graph, focus: getCareerFocusVisibility(latest.current.state, latest.current.date) });
     setGraphics('loading');
     setAcknowledgment('');
     setActionError('');
@@ -226,10 +233,10 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
     >
       <div ref={stageRef} className="focus-room__stage" data-focus-room-stage data-tour="focus-room-stage" data-fullscreen={fullscreen} data-phase={session.phase}>
         <div className="focus-room__background" aria-hidden="true" inert>
-          {open && snapshot && (
+          {open && snapshot && snapshotView && (
             <BackgroundBoundary onFailure={onGraphicsFailure}>
               <Suspense fallback={null}>
-                <CareerGraphScene graph={snapshot} activityDate={date} selectedId={null} onSelect={ignoreSelection}
+                <CareerGraphScene graph={snapshotView} framingNodes={snapshot.graph.nodes} activityDate={date} selectedId={null} onSelect={ignoreSelection}
                   autoRotate={motionActive} animate={motionActive} allowReducedMotion={motionOptIn}
                   rimOnly={false} heartbeat={heartbeat} visualProfile="focus" onStatusChange={onGraphics} />
               </Suspense>

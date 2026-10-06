@@ -78,13 +78,20 @@ when closed. Selecting a ring or work item closes its panel and shows the inspec
 Escape dismisses a panel; native fullscreen retains the browser's escape behavior.
 **Overview** remains the compact tracker at `#/hq`, also linked from View.
 
-**View → Node spacing** increases distances between nodes from **1.0x to 3.0x**.
-It expands their 3D positions around the fixed core, not the camera zoom; connections
-and ring membership tethers follow the nodes. Increase it to separate a crowded area,
-then pan or use **Frame all** if the wider graph extends beyond the view. **1.0x**
-restores the original layout. Arrow keys adjust by 0.1x; Home/End select the limits.
+The **Labels** checkbox beside the checkpoint/node counts hides the floating text
+tags on mission hubs, ring dots and hovered/selected nodes. It does not hide nodes,
+change picking or close the inspector. The named **Work** list remains available.
+
+**View → Node spacing** adjusts relative spread from **1.0x to 3.0x**.
+It redistributes crowded nodes within a bounded layout rather than scaling the entire
+graph. The default places inner nodes farther from the core, with more separation
+between work and the outer mission rings. Higher spread increases local gaps;
+connections and membership tethers remain attached. **Frame all** returns to the
+clearest starting angle. Other rotated views can still overlap, and real links remain.
+**1.0x** resets the spread. Arrow keys adjust by 0.1x; Home/End select the limits.
 The setting stays while this graph page is open, including fullscreen and filter changes,
-but is not saved in your workspace or copied to the separate focus-room snapshot.
+but is not saved in your workspace. The focus-room snapshot independently uses the
+new default layout, not your custom spread value.
 
 Green is reserved for **completed checkpoints**, including archived completions;
 orange marks unfinished checkpoints. Mission hubs and the six record/reference
@@ -93,49 +100,63 @@ or past accomplishment. Notes and untracked curriculum are not extra completed t
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
-Fine, glowing orange links represent actual graph connections. The rings
-are **15 data views**: nine saved missions, plus Daily work, Saved evidence,
-Applications, Freelance leads, Past accomplishments and Untracked curriculum.
-Only the **nine mission rings are visible by default**, in both the main graph and
-focus-room backdrop. The six collection rings start hidden, whether empty or populated.
-Their actual records and checkpoint nodes remain visible under the existing node filters.
-To enable a collection ring, open **Rings**, select it, then **Reveal orbit and members**;
-or use **Nodes → Individual nodes and rings → Ring views** and check that ring.
-The ring index keeps all fifteen available and labels hidden ones. **Select all items**
-explicitly enables all fifteen. Choices last for the current graph page; reopening it
-returns to mission-only rings. The focus backdrop independently uses that same default.
+Fine, glowing orange links represent actual graph connections. **Rings represent missions
+only.** Active/in-focus missions start visible in both the main graph and focus backdrop;
+background/planned mission rings start disabled. This uses each mission's saved
+**Bring into focus / Move to background** mode, not the single primary mission.
+The default graph shows checkpoint clouds and connections only for in-focus missions.
+Other missions remain **isolated mission nodes**: no checkpoints, record cloud, core
+link, shared-skill link or ring membership tether. An optional inactive ring does not
+override that rule.
+
+If you **complete a checkpoint** in a background mission, its **full checkpoint graph
+is revealed for the rest of that local calendar day**, including its connections and
+default ring. Its saved focus mode is not changed. After midnight it collapses to its
+mission node unless it is now in focus. Existing item/layer choices remain respected.
+Saving unfinished practice or a recall still counts for the work streak, but does
+**not** trigger this completion-only graph reveal. You can record background work from
+the normal mission page without first bringing it into focus; blocked or reference-only
+missions remain unavailable.
+
+All nine missions remain in **Rings**. To show an inactive ring without activating
+the mission, inspect it and choose **Reveal orbit and members**, or check its ring in
+**Nodes → Individual nodes and rings → Ring views**. **Select all items** can show all
+nine mission rings, never collection rings. These choices last for the current graph page.
+Daily work, evidence, applications, freelance leads, past accomplishments and untracked
+curriculum no longer have rings. Their records remain on their existing pages, in named
+node inspection and relevant checkpoint connections; nothing is deleted or reclassified.
 Mission rings summarize the stages, recorded completion and current checkpoint of
 your **saved roadmap edition**. Archived completions and unadopted curriculum do
-not inflate that progress. Record rings show their real groups/counts, not invented
-completion percentages; empty collections say so.
+not inflate that progress.
 
 Only **active missions** have revolving outer rings. **Background** and
-**planned** missions retain smaller, stationary rings closer to the white core,
-but keep their mission color. Each of the nine missions and six collections has
-a distinct nongreen hue; mission hues match the **Missions** interface.
+**planned** missions, when explicitly shown, retain smaller stationary rings,
+in their own mission color. The nine mission hues match the **Missions** interface.
 This follows **Bring into focus / Move to background**, not just the single
 **Make primary mission** choice. Their saved checkpoints, completion and evidence
-remain intact and inspectable. The six record/reference rings retain their motion when explicitly enabled.
+remain intact and inspectable.
 
 Each ring has a **flat glowing dot**, not a shaded sphere, in its own ring color.
 The thicker border around a **mission dot** is bright when evidence/progress or any
 recall result is saved for that mission today, and dim otherwise. Completion is not
 required. This is recorded activity, not an inference about your attention or offline work.
-Collection dots have a steady border, not a mission streak. The logo echoes the flat-dot
+The logo echoes the flat-dot
 design but is a static mark, not a live activity indicator.
 Select a dot or a card in **Rings / Explore ring views**
-to highlight the **entire ring** with a thicker, bright glow. Choosing a stage or
-record group keeps the whole ring highlighted while its detailed tethers show only
-that group's members. Inspect a member or open the relevant mission/records.
+to highlight the **entire ring** with a thicker, bright glow. Choosing a stage
+keeps the whole ring highlighted while its detailed tethers show only
+that stage's members. Inspect a member or open its mission.
 Selection does not move the camera, change focus mode, or start a stationary ring.
-An active, unblocked mission also offers **Record evidence**, using the same existing
+An available, unblocked mission also offers **Record evidence**, using the same existing
 form and explicit completion criteria without leaving the graph.
 **Focus ring** brings its anchor into view. Ring tethers stretch as active rings
 revolve while your inner work nodes keep their positions. They mean membership,
 not an additional prerequisite or task. Detailed member connections belong to the
-selected ring/group rather than an always-on web across every collection.
+selected mission/stage rather than an always-on web across every collection.
 The inspector distinguishes global members from those visible through your filters;
 **Reveal orbit and members** explicitly adjusts the view without changing progress.
+For an outside-focus mission without a completion today, checkpoint inspection is
+read-only detail: reveal does not force its hidden checkpoint cloud or connections on.
 
 Full-shell paths remain visible by default. **Clear center** masks projected ring
 paths without hiding data anchors or membership links. Sparks and glow are still
@@ -158,11 +179,11 @@ members, without turning Sparks on. These choices last only while the graph page
 and never change progress or backups.
 
 The **Spark amount** slider in View, beside Sparks, ranges from **0%** (none) to **100%**
-(the previous full amount). It starts at **50%**, half as many dots as before.
+(the previous full amount). It starts at **10%**.
 Arrow keys adjust it; Home/End choose the minimum/maximum. Turning Sparks off
 disables the slider but keeps its amount for re-enabling. Resizing retains the
 percentage while adapting the particle budget. The focus backdrop also starts
-at the new half-density default. No rings, work nodes, progress or timer records change.
+at the same 10% default. No rings, work nodes, progress or timer records change.
 
 **Nodes / Choose visible nodes and rings** opens checkboxes for every mission/collection group, individual
 work node and ring, including the CareerOS core. Groups are batch choices over
@@ -230,11 +251,13 @@ without changing the timer or saved distraction reports.
 It is visual ambience, not an AI processing work. If browser fullscreen or WebGL is
 unavailable, the window-filling room still provides the timer and recording controls.
 
-The backdrop snapshots the graph when the room opens; logging reports does not rebuild it.
+The backdrop snapshots work and mission modes when the room opens; logging reports does not rebuild it.
 At the next local-date check after midnight (normally every 30 seconds), yesterday's
 mission-dot activity borders dim in both the main graph and this fixed snapshot,
 even when animation or Ambient motion is paused. The snapshot is not refreshed into
-a new graph merely to dim its borders; reopen the room for a fresh data snapshot.
+a new data snapshot merely to dim its borders. Midnight also removes the temporary
+outside-focus checkpoint graph revealed by that snapshot's completion today; the
+captured records, renderer and framing remain intact. Reopen for fresh workspace data.
 
 **I got distracted** saves one self-reported button press immediately. Its session,
 timestamp and elapsed running-clock time are retained, including whether it was

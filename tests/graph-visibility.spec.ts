@@ -1,8 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate, parseState } from '../src/domain/engine';
-import { buildCareerGraph } from '../src/graph/careerGraphModel';
+import { focusedGraphForState } from './mission-ring-policy';
 import type { RoadmapVersion } from '../src/domain/types';
 import { closeGraphPanels, graphCheckbox, openGraphPanel, searchGraphNodes, setGraphCheckbox } from './graph-ui';
+import { chooseMissionRings } from './mission-ring-policy';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -26,7 +27,7 @@ async function open(page: Page, graphics = false, version: RoadmapVersion = '3.0
   const scene = page.locator('.career-graph-scene');
   await expect(scene).toHaveAttribute('data-scene-state', graphics ? 'ready' : 'unavailable', { timeout: 20_000 });
   const raw = (await page.evaluate(key => localStorage.getItem(key), key))!;
-  return { scene, raw, graph: buildCareerGraph(parseState(JSON.parse(raw))) };
+  return { scene, raw, graph: focusedGraphForState(parseState(JSON.parse(raw))) };
 }
 
 async function choices(page: Page) {
@@ -98,6 +99,7 @@ test('individual choices distinguish another filter from a hidden choice and rin
 
 test('item hiding preserves remaining geometry and zoom, removes incident edges, and can hide or restore the core and every item', async ({ page }) => {
   const { raw, graph, scene } = await open(page, true);
+  await chooseMissionRings(page, ['fabric']);
   await setGraphCheckbox(page, 'Auto-rotate', false);
   await page.getByRole('button', { name: 'Zoom career graph in', exact: true }).click();
   await expect.poll(async () => Number(await scene.getAttribute('data-cursor-offset'))).toBeLessThan(56);
@@ -112,7 +114,7 @@ test('item hiding preserves remaining geometry and zoom, removes incident edges,
   const hidden = new Set(graph.nodes.filter(node => node.missionId === 'pattern').map(node => node.id));
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length - hidden.size));
   await expect(scene).toHaveAttribute('data-edge-count', String(graph.edges.filter(edge => !hidden.has(edge.source) && !hidden.has(edge.target)).length));
-  await expect(scene).toHaveAttribute('data-orbit-count', '8');
+  await expect(scene).toHaveAttribute('data-orbit-count', '3');
   await expect(scene).toHaveAttribute('data-orbit-data-radius', radius!);
   await expect(scene).toHaveAttribute('data-cursor-offset', zoom!);
   await expect.poll(() => quiet.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')])).toEqual(position);
@@ -124,7 +126,7 @@ test('item hiding preserves remaining geometry and zoom, removes incident edges,
   await panel.getByRole('button', { name: 'Select all items', exact: true }).click();
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length));
   await expect(scene).toHaveAttribute('data-edge-count', String(graph.edges.length));
-  await expect(scene).toHaveAttribute('data-orbit-count', '15');
+  await expect(scene).toHaveAttribute('data-orbit-count', '9');
   const core = panel.getByRole('checkbox', { name: 'Show CareerOS core group', exact: true });
   await core.uncheck();
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length - 1));
@@ -149,7 +151,7 @@ test('a hidden ring loses its glow and can be explicitly revealed without showin
   await (await individual(panel, 'orbit:mission:pattern', 'DSA', 'orbit')).uncheck();
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length));
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'false');
-  await expect(scene).toHaveAttribute('data-orbit-count', '8');
+  await expect(scene).toHaveAttribute('data-orbit-count', '2');
   const unrelated = graph.nodes.find(node => node.kind === 'checkpoint' && node.missionId === 'system')!;
   await (await individual(panel, unrelated.id, unrelated.label, 'node')).uncheck();
   await closeGraphPanels(page);

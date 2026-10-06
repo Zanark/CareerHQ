@@ -128,6 +128,8 @@
 .tutorial-running .modal { scroll-padding-bottom: var(--tutorial-clearance, 24px); }
 @media (max-width: 640px) {
   .tutorial-running [data-workspace="practice"] main { padding-bottom: var(--tutorial-clearance, 280px); }
+  .tutorial-running [data-workspace="practice"] main.career-graph-content { height: auto; }
+  .tutorial-running [data-workspace="practice"] .career-graph-page { flex: none; height: max(480px, calc(100dvh - 170px)); }
   .tutorial-running .modal { padding-bottom: calc(28px + var(--tutorial-clearance, 280px)); }
 }
 .tutorial-practice-banner { display: flex; gap: 12px; align-items: center; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--dsf-accent); border-radius: 7px; background: var(--dsf-paper); font-size: 0.6875rem; }

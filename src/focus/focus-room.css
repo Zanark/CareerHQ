@@ -91,8 +91,8 @@
   background: radial-gradient(ellipse at 50% 30%, rgb(21 40 49 / 27%), rgb(8 23 37 / 48%) 76%),
     linear-gradient(145deg, rgb(11 39 50 / 22%), rgb(8 23 37 / 28%));
   box-shadow: 0 1rem 4rem rgb(0 0 0 / 28%), inset 0 1px 0 rgb(238 232 213 / 8%);
-  backdrop-filter: blur(12px) saturate(0.72);
-  -webkit-backdrop-filter: blur(12px) saturate(0.72);
+  backdrop-filter: blur(8px) saturate(0.72);
+  -webkit-backdrop-filter: blur(8px) saturate(0.72);
   text-align: center;
 }
 

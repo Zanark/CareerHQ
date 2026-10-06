@@ -59,13 +59,16 @@ test('bulk preview cancels before per-mission adoption and never changes the rea
   await finish(page, before);
 });
 
-test('checkpoint visibility lessons require hide and restore without changing real data', async ({ page }) => {
+for (const width of [1440, 320]) {
+test(`checkpoint visibility lessons remain reachable at ${width}px without changing real data`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 });
   const before = await begin(page, 'career-graph');
   await next(page, 'career-graph-orbits');
   await next(page, 'career-graph-checkpoints-hide');
   const nextButton = page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true });
   await expect(nextButton).toBeDisabled();
   await page.locator('[data-graph-panel-trigger="view"]').click();
+  if (width === 320) expect((await page.locator('.career-graph-stage').boundingBox())!.height).toBeGreaterThan(320);
   const checkpoints = page.getByRole('checkbox', { name: 'Checkpoints', exact: true });
   await expect(checkpoints).toBeChecked();
   await checkpoints.uncheck();
@@ -75,6 +78,7 @@ test('checkpoint visibility lessons require hide and restore without changing re
   await next(page, 'career-graph-visibility');
   await finish(page, before);
 });
+}
 
 test('saved practice evidence explains a work day without requiring completion', async ({ page }) => {
   const before = await begin(page, 'evidence');

@@ -60,13 +60,15 @@ Real connections use fine, glowing DeepSeaFoam orange
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
 their endpoints. The maximum push is 56 CSS pixels at the fitted view, tapering
 with the square root of relative camera distance as you zoom in.
-Nine mission orbits use the saved roadmap's stages and checkpoint statuses;
-six record/reference orbits show the appropriate collection groups and counts.
-All fifteen rings have distinct nongreen identity hues from `src/missionVisuals.ts`.
-Only the nine mission rings start visible. Collection paths, dots and tethers are
-hidden by default, including in the focus backdrop; their underlying work/reference
-nodes are not hidden. Main-graph collection rings can be enabled individually through
-Nodes or the ring inspector's explicit reveal action.
+Nine mission ring identities use the saved roadmap's stages and checkpoint statuses.
+Only active/in-focus mission rings start visible. Background/planned mission rings
+start hidden and can be shown explicitly; showing them does not activate a mission.
+Non-mission collections have no ring representation. Their actual record nodes keep
+their own nongreen collection hues and remain available through existing pages/details.
+Out-of-focus missions are isolated hubs without checkpoint clouds or connection/tether
+lines. A real checkpoint completion temporarily reveals that mission's full graph for
+today only, without changing its saved focus mode; unfinished evidence or recall is not
+enough for this reveal. Explicit layer/item hiding still applies.
 The nine mission hues match the Missions interface. Ring checkpoint ticks vary in intensity,
 not by repainting the ring green. Background/planned missions retain those hues on their
 rings, dots, ticks and tethers, but use smaller near-core radii and no independent animation.
@@ -79,8 +81,7 @@ circumference border (32 CSS pixels including the edge, 36 when selected). No di
 sphere lighting or planet shading remains. A mission border is bright after any saved
 evidence/progress or recall result today and dim otherwise; selection does not fabricate
 a worked day. The shader uses border strength 1 for worked today and 0.18 otherwise.
-Collection borders stay at 0.55 and make no mission-activity claim. Saved-status packets
-remain small and separate.
+Saved-status packets remain small and separate.
 Selection adds a brighter, thicker full-circumference glow in the ring's hue,
 including when a single stage/group is selected. It follows the real ring geometry,
 retains quiet-ring stillness, and respects Rings visibility and Clear center.
@@ -90,8 +91,8 @@ than their data anchors. **Rings** hides the orbit paths, anchors and tethers;
 **Checkpoints**, also on by default, hides tracked, archived and untracked curriculum
 checkpoint nodes without hiding mission hubs, records or rings. It preserves framing
 and is view-only; explicit reveal can restore this layer without enabling Sparks.
-Spark amount defaults to 50% of the previous budget: 900 desktop / 450 compact dots
-in the main view and 150 / 88 in focus (half of the odd 175-point budget rounds to 88).
+Spark amount defaults to 10% of the full budget: 180 desktop / 90 compact dots
+in the main view and 30 / 18 in focus (10% of the 175-point compact budget rounds to 18).
 The main-view slider spans 0-100%; 100% restores the previous full budget.
 Neither removes real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
@@ -106,7 +107,11 @@ Focus mode centers the camera on the core and removes viewport-dependent backdro
 offsets, keeping the ripple source centered behind the frosted timer.
 Its graph is a fixed snapshot taken on opening. The shared local-date gate dims stale
 mission activity borders after midnight in both main and focus views, even while paused,
-without rebuilding the focus snapshot. Streaks describe recorded local-calendar work
+without rebuilding the focus snapshot. The timer card uses 8px backdrop frost so the
+remaining mission-only motion is visible without relying on removed collection dots.
+The spacing control redistributes local node neighborhoods within a bounded composition,
+with more central clearance and wider outer-ring separation. It is not a global zoom.
+Streaks describe recorded local-calendar work
 days, not attention, checkpoint completion or live telemetry.
 Glow and sparks remain decorative; orbit motion is not evidence of a connected AI
 or progress by itself. **Pause animation** is separate from camera orbit and inspection.

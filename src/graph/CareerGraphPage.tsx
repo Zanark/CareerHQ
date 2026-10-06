@@ -11,9 +11,10 @@ import type { CareerGraphEdge, CareerGraphKind, CareerGraphNode } from './career
 import { CareerGraphConnections } from './CareerGraphConnections';
 import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
-import { getDefaultHiddenCareerRingIds, setCareerItemsVisible } from './careerVisibility';
+import { getDefaultHiddenCareerRingIds } from './careerVisibility';
 import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
 import { DEFAULT_NODE_SPACING, MAX_NODE_SPACING, spaceCareerGraph } from './careerNodeSpacing';
+import { focusCareerGraph, getCareerFocusVisibility } from './careerFocusVisibility';
 import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
@@ -66,6 +67,10 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const sourceGraph = useMemo(() => buildCareerGraph(state), [state, date]);
   const [nodeSpacing, setNodeSpacing] = useState(DEFAULT_NODE_SPACING);
   const graph = useMemo(() => spaceCareerGraph(sourceGraph, nodeSpacing), [sourceGraph, nodeSpacing]);
+  const focusVisibility = useMemo(() => getCareerFocusVisibility(state, date), [state, date]);
+  const focusedGraph = useMemo(() => focusCareerGraph(graph, focusVisibility.detailedMissionIds), [graph, focusVisibility]);
+  const focusVisibleIds = useMemo(() => new Set(focusedGraph.nodes.map(node => node.id)), [focusedGraph]);
+  const missionOrbits = useMemo(() => graph.orbits.filter(orbit => orbit.kind === 'mission'), [graph]);
   const [scope, setScope] = useState('all');
   const [includeRecords, setIncludeRecords] = useState(true);
   const [includeReferences, setIncludeReferences] = useState(true);
@@ -73,8 +78,17 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
   const [includeRings, setIncludeRings] = useState(true);
   const [includeSparks, setIncludeSparks] = useState(true);
+  const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [sparkDensity, setSparkDensity] = useState(DEFAULT_SPARK_DENSITY);
-  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => getDefaultHiddenCareerRingIds(sourceGraph));
+  const [visibilityChoices, setVisibilityChoices] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+  const hiddenIds = useMemo(() => {
+    const hidden = new Set(getDefaultHiddenCareerRingIds(sourceGraph, focusVisibility.completedTodayMissionIds));
+    for (const [id, shown] of visibilityChoices) {
+      if (shown) hidden.delete(id);
+      else hidden.add(id);
+    }
+    return hidden;
+  }, [sourceGraph, focusVisibility, visibilityChoices]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
@@ -108,24 +122,25 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
       (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference')),
     [graph, scope, includeRecords, includeReferences]);
   const visible = useMemo(() => {
-    const nodes = framingNodes.filter(node => !hiddenIds.has(node.id) &&
+    const nodes = framingNodes.filter(node => focusVisibleIds.has(node.id) && !hiddenIds.has(node.id) &&
       (includeCheckpoints || !checkpointKinds.has(node.kind)));
     const ids = new Set(nodes.map(node => node.id));
-    const orbits = graph.orbits.filter(orbit => !hiddenIds.has(orbit.id) &&
-      (scope === 'all' || orbit.kind !== 'mission' || orbit.missionId === scope));
-    return { ...graph, nodes, orbits, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
+    const orbits = missionOrbits.filter(orbit => !hiddenIds.has(orbit.id) &&
+      (scope === 'all' || orbit.missionId === scope));
+    return { ...focusedGraph, nodes, orbits, edges: focusedGraph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
       (includeSharedSkills || edge.kind !== 'shared-skill')) };
-  }, [graph, framingNodes, hiddenIds, scope, includeSharedSkills, includeCheckpoints]);
+  }, [focusedGraph, focusVisibleIds, missionOrbits, framingNodes, hiddenIds, scope, includeSharedSkills, includeCheckpoints]);
   const visibleIds = useMemo(() => new Set(visible.nodes.map(node => node.id)), [visible.nodes]);
   const visibleOrbitIds = useMemo(() => new Set(includeRings ? visible.orbits.map(orbit => orbit.id) : []), [visible.orbits, includeRings]);
-  const selected = visible.nodes.find(node => node.id === selectedId);
-  const selectedOrbit = graph.orbits.find(orbit => orbit.id === orbitSelection?.orbitId);
+  const selected = graph.nodes.find(node => node.id === selectedId && !hiddenIds.has(node.id)
+    && (visibleIds.has(node.id) || !focusVisibleIds.has(node.id)));
+  const selectedOrbit = missionOrbits.find(orbit => orbit.id === orbitSelection?.orbitId);
   const selectedSegment = selectedOrbit?.segments.find(segment => segment.id === orbitSelection?.segmentId);
   const activeOrbitSelection = useMemo(() => selectedOrbit ? {
     orbitId: selectedOrbit.id, ...(selectedSegment ? { segmentId: selectedSegment.id } : {}),
   } : null, [selectedOrbit?.id, selectedSegment?.id]);
   const recordableOrbitMission = selectedOrbit?.missionId && selectedOrbit.currentNodeId &&
-    state.missions[selectedOrbit.missionId].mode === 'active' &&
+    state.missions[selectedOrbit.missionId].mode !== 'planned' &&
     state.missions[selectedOrbit.missionId].status !== 'completed' && !state.missions[selectedOrbit.missionId].blocker
     ? selectedOrbit.missionId : undefined;
   const checkpoints = graph.nodes.filter(node => node.kind === 'checkpoint' && !node.archived && matchesScope(node, scope));
@@ -150,12 +165,17 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     setActivePanel(null);
   }, []);
   const selectOrbit = useCallback((selection: CareerOrbitSelection) => {
+    if (!missionOrbits.some(orbit => orbit.id === selection.orbitId)) return;
     setOrbitSelection(selection);
     setSelectedId(null);
     setActivePanel(null);
-  }, []);
+  }, [missionOrbits]);
   const changeVisibility = useCallback((ids: readonly string[], show: boolean) => {
-    setHiddenIds(current => setCareerItemsVisible(current, ids, show));
+    setVisibilityChoices(current => {
+      const next = new Map(current);
+      for (const id of ids) next.set(id, show);
+      return next;
+    });
   }, []);
   useLayoutEffect(() => {
     if (activePanel || !selected || !inspectFromList.current) return;
@@ -264,15 +284,16 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   }
 
   function inspectOrbitFromIndex(orbitId: string) {
-    const orbit = graph.orbits.find(item => item.id === orbitId)!;
-    if (orbit.kind === 'mission' && scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
+    const orbit = missionOrbits.find(item => item.id === orbitId);
+    if (!orbit) return;
+    if (scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
     inspectOrbitFromList.current = true;
     selectOrbit({ orbitId });
   }
 
   function revealOrbit() {
     if (!selectedOrbit) return;
-    setScope(selectedOrbit.kind === 'mission' ? selectedOrbit.missionId! : 'all');
+    setScope(selectedOrbit.missionId!);
     const ids = selectedSegment ? selectedSegment.members.map(member => member.nodeId) : selectedOrbit.memberIds;
     changeVisibility([selectedOrbit.id, selectedOrbit.hubNodeId, ...ids], true);
     const members = ids.map(id => nodeMap.get(id)!);
@@ -304,7 +325,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     </header>;
   }
 
-  return <div className="career-graph-page" data-node-spacing={nodeSpacing}>
+  return <div className="career-graph-page" data-node-spacing={nodeSpacing} data-node-labels={showNodeLabels}>
     <div className="career-graph-workspace">
       <section ref={stageRef} className="career-graph-stage-wrap" aria-label="Career network visualization">
         <header className="career-graph-commandbar">
@@ -318,6 +339,10 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             <div title="Saved checkpoints marked complete"><strong>{completed}<span> / {checkpoints.length}</span></strong><span><span className="sr-only">checkpoints </span>done</span></div>
             <div title="Visible work and reference nodes"><strong>{visible.nodes.filter(node => node.kind !== 'core').length}</strong><span>nodes</span></div>
           </div>
+          <label className="graph-checkbox career-graph-label-toggle" title="Show or hide text tags on nodes and ring dots. Work, inspection and picking stay available.">
+            <input type="checkbox" aria-label="Node labels" checked={showNodeLabels}
+              onChange={event => setShowNodeLabels(event.currentTarget.checked)} />Labels
+          </label>
           <nav className="career-graph-panel-openers" aria-label="Graph panels">
             {([
               ['view', 'View', Settings2], ['rings', 'Rings', CircleDot],
@@ -355,6 +380,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                 <button type="button" className="icon-button" aria-label="Close node details" onClick={() => setSelectedId(null)}><X size={17} /></button></div>
               <span className={`graph-status-tag ${careerNodeStatusClass(selected)}`} style={{ borderColor: careerNodeColor(selected) }}>{statusLabels[selected.status]}</span>
               <h2>{selected.label}</h2><p className="career-graph-node-context">{selected.context}</p>
+              {!focusVisibleIds.has(selected.id) && <p className="career-graph-node-context">Details only: this mission is outside focus. Its checkpoints and connections appear after a checkpoint completion today or when brought into focus.</p>}
               <p className="career-graph-node-detail">{selected.detail}</p>
               {selected.current && <p className="career-graph-current"><Focus size={15} />Saved current checkpoint</p>}
               <a className="button primary" href={selected.href}>Open related page<ArrowUpRight size={16} /></a>
@@ -366,6 +392,8 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             orbit={selectedOrbit} segment={selectedSegment} nodes={nodeMap} visibleIds={visibleIds}
             ringsVisible={includeRings && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
             onClose={() => setOrbitSelection(null)} onSelect={selectOrbit} onReveal={revealOrbit} onInspect={inspectOrbitMember}
+            detailsAvailable={selectedOrbit.missionId !== undefined && focusVisibility.detailedMissionIds.has(selectedOrbit.missionId)}
+            completedToday={selectedOrbit.missionId !== undefined && focusVisibility.completedTodayMissionIds.has(selectedOrbit.missionId)}
             onRecord={recordableOrbitMission ? () => onRecord(recordableOrbitMission) : undefined} />}
           </div>
           <div className="career-graph-controls" role="group" aria-label="Graph camera and animation">
@@ -373,7 +401,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
              onClick={() => controls.current?.resetView()}><Maximize2 size={16} /><span>Frame all</span></button>
             <button className="icon-button" aria-label="Zoom career graph in" title="Zoom career graph in" disabled={!sceneReady} onClick={() => controls.current?.zoomIn()}><Plus size={17} /></button>
             <button className="icon-button" aria-label="Zoom career graph out" title="Zoom career graph out" disabled={!sceneReady} onClick={() => controls.current?.zoomOut()}><Minus size={17} /></button>
-            {selected && <button className="button secondary career-graph-compact-control" aria-label="Focus node" title="Focus node" disabled={!sceneReady}
+            {selected && <button className="button secondary career-graph-compact-control" aria-label="Focus node" title="Focus node" disabled={!sceneReady || !visibleIds.has(selected.id)}
              onClick={() => controls.current?.focusNode(selected.id)}><Focus size={16} /><span>Focus node</span></button>}
             {activeOrbitSelection && <button className="button secondary career-graph-compact-control" aria-label="Focus ring" title="Focus ring"
              disabled={!sceneReady || !includeRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
@@ -400,16 +428,16 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                <div className="career-node-spacing" data-tour="career-graph-spacing">
                  <label htmlFor={`${panelId}-spacing`}>Node spacing <output htmlFor={`${panelId}-spacing`}>{(nodeSpacing / 100).toFixed(1)}x</output></label>
                  <input id={`${panelId}-spacing`} type="range" aria-label="Node spacing"
-                   aria-describedby={`${panelId}-spacing-hint`} aria-valuetext={`${(nodeSpacing / 100).toFixed(1)} times original distance`}
+                   aria-describedby={`${panelId}-spacing-hint`} aria-valuetext={`${(nodeSpacing / 100).toFixed(1)} relative spread`}
                    min={DEFAULT_NODE_SPACING} max={MAX_NODE_SPACING} step={10} value={nodeSpacing}
                    onChange={event => setNodeSpacing(event.currentTarget.valueAsNumber)} />
-                 <small id={`${panelId}-spacing-hint`}>Spread nodes farther apart without changing zoom. Use Frame all if they leave the view. 1.0x restores the original spacing.</small>
+                 <small id={`${panelId}-spacing-hint`}>Spread crowded nodes within the layout, rather than enlarging the graph. Frame all restores the clearest starting view. 1.0x resets the spread.</small>
                </div>
                <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
                <label className="graph-checkbox" title="Show tracked, archived and untracked checkpoint nodes. Mission hubs, records and rings stay available."><input type="checkbox" checked={includeCheckpoints} onChange={event => setIncludeCheckpoints(event.target.checked)} />Checkpoints</label>
                <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
                <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
-               <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
+               <label className="graph-checkbox" title="Show mission rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
                <div className="career-spark-controls">
                  <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
                  <label className="career-spark-density" title={includeSparks ? 'Spark amount: 0% shows none; 100% restores the previous full amount.' : 'Enable Sparks to adjust the amount.'}>
@@ -441,6 +469,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                  <button key={direction} className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.rotate(direction)}><Icon size={15} />Rotate {direction}</button>)}
              </div></details>
              <div className="career-graph-stage-footer">
+               <p className="career-graph-focus-note">In-focus missions show checkpoints and connections. Other missions stay as isolated nodes. Completing a checkpoint outside focus reveals its full graph for today without changing its focus setting.</p>
                <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
                <div className="career-graph-legend"><span>Checkpoint nodes:</span><span><i className="graph-status-complete" />Completed</span><span><i className="graph-status-incomplete" />Unfinished</span><span>Other nodes use mission / collection colors.</span></div>
                <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
@@ -456,8 +485,8 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
           <section {...panelAttributes('rings')} className="career-graph-panel career-orbit-index">
             {panelHeading('rings')}
             <div className="career-graph-panel-body">
-             <p>{graph.orbits.length} available ring views. The nine mission rings start visible; the six collection rings start hidden. Select a hidden ring, then Reveal orbit and members to turn it on, or choose its checkbox in Nodes. These defaults hide only rings, not their records.</p>
-             <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
+             <p>{missionOrbits.length} mission rings. Only missions saved as active start visible. Enable a background or planned mission ring with its checkbox in Nodes or Reveal orbit and members; this does not activate the mission. Other records remain on their existing pages and in relevant node connections, not separate rings.</p>
+             <div className="career-orbit-list">{missionOrbits.map(orbit => <button key={orbit.id} type="button"
                data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}
                aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
                <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong>

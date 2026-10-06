@@ -36,6 +36,8 @@ import { DEFAULT_SPARK_DENSITY } from './careerSparkDensity';
 import { CoreHeartbeat } from './CoreHeartbeat';
 import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
+import { CAREER_ORBIT_SHELL_RADIUS, careerOrbitFrameRadius } from './careerOrbitMotion';
+import { CAREER_NODE_HOME_DIRECTION } from './careerNodeSpacing';
 import { careerEdgeVertexShader, careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import { CareerOrbitVisuals, ORBIT_ANCHOR_DIAMETER, SELECTED_ORBIT_ANCHOR_DIAMETER } from './CareerOrbitVisuals';
 import type { OrbitActivityPresentation, OrbitAnchorInfo } from './CareerOrbitVisuals';
@@ -101,7 +103,7 @@ interface SceneCallbacks {
 const CORE_COLOR = new Color('#EEE8D5');
 // Every supplied relationship, including shared-skill, uses the same palette orange.
 const EDGE_COLOR = new Color('#F34B00');
-const HOME_DIRECTION = new Vector3(0.58, 0.32, 1).normalize();
+const HOME_DIRECTION = new Vector3(...CAREER_NODE_HOME_DIRECTION).normalize();
 const FRAME_INTERVAL = 1000 / 30;
 const VIEW_ATTRIBUTE_INTERVAL = 120;
 const CURSOR_EPSILON = 0.0001;
@@ -534,7 +536,9 @@ class CareerScene implements CareerGraphSceneHandle {
     const box = new Box3();
     for (const node of framingNodes) box.expandByPoint(this.projected.fromArray(node.position));
     if (!box.isEmpty()) {
-      box.getCenter(this.bounds.center);
+      const framingCore = framingNodes.find(node => node.kind === 'core');
+      if (framingCore) this.bounds.center.fromArray(framingCore.position);
+      else box.getCenter(this.bounds.center);
       let radiusSquared = 35 * 35;
       for (const node of framingNodes) {
         radiusSquared = Math.max(radiusSquared, this.projected.fromArray(node.position).distanceToSquared(this.bounds.center));
@@ -548,13 +552,18 @@ class CareerScene implements CareerGraphSceneHandle {
     if (core) this.corePosition.fromArray(core.position);
     const previousFocusBounds = this.focusBounds.clone();
     coreCenteredBounds(this.bounds, core ? this.corePosition : undefined, this.focusBounds);
+    this.focusBounds.radius = this.bounds.radius * CAREER_ORBIT_SHELL_RADIUS
+      + this.focusBounds.center.distanceTo(this.bounds.center);
     const focusBoundsChanged = previousFocusBounds.radius !== this.focusBounds.radius
       || !previousFocusBounds.center.equals(this.focusBounds.center);
     this.hologram.setBounds(this.bounds.center, this.bounds.radius, core ? this.corePosition : undefined);
     this.heartbeat.setSource(core ? this.corePosition : undefined, this.focusBounds.radius, this.bounds.radius);
     this.refreshHeartbeat();
     this.hologram.object.visible = framingNodes.length > 0;
-    this.orbits.setData(graph.orbits, this.nodeMap, this.bounds.center, this.bounds.radius);
+    const disconnected = graph.disconnectedNodeIds;
+    const tetherNodes = disconnected?.size
+      ? new Map([...this.nodeMap].filter(([id]) => !disconnected.has(id))) : this.nodeMap;
+    this.orbits.setData(graph.orbits, tetherNodes, this.bounds.center, this.bounds.radius);
     this.root.dataset.orbitCount = String(this.orbits.orbitCount);
     this.canvas.dataset.orbitCount = String(this.orbits.orbitCount);
     for (const element of [this.root, this.canvas]) {
@@ -863,7 +872,8 @@ class CareerScene implements CareerGraphSceneHandle {
   private fittedDistance(): number {
     const halfFov = MathUtils.degToRad(this.camera.fov / 2);
     const limitingFov = Math.min(halfFov, Math.atan(Math.tan(halfFov) * this.camera.aspect));
-    const radius = this.visualProfile === 'focus' ? this.focusBounds.radius * 1.08 : this.bounds.radius * 1.32;
+    const radius = careerOrbitFrameRadius(this.bounds.radius, this.visualProfile === 'focus'
+      ? this.focusBounds.center.distanceTo(this.bounds.center) : 0);
     return radius / Math.sin(limitingFov);
   }
 

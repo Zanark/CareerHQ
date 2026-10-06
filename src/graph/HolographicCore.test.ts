@@ -303,7 +303,7 @@ describe('independently orbiting rim arcs', () => {
     core.dispose();
   });
 
-  it('defaults to half the previous particle budgets and keeps focus motion slower than career motion', () => {
+  it('defaults to ten percent of the full particle budgets and keeps focus motion slower than career motion', () => {
     const core = new HolographicCore();
     const calm = new HolographicCore(true);
     const camera = new PerspectiveCamera();
@@ -319,12 +319,12 @@ describe('independently orbiting rim arcs', () => {
       item.object.traverse(object => { if (object instanceof Points) count += object.geometry.drawRange.count; });
       return count;
     };
-    expect(particleCount(core)).toBe(900);
-    expect(particleCount(calm)).toBe(150);
+    expect(particleCount(core)).toBe(180);
+    expect(particleCount(calm)).toBe(30);
     core.resize(400, 1.25, true);
     calm.resize(400, 1, true);
-    expect(particleCount(core)).toBe(450);
-    expect(particleCount(calm)).toBe(88);
+    expect(particleCount(core)).toBe(90);
+    expect(particleCount(calm)).toBe(18);
     core.dispose();
     calm.dispose();
   });
