@@ -33,9 +33,10 @@ function clockText(seconds: number): string {
 
 const FocusRoom = forwardRef<FocusRoomHandle, {
   state: AppState;
+  date: string;
   session: FocusSessionController;
   practice: boolean;
-}>(function FocusRoom({ state, session, practice }, ref) {
+}>(function FocusRoom({ state, date, session, practice }, ref) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -225,7 +226,7 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
           {open && snapshot && (
             <BackgroundBoundary onFailure={onGraphicsFailure}>
               <Suspense fallback={null}>
-                <CareerGraphScene graph={snapshot} selectedId={null} onSelect={ignoreSelection}
+                <CareerGraphScene graph={snapshot} activityDate={date} selectedId={null} onSelect={ignoreSelection}
                   autoRotate={motionActive} animate={motionActive} allowReducedMotion={motionOptIn}
                   rimOnly={false} heartbeat={heartbeat} visualProfile="focus" onStatusChange={onGraphics} />
               </Suspense>

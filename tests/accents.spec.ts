@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate } from '../src/domain/engine';
+import { MISSION_COLORS } from '../src/missionVisuals';
 
 const key = 'careerhq.workspace.v1';
 
@@ -56,11 +57,11 @@ for (const theme of ['dark', 'light']) {
     await expect(page.getByRole('heading', { name: 'Missions', exact: true, level: 1 })).toBeVisible();
     await expect(page.locator('.mission-card')).toHaveCount(9);
     const cardColors = await page.locator('.mission-card').evaluateAll(elements => elements.map(element => getComputedStyle(element).borderTopColor));
-    expect(new Set(cardColors).size).toBeGreaterThanOrEqual(7);
-    await expect(page.locator('.mission-card.blue')).toHaveCSS('border-top-color', 'rgb(38, 139, 210)');
-    await expect(page.locator('.mission-card.violet')).toHaveCSS('border-top-color', 'rgb(108, 113, 196)');
-    await expect(page.locator('.mission-card.sand')).toHaveCSS('border-top-color', 'rgb(235, 229, 101)');
-    await expect(page.locator('.mission-card.rose')).toHaveCSS('border-top-color', theme === 'dark' ? 'rgb(232, 74, 95)' : 'rgb(173, 62, 85)');
+    expect(new Set(cardColors).size).toBe(9);
+    for (const [id, color] of Object.entries(MISSION_COLORS)) {
+      const rgb = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16));
+      await expect(page.locator(`.mission-card[data-mission-id="${id}"]`)).toHaveCSS('border-top-color', `rgb(${rgb.join(', ')})`);
+    }
     await readable(page, '.mission-card h3, .mission-subtitle, .page-heading .eyebrow');
     await readable(page, '.mission-icon', 3);
     const selected = page.locator('.nav-item.selected');

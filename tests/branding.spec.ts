@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { MISSION_COLORS } from '../src/missionVisuals';
 
 const storageKey = 'careerhq.workspace.v1';
 
@@ -74,14 +75,15 @@ test('the graph-inspired mark retains its opaque core and colored orbital identi
       errors: document.querySelectorAll('parsererror').length,
       active: [...document.querySelectorAll('#active-orbits ellipse')].map(orbit => orbit.getAttribute('stroke')),
       quiet: document.querySelector('#quiet-orbit')?.getAttribute('stroke'),
-      planets: document.querySelectorAll('#orbit-planets circle').length,
+      dots: document.querySelectorAll('#orbit-dots > g').length,
+      sphereGradients: document.querySelectorAll('[id$="-planet"]').length,
       core: document.querySelector('#career-core')?.getAttribute('fill'),
       externalOrExecutable: document.querySelectorAll('script, image, foreignObject, animate, animateTransform, [href], [xlink\\:href]').length,
     };
   }, source);
   expect(structure).toEqual({
-    errors: 0, active: ['#45D072', '#268BD2', '#F34B00'], quiet: '#657B83',
-    planets: 4, core: '#EEE8D5', externalOrExecutable: 0,
+    errors: 0, active: [MISSION_COLORS.pattern, MISSION_COLORS.system, MISSION_COLORS.escape], quiet: MISSION_COLORS.fabric,
+    dots: 4, sphereGradients: 0, core: '#EEE8D5', externalOrExecutable: 0,
   });
   const samples = await page.evaluate(async url => {
     const image = new Image();
@@ -111,7 +113,7 @@ test('the graph-inspired mark retains its opaque core and colored orbital identi
     expect(sample.core[2]).toBeGreaterThan(165);
     expect(sample.core[3]).toBe(255);
     if (sample.size >= 24) expect(sample.core).toEqual([238, 232, 213, 255]);
-    expect(sample.green).toBeGreaterThan(0);
+    expect(sample.green).toBe(0);
     expect(sample.blue).toBeGreaterThan(0);
     expect(sample.orange).toBeGreaterThan(0);
   }

@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 import { ArrowUpRight, Focus, X } from 'lucide-react';
 import type { CareerGraphNode } from './careerGraphModel';
 import type { CareerOrbit, CareerOrbitSegment, CareerOrbitSelection } from './careerOrbitTypes';
+import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 
 const statusLabels = { complete: 'Recorded done', incomplete: 'Not marked complete', reference: 'Reference' };
 
@@ -19,7 +20,7 @@ function OrbitMembers({ ids, nodes, visibleIds, onInspect }: {
     <label>Find a member<input aria-label="Search orbit members" value={query} onChange={event => { setQuery(event.target.value); setLimit(30); }} /></label>
     <p role="status">{members.length} matching members</p>
     <ul>{members.slice(0, limit).map(node => <li key={node.id}>
-      <span className={`graph-status-tag ${node.status}`}>{statusLabels[node.status]}</span>
+      <span className={`graph-status-tag ${careerNodeStatusClass(node)}`} style={{ borderColor: careerNodeColor(node) }}>{statusLabels[node.status]}</span>
       <strong>{node.label}</strong><small>{node.context}</small>
       {!visibleIds.has(node.id) && <span className="career-graph-connection-hidden">Hidden by the current graph filters.</span>}
       <button className="button secondary" onClick={() => onInspect(node)}>
@@ -52,11 +53,15 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
     <h2>{orbit.label}</h2>
     {orbit.missionMode && <p className="career-orbit-view-note">{orbit.missionMode === 'active'
       ? 'Active mission - colored outer ring; revolves when animation is on.'
-      : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} mission - small gray stationary ring near the core.`}</p>}
+      : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} mission - smaller stationary ring in its mission color near the core.`}</p>}
+    {orbit.activity && <p className="career-orbit-view-note" data-worked-today={orbit.activity.workedToday}>
+      {orbit.activity.streak} {orbit.activity.streak === 1 ? 'day' : 'days'} of recorded-work streak · {orbit.activity.workedToday ? 'Work recorded today' : 'No work recorded today'}.
+      {' '}Saving progress/evidence or a recall review lights the dot border; it does not grant checkpoint completion.
+    </p>}
     {!orbit.progress && <p className="career-orbit-summary">{orbit.summary}</p>}
     {orbit.roadmapVersion && <p className="career-graph-node-context">Saved tracker v{orbit.roadmapVersion}</p>}
     {orbit.progress && <div className="career-orbit-progress">
-      <progress aria-label="Recorded checkpoint completion" value={orbit.progress.completed} max={orbit.progress.total} />
+      <progress aria-label="Recorded checkpoint completion" value={orbit.progress.completed} max={orbit.progress.total} style={{ accentColor: orbit.color }} />
       <span>{orbit.progress.completed} / {orbit.progress.total} checkpoints marked complete</span>
     </div>}
     <p className="career-orbit-view-note">A view of existing data, not an extra task. Tethers show membership, not prerequisites.</p>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripHorizontal, LogOut, RotateCcw, SkipForward, X } from 'lucide-react';
 import type { TutorialCommand, TutorialProps } from './types';
-import { chapters, steps } from './steps';
+import { chapters, graphCheckpointToggle, steps } from './steps';
 import type { TutorialStep } from './steps';
 import { CUE_VIEWPORT_MARGIN, SECTION_PADDING, TutorialCue } from './TutorialCue';
 import { useTutorialPosition } from './useTutorialPosition';
@@ -18,6 +18,17 @@ function findOpenDialog(): HTMLElement | null {
 function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): HTMLElement | null {
   if (!targets || targets.length === 0) return null;
   if (targets.includes('career-graph-list')) return document.querySelector('[data-tour="career-graph-list"] button');
+  if (targets.includes('career-graph-checkpoints') && !dialog) {
+    const trigger = document.querySelector<HTMLElement>('[data-graph-panel-trigger="view"]');
+    return trigger?.getAttribute('aria-expanded') === 'true' ? graphCheckpointToggle(document) : trigger;
+  }
+  if (targets.includes('source-bulk-preview')) {
+    return dialog?.querySelector('.bulk-roadmap-body') ?? document.querySelector('.source-page-actions button');
+  }
+  if (targets.includes('source-bulk-cancel')) return dialog?.querySelector('.bulk-roadmap-actions .secondary') ?? null;
+  if (targets.includes('mission-work-streak') && !dialog) {
+    return document.querySelector('.mission-work-streak[data-mission-id="pattern"] summary');
+  }
   if (dialog && targets.includes('full-map-last-node') &&
       dialog.querySelector('.full-roadmap-node[aria-pressed="true"]:not([aria-current="step"])')) {
     const showDetails = dialog.querySelector<HTMLElement>('[data-tour="map-details-toggle"][aria-expanded="false"]');

@@ -105,6 +105,13 @@ for (const width of [1440, 390, 320]) {
       await expect(coach).toHaveAttribute('data-step', step.id);
       visited.push(step.id);
       switch (step.id) {
+        case 'career-graph-checkpoints-hide':
+          await page.locator('[data-graph-panel-trigger="view"]').click();
+          await page.getByRole('checkbox', { name: 'Checkpoints', exact: true }).uncheck();
+          break;
+        case 'career-graph-checkpoints-show':
+          await page.getByRole('checkbox', { name: 'Checkpoints', exact: true }).check();
+          break;
         case 'career-graph-search':
           await page.getByLabel('Search career graph nodes', { exact: true }).fill('HashMap');
           break;
@@ -168,6 +175,11 @@ for (const width of [1440, 390, 320]) {
           await page.locator('[data-tour="evidence-submit"]').click();
           await expect(page.locator('dialog[open]')).toHaveCount(0);
           break;
+        case 'evidence-activity':
+          await expect(page.locator('.mission-work-streak[data-mission-id="pattern"]')).toHaveAttribute('data-worked-today', 'true');
+          await expect(page.locator('.mission-work-streak[data-mission-id="pattern"]')).toHaveAttribute('data-work-streak', '1');
+          await page.locator('.mission-work-streak summary').click();
+          break;
         case 'evidence-complete':
           await expect(page.locator('dialog[open] .tutorial-panel')).toBeVisible();
           await page.locator('[data-tour="evidence-example"]').click();
@@ -190,6 +202,14 @@ for (const width of [1440, 390, 320]) {
         case 'control-blocker-clear':
           await page.locator('[data-tour="blocker-input"]').fill('');
           await page.locator('[data-tour="blocker-submit"]').click();
+          break;
+        case 'source-bulk-preview':
+          await page.getByRole('button', { name: 'Adopt all documented roadmaps', exact: true }).click();
+          await expect(page.locator('dialog.bulk-roadmap-modal[open] .tutorial-panel')).toBeVisible();
+          break;
+        case 'source-bulk-cancel':
+          await page.locator('dialog.bulk-roadmap-modal[open]').getByRole('button', { name: 'Cancel', exact: true }).click();
+          await expect(page.locator('dialog.bulk-roadmap-modal[open]')).toHaveCount(0);
           break;
         case 'source-select-fabric':
           await page.locator('[data-tour="source-mission"]').selectOption('fabric');

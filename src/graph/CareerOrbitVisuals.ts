@@ -16,10 +16,13 @@ import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import type { CareerRippleField } from './careerRipple';
 
 const TAU = Math.PI * 2;
-const STATUS = { complete: new Color('#45D072'), incomplete: new Color('#F34B00'), reference: new Color('#268BD2') };
+const STATUS_INTENSITY = { complete: 1, incomplete: 0.35, reference: 0.55 };
 const WHITE = new Color('#EEE8D5');
 export const ORBIT_ANCHOR_DIAMETER = 32;
 export const SELECTED_ORBIT_ANCHOR_DIAMETER = 36;
+export const ORBIT_ACTIVITY_BORDER_BRIGHT = 1;
+export const ORBIT_ACTIVITY_BORDER_DIM = 0.18;
+export const ORBIT_COLLECTION_BORDER_STRENGTH = 0.55;
 export const ORBIT_HIGHLIGHT_SEGMENTS = 256;
 export const ORBIT_HIGHLIGHT_WIDTH = 4;
 export const ORBIT_HIGHLIGHT_HALO_WIDTH = 18;
@@ -104,21 +107,22 @@ function highlightMaterial(halo = false): LineMaterial {
   return material;
 }
 
-const planetFragment = `
+const flatDotFragment = `
   varying vec3 vColor;
+  varying float vActivityBorderStrength;
+  uniform float uDotDiameter;
   void main() {
-    vec2 point = (gl_PointCoord - 0.5) * 2.0;
-    float radius = length(point);
-    if (radius > 1.0) discard;
-    vec2 sphere = vec2(point.x, -point.y) / 0.78;
-    vec3 normal = normalize(vec3(sphere, sqrt(max(0.0, 1.0 - dot(sphere, sphere)))));
-    vec3 light = normalize(vec3(-0.45, 0.55, 0.9));
-    float diffuse = max(0.0, dot(normal, light));
-    float specular = pow(max(0.0, dot(normal, normalize(light + vec3(0.0, 0.0, 1.0)))), 24.0);
-    vec3 surface = vColor * (0.24 + 0.9 * diffuse) + vec3(0.12) * specular;
-    float body = 1.0 - smoothstep(0.74, 0.80, radius);
-    float atmosphere = (1.0 - smoothstep(0.78, 1.0, radius)) * 0.22;
-    gl_FragColor = vec4(mix(vColor * 0.85, surface, body), max(body, atmosphere));
+    float distance = length(gl_PointCoord - 0.5) * uDotDiameter;
+    float outerRadius = uDotDiameter * 0.5;
+    if (distance > outerRadius) discard;
+    float borderCenter = outerRadius - 3.0;
+    float border = 1.0 - smoothstep(1.0, 1.5, abs(distance - borderCenter));
+    float body = 1.0 - smoothstep(borderCenter - 2.0, borderCenter - 1.5, distance);
+    float glow = exp(-0.75 * abs(distance - borderCenter))
+      * (1.0 - smoothstep(outerRadius - 0.6, outerRadius, distance));
+    float alpha = max(body * 0.68, max(border * vActivityBorderStrength,
+      glow * (0.08 + 0.18 * vActivityBorderStrength)));
+    gl_FragColor = vec4(vColor, alpha);
     #include <colorspace_fragment>
   }
 `;
@@ -145,10 +149,42 @@ function pointMaterial(diameter: number, fragmentShader: string): ShaderMaterial
   });
 }
 
+function anchorMaterial(diameter: number): ShaderMaterial {
+  const material = pointMaterial(diameter, flatDotFragment);
+  material.vertexShader = material.vertexShader
+    .replace('varying vec3 vColor;', `varying vec3 vColor;
+      attribute float aActivityBorderStrength;
+      varying float vActivityBorderStrength;`)
+    .replace('vColor = color;', 'vColor = color; vActivityBorderStrength = aActivityBorderStrength;');
+  material.uniforms.uDotDiameter = { value: diameter };
+  return material;
+}
+
+export interface OrbitActivityPresentation {
+  workedToday: boolean | null;
+  streak: number | null;
+  asOfDate: string | null;
+  borderStrength: number;
+}
+
+function activityPresentation(orbit: CareerOrbit, date: string): OrbitActivityPresentation {
+  if (orbit.kind !== 'mission') {
+    return { workedToday: null, streak: null, asOfDate: null, borderStrength: ORBIT_COLLECTION_BORDER_STRENGTH };
+  }
+  const activity = orbit.activity;
+  const current = Boolean(date && activity?.asOfDate === date);
+  const workedToday = current && Boolean(activity?.workedToday);
+  return {
+    workedToday, streak: activity ? current ? activity.streak : null : 0, asOfDate: activity?.asOfDate ?? null,
+    borderStrength: workedToday ? ORBIT_ACTIVITY_BORDER_BRIGHT : ORBIT_ACTIVITY_BORDER_DIM,
+  };
+}
+
 interface PathRange { start: number; end: number; selection: CareerOrbitSelection }
 interface OrbitEntry {
   orbit: CareerOrbit;
   motion: CareerOrbitMotion;
+  activity: OrbitActivityPresentation;
   start: number;
   end: number;
   segmentAngles: Map<string, number>;
@@ -175,12 +211,12 @@ function dynamicPositions(values: number[] | Float32Array): BufferAttribute {
 export class CareerOrbitVisuals {
   readonly object = new Group();
   readonly paths = new LineSegments(new BufferGeometry(), lineMaterial(true));
-  readonly anchors = new Points(new BufferGeometry(), pointMaterial(ORBIT_ANCHOR_DIAMETER, planetFragment));
+  readonly anchors = new Points(new BufferGeometry(), anchorMaterial(ORBIT_ANCHOR_DIAMETER));
   readonly primaryTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.22));
   readonly detailTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.55));
   readonly savedPulseTethers = new LineSegments(new BufferGeometry(), lineMaterial(false, 0.55));
   readonly savedPulsePackets = new Points(new BufferGeometry(), pointMaterial(10, packetFragment));
-  readonly selectedAnchor = new Points(new BufferGeometry(), pointMaterial(SELECTED_ORBIT_ANCHOR_DIAMETER, planetFragment));
+  readonly selectedAnchor = new Points(new BufferGeometry(), anchorMaterial(SELECTED_ORBIT_ANCHOR_DIAMETER));
   private readonly highlightPositions = new Float32Array(ORBIT_HIGHLIGHT_SEGMENTS * 6);
   private readonly highlightGeometry = new LineSegmentsGeometry().setPositions(this.highlightPositions);
   private readonly highlightBuffer = (this.highlightGeometry.attributes.instanceStart as InterleavedBufferAttribute).data.setUsage(DynamicDrawUsage);
@@ -198,6 +234,7 @@ export class CareerOrbitVisuals {
   private pulseColorsDirty = false;
   private nodes: ReadonlyMap<string, CareerGraphNode> = new Map();
   private selection: CareerOrbitSelection | null = null;
+  private activityDate = '';
   private readonly center = new Vector3();
   private readonly scratch = new Vector3();
   private readonly end = new Vector3();
@@ -241,6 +278,8 @@ export class CareerOrbitVisuals {
     this.selectedAnchor.geometry.setAttribute('position', dynamicPositions(new Float32Array(3)));
     this.selectedAnchor.geometry.setAttribute('color', new BufferAttribute(new Float32Array([WHITE.r, WHITE.g, WHITE.b]), 3));
     this.selectedAnchor.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array([1]), 1));
+    this.selectedAnchor.geometry.setAttribute('aActivityBorderStrength',
+      new BufferAttribute(new Float32Array([ORBIT_ACTIVITY_BORDER_DIM]), 1).setUsage(DynamicDrawUsage));
     this.object.add(this.paths, this.primaryTethers, this.detailTethers, this.anchors, this.selectedAnchor, this.savedPulseTethers, this.savedPulsePackets, this.highlightHalo, this.highlight);
     if (calm) {
       this.paths.material.uniforms.uOpacity.value = 0.38;
@@ -263,6 +302,32 @@ export class CareerOrbitVisuals {
   get anchorInfo(): OrbitAnchorInfo[] { return this.entries.map(({ orbit, motion, visibleMemberCount }) => ({ orbit, motion, visibleMemberCount })); }
 
   getMotion(orbitId: string): CareerOrbitMotion | undefined { return this.byId.get(orbitId)?.motion; }
+
+  getActivity(orbitId: string): OrbitActivityPresentation | undefined {
+    const entry = this.byId.get(orbitId);
+    if (!entry) return undefined;
+    const strength = this.anchors.geometry.getAttribute('aActivityBorderStrength').getX(this.entries.indexOf(entry));
+    return { ...entry.activity, borderStrength: strength };
+  }
+
+  setActivityDate(date: string): void {
+    if (this.disposed || this.activityDate === date) return;
+    this.activityDate = date;
+    this.updateActivityBorders();
+  }
+
+  private updateActivityBorders(): void {
+    const strengths = this.anchors.geometry.getAttribute('aActivityBorderStrength');
+    this.entries.forEach((entry, index) => {
+      entry.activity = activityPresentation(entry.orbit, this.activityDate);
+      strengths?.setX(index, entry.activity.borderStrength);
+    });
+    if (strengths) strengths.needsUpdate = true;
+    const selected = this.selection ? this.byId.get(this.selection.orbitId) : undefined;
+    const marker = this.selectedAnchor.geometry.getAttribute('aActivityBorderStrength');
+    marker.setX(0, selected?.activity.borderStrength ?? ORBIT_ACTIVITY_BORDER_DIM);
+    marker.needsUpdate = true;
+  }
 
   setData(orbits: readonly CareerOrbit[], nodes: ReadonlyMap<string, CareerGraphNode>, center: Vector3, radius: number): void {
     if (this.disposed) return;
@@ -294,14 +359,15 @@ export class CareerOrbitVisuals {
     for (const orbit of orbits) {
       if (!Number.isInteger(orbit.index) || orbit.index < 0 || orbit.index >= 15 || this.byId.has(orbit.id)) continue;
       const entry: OrbitEntry = {
-        orbit, motion: careerOrbitMotion(orbit), start: positions.length / 3, end: 0, segmentAngles: new Map(),
+        orbit, motion: careerOrbitMotion(orbit), activity: activityPresentation(orbit, this.activityDate),
+        start: positions.length / 3, end: 0, segmentAngles: new Map(),
         visibleMemberCount: orbit.memberIds.reduce((count, id) => count + Number(nodes.has(id)), 0),
       };
       this.byId.set(orbit.id, entry);
       this.entries.push(entry);
       const color = new Color(orbit.color);
-      if (!orbit.memberIds.length) color.multiplyScalar(0.32);
       color.toArray(anchorColors, anchorColors.length);
+      if (!orbit.memberIds.length) color.multiplyScalar(0.32);
       addArc(entry, 0, TAU, 0, color.clone().multiplyScalar(0.62), { orbitId: orbit.id });
       const total = orbit.segments.reduce((count, segment) => count + segment.members.length, 0);
       let cursor = 0;
@@ -319,7 +385,7 @@ export class CareerOrbitVisuals {
             const start = from + (to - from) * index / segment.members.length;
             const end = from + (to - from) * (index + 1) / segment.members.length;
             const slotGap = Math.min(0.008, (end - start) * 0.12);
-            addArc(entry, start + slotGap, end - slotGap, 0.025, entry.motion.quiet ? color : STATUS[member.status], selection);
+            addArc(entry, start + slotGap, end - slotGap, 0.025, color.clone().multiplyScalar(STATUS_INTENSITY[member.status]), selection);
             if (member.current) addArc(entry, start + slotGap, end - slotGap, 0.037, entry.motion.quiet ? color : WHITE, selection);
           });
         }
@@ -336,6 +402,8 @@ export class CareerOrbitVisuals {
     this.anchors.geometry.setAttribute('position', dynamicPositions(new Float32Array(this.entries.length * 3)));
     this.anchors.geometry.setAttribute('color', new BufferAttribute(new Float32Array(anchorColors), 3));
     this.anchors.geometry.setAttribute('aRippleWeight', new BufferAttribute(new Float32Array(this.entries.map(entry => entry.motion.rippleWeight)), 1));
+    this.anchors.geometry.setAttribute('aActivityBorderStrength',
+      new BufferAttribute(new Float32Array(this.entries.map(entry => entry.activity.borderStrength)), 1).setUsage(DynamicDrawUsage));
     this.primary = this.entries.flatMap(entry => {
       const hub = nodes.get(entry.orbit.hubNodeId);
       return hub ? [{ entry, angle: CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle, offset: 0, target: hub.position, nodeId: hub.id }] : [];
@@ -384,6 +452,7 @@ export class CareerOrbitVisuals {
     const weights = this.selectedAnchor.geometry.getAttribute('aRippleWeight');
     weights.setX(0, entry?.motion.rippleWeight ?? 1);
     weights.needsUpdate = true;
+    this.updateActivityBorders();
     this.dirty = true;
     this.updateGeometry();
   }

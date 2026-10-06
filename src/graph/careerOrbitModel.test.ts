@@ -7,6 +7,8 @@ import { buildCareerGraph } from './careerGraphModel';
 import type { CareerGraph } from './careerGraphModel';
 import { buildCareerOrbits } from './careerOrbitModel';
 import type { CareerOrbit } from './careerOrbitTypes';
+import { missionColor } from '../missionVisuals';
+import { getMissionActivity } from '../domain/missionActivity';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -113,12 +115,8 @@ describe('Career orbits: stable read-only graph views', () => {
       'Daily work', 'Saved evidence', 'Applications', 'Freelance leads', 'Past accomplishments', 'Untracked curriculum',
     ]);
     for (const item of graph.orbits) expect(item.color).toMatch(/^#[0-9A-F]{6}$/);
-    const missionColors = [
-      '#45D072', '#268BD2', '#CB4B16', '#E84A5F', '#6C71C4', '#EBE565', '#00A591', '#D33682', '#00A591',
-    ];
-    expect(graph.orbits.slice(0, 9).map(item => item.color)).toEqual(
-      missionIds.map((id, index) => state.missions[id].mode === 'active' ? missionColors[index] : '#657B83'),
-    );
+    expect(graph.orbits.slice(0, 9).map(item => item.color)).toEqual(missionIds.map(missionColor));
+    expect(new Set(graph.orbits.map(item => item.color)).size).toBe(15);
     expect(graph.orbits.slice(0, 9).map(item => item.missionMode)).toEqual(missionIds.map(id => state.missions[id].mode));
     expect(graph.orbits.slice(9).every(item => item.missionMode === undefined)).toBe(true);
     expectExactMembership(graph);
@@ -142,15 +140,14 @@ describe('Career orbits: stable read-only graph views', () => {
         const original = orbit(before, 'mission', id);
         const expectedMode = state.missions[id].mode;
         expect(item.missionMode).toBe(expectedMode);
-        if (expectedMode !== 'active') expect(item.color).toBe('#657B83');
-        else expect(item.color).not.toBe('#657B83');
-        expect(item.detail).toContain(expectedMode === 'active' ? 'colored outer ring' : 'smaller gray ring near the core');
+        expect(item.color).toBe(missionColor(id));
+        expect(item.detail).toContain(expectedMode === 'active' ? 'colored outer ring' : 'smaller ring in its mission color near the core');
         expect(item.memberIds).toEqual(original.memberIds);
         expect(item.segments).toEqual(original.segments);
         expect(item.progress).toEqual(original.progress);
         expect(item.currentNodeId).toEqual(original.currentNodeId);
       }
-      if (mode === 'active' && version === '3.0.0') expect(orbit(graph, 'mission', 'algorithm').color).toBe('#D33682');
+      expect(orbit(graph, 'mission', 'algorithm').color).toBe(missionColor('algorithm'));
     }
   });
 
@@ -405,8 +402,26 @@ describe('Career orbits: truthful saved collections', () => {
     expect(daily.segments[1].members).toEqual([{ nodeId: 'action:today-open', status: 'incomplete', current: false }]);
     const snapshot = buildCareerOrbits(state, graph.nodes);
     vi.setSystemTime(new Date('2035-01-01T12:00:00Z'));
-    expect(buildCareerOrbits(state, graph.nodes)).toEqual(snapshot);
+    const later = buildCareerOrbits(state, graph.nodes);
+    expect(later.map(({ activity: _activity, ...item }) => item))
+      .toEqual(snapshot.map(({ activity: _activity, ...item }) => item));
+    expect(later.filter(item => item.kind === 'mission').every(item => item.activity?.asOfDate === localDate())).toBe(true);
     expectExactMembership(graph);
+  });
+
+  describe('mission orbit daily work projection', () => {
+    it('adds the same recorded-work summary as mission pages without changing membership or state', () => {
+      const state = complete(createInitialState(false));
+      const raw = JSON.stringify(state);
+      const graph = buildCareerGraph(state);
+      for (const id of missionIds) {
+        expect(orbit(graph, 'mission', id).activity).toEqual(getMissionActivity(state, id));
+      }
+      expect(orbit(graph, 'mission', 'pattern').activity).toMatchObject({ workedToday: true, streak: 1 });
+      expect(graph.orbits.filter(item => item.kind !== 'mission').every(item => item.activity === undefined)).toBe(true);
+      expectExactMembership(graph);
+      expect(JSON.stringify(state)).toBe(raw);
+    });
   });
 
   it('retains all 10,500 represented daily records rather than truncating a view', () => {

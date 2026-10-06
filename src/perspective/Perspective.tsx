@@ -4,6 +4,7 @@ import { getMissionVersion, recordRoadmapVersion } from '../domain/catalog';
 import type { AppState } from '../domain/types';
 import { PersonalProofManager } from './PersonalProofManager';
 import { removePersonalProof } from './personalProof';
+import { missionAccentStyle } from '../missionVisuals';
 import './perspective.css';
 
 export function Perspective({ state, practice, commit }: {
@@ -52,7 +53,7 @@ export function Perspective({ state, practice, commit }: {
         {evidence.slice(0, shown).map(item => {
           const mission = getMissionVersion(item.missionId, recordRoadmapVersion(item));
           const checkpoint = mission.checkpoints.find(candidate => candidate.id === item.checkpointId);
-          return <a key={item.id} className={`perspective-receipt ${mission.color}`} href={`#/evidence/${item.id}`}>
+          return <a key={item.id} className={`perspective-receipt ${mission.color}`} style={missionAccentStyle(mission.id)} href={`#/evidence/${item.id}`}>
             <span className="perspective-receipt-meta">{practice ? 'Tutorial example' : state.sampleData ? 'Sample-containing workspace' : item.completedCheckpoint ? 'Checkpoint marked complete' : 'Practice recorded'} / {mission.name}</span>
             <h3>{item.title}</h3>
             <p>{item.summary}</p>

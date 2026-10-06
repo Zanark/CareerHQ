@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 128 128">
   <title>CareerOS - Career operating system</title>
-  <desc>A luminous ivory core connects an orange network inside green, blue and orange planetary orbits, with a quieter gray inner orbit.</desc>
+  <desc>A luminous ivory core connects an orange network inside distinct blue, violet, orange and rose orbits with flat glowing dots and colored borders.</desc>
   <defs>
     <radialGradient id="tile" cx=".38" cy=".32" r=".8">
       <stop stop-color="#001E26"/>
@@ -12,39 +12,19 @@
       <stop offset=".7" stop-color="#F34B00" stop-opacity=".14"/>
       <stop offset="1" stop-color="#F34B00" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="green-planet" cx=".3" cy=".25" r=".82">
-      <stop stop-color="#EEE8D5"/>
-      <stop offset=".3" stop-color="#45D072"/>
-      <stop offset="1" stop-color="#001E26"/>
-    </radialGradient>
-    <radialGradient id="blue-planet" cx=".3" cy=".25" r=".82">
-      <stop stop-color="#EEE8D5"/>
-      <stop offset=".3" stop-color="#268BD2"/>
-      <stop offset="1" stop-color="#001E26"/>
-    </radialGradient>
-    <radialGradient id="orange-planet" cx=".3" cy=".25" r=".82">
-      <stop stop-color="#EEE8D5"/>
-      <stop offset=".3" stop-color="#F34B00"/>
-      <stop offset="1" stop-color="#001E26"/>
-    </radialGradient>
-    <radialGradient id="gray-planet" cx=".3" cy=".25" r=".82">
-      <stop stop-color="#93A1A1"/>
-      <stop offset=".35" stop-color="#657B83"/>
-      <stop offset="1" stop-color="#001E26"/>
-    </radialGradient>
   </defs>
   <rect x="1" y="1" width="126" height="126" rx="32" fill="url(#tile)" stroke="#586E75" stroke-opacity=".3"/>
   <g fill="none" stroke-width="7" stroke-opacity=".13">
-    <ellipse cx="64" cy="64" rx="48" ry="34" transform="rotate(-32 64 64)" stroke="#45D072"/>
-    <ellipse cx="64" cy="64" rx="49" ry="27" transform="rotate(42 64 64)" stroke="#268BD2"/>
+    <ellipse cx="64" cy="64" rx="48" ry="34" transform="rotate(-32 64 64)" stroke="#268BD2"/>
+    <ellipse cx="64" cy="64" rx="49" ry="27" transform="rotate(42 64 64)" stroke="#6C71C4"/>
     <ellipse cx="64" cy="64" rx="29" ry="49" transform="rotate(14 64 64)" stroke="#F34B00"/>
   </g>
   <g id="active-orbits" fill="none" stroke-width="2.5">
-    <ellipse cx="64" cy="64" rx="48" ry="34" transform="rotate(-32 64 64)" stroke="#45D072"/>
-    <ellipse cx="64" cy="64" rx="49" ry="27" transform="rotate(42 64 64)" stroke="#268BD2"/>
+    <ellipse cx="64" cy="64" rx="48" ry="34" transform="rotate(-32 64 64)" stroke="#268BD2"/>
+    <ellipse cx="64" cy="64" rx="49" ry="27" transform="rotate(42 64 64)" stroke="#6C71C4"/>
     <ellipse cx="64" cy="64" rx="29" ry="49" transform="rotate(14 64 64)" stroke="#F34B00"/>
   </g>
-  <g id="quiet-orbit" fill="none" stroke="#657B83" stroke-width="1.8" stroke-opacity=".85">
+  <g id="quiet-orbit" fill="none" stroke="#E84A5F" stroke-width="1.8" stroke-opacity=".65">
     <ellipse cx="64" cy="64" rx="27" ry="16" transform="rotate(22 64 64)"/>
   </g>
   <g id="career-network" stroke="#F34B00" stroke-linecap="round" stroke-linejoin="round">
@@ -55,11 +35,27 @@
       <circle cx="91" cy="59" r="2.5"/><circle cx="84" cy="85" r="2.5"/>
     </g>
   </g>
-  <g id="orbit-planets" stroke-width="1.2">
-    <circle cx="107.7" cy="59.7" r="8.5" fill="url(#green-planet)" stroke="#45D072"/>
-    <circle cx="27.6" cy="31.2" r="8.5" fill="url(#blue-planet)" stroke="#268BD2"/>
-    <circle cx="62.5" cy="111.1" r="8" fill="url(#orange-planet)" stroke="#F34B00"/>
-    <circle cx="89" cy="74.1" r="5.5" fill="url(#gray-planet)" stroke="#657B83"/>
+  <g id="orbit-dots" stroke-width="2.5">
+    <g fill="#268BD2" stroke="#268BD2">
+      <circle cx="107.7" cy="59.7" r="10" stroke="none" opacity=".15"/>
+      <circle cx="107.7" cy="59.7" r="4.8" stroke="none"/>
+      <circle cx="107.7" cy="59.7" r="8.2" fill="none"/>
+    </g>
+    <g fill="#6C71C4" stroke="#6C71C4">
+      <circle cx="27.6" cy="31.2" r="10" stroke="none" opacity=".15"/>
+      <circle cx="27.6" cy="31.2" r="4.8" stroke="none"/>
+      <circle cx="27.6" cy="31.2" r="8.2" fill="none"/>
+    </g>
+    <g fill="#F34B00" stroke="#F34B00">
+      <circle cx="62.5" cy="111.1" r="10" stroke="none" opacity=".15"/>
+      <circle cx="62.5" cy="111.1" r="4.8" stroke="none"/>
+      <circle cx="62.5" cy="111.1" r="8.2" fill="none"/>
+    </g>
+    <g fill="#E84A5F" stroke="#E84A5F">
+      <circle cx="89" cy="74.1" r="7" stroke="none" opacity=".15"/>
+      <circle cx="89" cy="74.1" r="3.2" stroke="none"/>
+      <circle cx="89" cy="74.1" r="5.6" fill="none" stroke-width="2"/>
+    </g>
   </g>
   <circle cx="64" cy="64" r="24" fill="url(#core-glow)"/>
   <circle id="career-core" cx="64" cy="64" r="9" fill="#EEE8D5"/>

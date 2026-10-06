@@ -27,6 +27,8 @@ loading problem. Different browsers/devices still need a private backup transfer
 - Saves browser-local state and supports private JSON backup/export and replacement import.
 - Tracks freelance research and spaced recall separately from checkpoint completion.
 - Preserves previous roadmap versions and requires confirmation before adopting new definitions.
+- Shows each mission's recorded-work streak from saved evidence/progress or any recall result,
+  including work that does not complete a checkpoint.
 - Provides an interactive **Tutorial** using a separate, temporary practice workspace.
   Try real controls without changing your progress, theme preference, or existing focus session.
 - Includes an optional **Keep going** page before Overview: your supplied past
@@ -76,8 +78,10 @@ when closed. Selecting a ring or work item closes its panel and shows the inspec
 Escape dismisses a panel; native fullscreen retains the browser's escape behavior.
 **Overview** remains the compact tracker at `#/hq`, also linked from View.
 
-Green means recorded completion; orange means not marked complete. Notes, source
-references and untracked expanded curriculum remain distinct reference nodes.
+Green is reserved for **completed checkpoints**, including archived completions;
+orange marks unfinished checkpoints. Mission hubs and the six record/reference
+collections keep their own identity colors, even when a record describes a completed action
+or past accomplishment. Notes and untracked curriculum are not extra completed tasks.
 Archived completions retain their version context, and the preserved DSA prefix
 is not double-counted. Daily actions and past accomplishments do not automatically
 complete their associated checkpoints. Mission and layer filters only affect the view.
@@ -89,14 +93,21 @@ your **saved roadmap edition**. Archived completions and unadopted curriculum do
 not inflate that progress. Record rings show their real groups/counts, not invented
 completion percentages; empty collections say so.
 
-Only **active missions** have colored, revolving outer rings. **Background** and
-**planned** missions retain smaller, gray, stationary rings closer to the white core.
+Only **active missions** have revolving outer rings. **Background** and
+**planned** missions retain smaller, stationary rings closer to the white core,
+but keep their mission color. Each of the nine missions and six collections has
+a distinct nongreen hue; mission hues match the **Missions** interface.
 This follows **Bring into focus / Move to background**, not just the single
 **Make primary mission** choice. Their saved checkpoints, completion and evidence
 remain intact and inspectable. The six record/reference rings keep their existing behavior.
 
-Each ring has a larger, softly shaded planet-like anchor in its view color;
-background/planned anchors remain gray. Select it or a card in **Rings / Explore ring views**
+Each ring has a **flat glowing dot**, not a shaded sphere, in its own ring color.
+The thicker border around a **mission dot** is bright when evidence/progress or any
+recall result is saved for that mission today, and dim otherwise. Completion is not
+required. This is recorded activity, not an inference about your attention or offline work.
+Collection dots have a steady border, not a mission streak. The logo echoes the flat-dot
+design but is a static mark, not a live activity indicator.
+Select a dot or a card in **Rings / Explore ring views**
 to highlight the **entire ring** with a thicker, bright glow. Choosing a stage or
 record group keeps the whole ring highlighted while its detailed tethers show only
 that group's members. Inspect a member or open the relevant mission/records.
@@ -113,12 +124,22 @@ The inspector distinguishes global members from those visible through your filte
 Full-shell paths remain visible by default. **Clear center** masks projected ring
 paths without hiding data anchors or membership links. Sparks and glow are still
 atmosphere, not extra nodes. In **View**, **Rings** and **Sparks** are separate, default-on switches:
-hide ring paths, anchors and membership tethers without hiding the floating dots,
-or hide only the dots while keeping the rings. Real work nodes, their connections,
+hide ring paths, anchors and membership tethers without hiding the decorative sparks,
+or hide only the sparks while keeping the rings and their dots. Real work nodes, their connections,
 core glow and your zoom stay unchanged. **Clear center** and **Focus ring** depend
 only on Rings. Re-enabling Rings restores your selected Clear center mode, and
 **Reveal orbit and members** never changes the Sparks setting. Like the other
 graph filters, these are view-only choices, not saved-progress changes.
+
+**View → Checkpoints** is a separate, default-on layer switch. Turning it off hides
+current tracked checkpoints, archived checkpoints and untracked curriculum checkpoint
+nodes, together with their displayed connections. Mission hubs, rings and work records
+remain available; **References** being on does not override this switch. The remaining
+layout and camera framing stay stable. Re-enable Checkpoints to restore the layer;
+other mission, reference and individual-item filters still apply. **Reveal and inspect**
+or **Reveal orbit and members** may explicitly turn Checkpoints on to show requested
+members, without turning Sparks on. These choices last only while the graph page is open
+and never change progress or backups.
 
 The **Spark amount** slider in View, beside Sparks, ranges from **0%** (none) to **100%**
 (the previous full amount). It starts at **50%**, half as many dots as before.
@@ -192,6 +213,12 @@ Turning **Ambient motion** off stops all background motion, including the heartb
 without changing the timer or saved distraction reports.
 It is visual ambience, not an AI processing work. If browser fullscreen or WebGL is
 unavailable, the window-filling room still provides the timer and recording controls.
+
+The backdrop snapshots the graph when the room opens; logging reports does not rebuild it.
+At the next local-date check after midnight (normally every 30 seconds), yesterday's
+mission-dot activity borders dim in both the main graph and this fixed snapshot,
+even when animation or Ambient motion is paused. The snapshot is not refreshed into
+a new graph merely to dim its borders; reopen the room for a fresh data snapshot.
 
 **I got distracted** saves one self-reported button press immediately. Its session,
 timestamp and elapsed running-clock time are retained, including whether it was
@@ -311,9 +338,39 @@ are deepened when an exercise needs them.
    browse its stages. Expand **Topics and completion criteria in this stage** for the detail.
 4. Compare **Documented roadmap** with **Active tracker**. If the active tracker is
    older than the documented edition, export a backup, review the new definition, then select **Adopt documented
-   roadmap** only when you want to switch. Old progress is archived, not transferred as
-   completion credit. If the versions match, no adoption is needed.
+   roadmap** only when you want to switch. Old progress is archived, not guessed into
+   different topics. The verified DSA v2→v3 **Append expanded roadmap** is the exception
+   described above. If the versions match, no adoption is needed.
 5. Select **Open current tracker** to work on that mission.
+
+### Adopt all documented roadmaps safely
+
+In **Operation documents**, **Adopt all documented roadmaps** opens a native review
+dialog listing every pending mission and its old/new versions. Opening it does not save
+anything. Export a private backup in **Settings** first; no backup is downloaded automatically.
+
+- **Cancel**, the close button or Escape leaves the trackers unchanged. Individual
+  adoption remains available below.
+- **Confirm all roadmaps** applies every reviewed pending update in one workspace save.
+  Already-current missions are unchanged. DSA v2→v3 carries only its verified unchanged
+  HashMap prefix, retaining genuine progress, evidence and blocker; a completed prefix
+  continues at the first new topic. Other older versions, including DSA v1, archive
+  the exact previous position and start the new tracker unconfirmed, without guessed credit.
+- Evidence, recalls, prior plans, history, personal accomplishments and focus records
+  stay intact. Primary focus and active/background modes are preserved; a previously
+  planned mission with newly available curriculum becomes **background**, not active.
+  Refresh an untouched daily plan separately when ready.
+- A confirmation is valid only for the exact workspace reviewed. If that workspace
+  changes, reopen and review a fresh preview. Validation, record/size limits, archive
+  collisions, stale-tab conflicts or storage failures reject the entire adoption;
+  no subset of the roadmaps is saved. Adoption itself earns neither a work day nor
+  completion credit.
+
+This is an all-or-none application save, not cross-tab synchronization. Use one editing
+tab at a time. The tutorial demonstrates **preview then Cancel** before its separate
+Fabric v1 adoption/archive exercise.
+
+### Inspect the complete map without adopting
 
 On a mission page, **Full roadmap** beside its name opens every stage together.
 For **DSA**, it opens the complete curriculum from the **EXPANDED** PDF even when
@@ -366,25 +423,27 @@ With the handle focused, arrow keys move it, Shift moves farther, and Home reset
 Escape cancels an active drag. The compact full-roadmap bars remain docked to keep
 the map canvas clear. Position is not written to your workspace or backup.
 
-The tutorial covers actual controls using temporary data. Its files are named
+The tutorial has **102 steps across 23 chapters**, covering actual controls with temporary data. Its files are named
 `careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the
 mission subjects. A deliberately older **practice** Service Fabric tracker lets you
 preview, adopt and inspect an archived roadmap without changing your real version.
+The bulk-adoption lesson only opens and cancels its preview, preserving that exercise.
 
 Use the **Chapter** menu to work on one area at a time:
 
 | Chapter | What you practice |
 | --- | --- |
-| 3D career graph | Real-data colors, graph navigation, named-node search and inspection without awarding progress |
+| 3D career graph | Distinct ring hues, daily-work dot borders, hiding/restoring Checkpoints, named-node search and read-only inspection |
 | Keep going | Your own past accomplishments, completed work versus practice, and private history that never awards checkpoint credit |
 | DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
 | System Design concepts | The supplied concepts map, source grouping, pattern-overview guidance and contextual search |
 | System Design problems | Module practice sets, changing constraints, source gates, diagnostics and independently selectable case studies |
-| PDFs & roadmap updates | Source selection, preview, confirmed adoption, archives, stages, criteria, optional paths, forecasts and project references |
+| PDFs & roadmap updates | Bulk preview-and-cancel, then source selection, individual confirmed adoption, archives, stages, criteria and supporting references |
 | Complete practice workbooks | Detailed source units, independent practice, exercise checks, shared learning guidance and evidence boundaries |
 | Focus room & distractions | Frosted fullscreen room, shared countdown, immediate self-reported distraction records and exported history |
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
+| Recording evidence | Practice without completion, the recorded-work streak explanation, and separately confirmed checkpoint completion |
 | Opportunities | Optional application fields, saving a lead, moving its stage and finding the saved metadata |
 | Freelance research | A ten-lead fictional research set, filters, selecting five rows and copying a review brief |
 | Settings & backup / How data is stored | Example export/import, replacement warnings, and the real hosted-site device-transfer routine |
@@ -431,6 +490,36 @@ different states.** Logging through a daily action records that action; standalo
 mission evidence is not automatically linked back to a daily-plan row. The focus timer
 does not log work. Its session is tab-local, and the planned minutes are authored
 estimates, not measured learning time.
+
+### Recorded-work days and streaks
+
+Each mission page shows a **recorded-work streak** and **Work recorded today** or
+**No work recorded today**. Expand **How this is counted** for the rule:
+
+- Any saved progress/evidence entry or **any recall result** counts, including Partial
+  and Needs review. No checkpoint completion is required.
+- Dates come from those records' timestamps in the browser's **local calendar**.
+  Multiple records on one day count once, across current and archived roadmap versions.
+  Future calendar days are excluded. This is not a rolling 24-hour timer.
+- With work today, count consecutive days ending today. Without work today, yesterday's
+  consecutive streak is retained for today's grace period. If neither today nor yesterday
+  has a record, the streak is zero; a new record today starts again at one.
+- Browsing, settings, adoption, timer/distraction events, plan generation and personal
+  history do not count. An action contributes through its saved evidence, not merely
+  because it appeared in a plan.
+
+For example: a Monday note gives one day; Tuesday with no note still shows one day,
+but a dim border. Wednesday with no Tuesday/Wednesday record shows zero. Saving evidence
+on Wednesday starts a new one-day streak and brightens the mission dot. **No work recorded
+today** describes the tracker, not whether you worked elsewhere. Neither a streak nor
+a bright border proves mastery. Roadmap completion counts remain version-specific even
+though recorded-work days span versions.
+
+Implementation references: [`getMissionActivity`](../src/domain/missionActivity.ts#L19),
+[`MissionWorkStreak`](../src/MissionWorkStreak.tsx#L7),
+[`activityPresentation`](../src/graph/CareerOrbitVisuals.ts#L170),
+[`missionVisuals`](../src/missionVisuals.ts#L5), and
+[`OperationSourcesPage`](../src/SourcePanel.tsx#L78).
 
 ### Where the other information goes
 
@@ -495,7 +584,8 @@ tracking aid rather than an assessment.
 
 ## Persistence and changing machines
 
-There are **no user profiles, accounts, streak counters, or automatic cloud sync**.
+There are **no user profiles, accounts, or automatic cloud sync**. Mission recorded-work
+streaks are derived locally from the saved evidence and recall records, not a server account.
 Progress uses localStorage for the current browser and site origin (scheme, domain,
 and port), not a server account. Refreshing retains compatible data. This revision safely
 converts v1 storage to data format v2 while keeping its previous roadmap positions, evidence,
@@ -503,7 +593,8 @@ plans and history. The storage key remains compatible with existing installation
 
 Adopting a documented roadmap is a separate, confirmed action on its mission or Operation
 documents page. It archives the previous position and starts the new definition without
-inventing completion credit. Saved work remains visible by its original version. Future
+inventing completion credit, except for the verified unchanged DSA append prefix.
+Saved work remains visible by its original version. Future
 schema or roadmap changes require explicit migrations, not silent resets.
 
 To move devices or browsers, export a backup, transfer it privately, and import it

@@ -5,10 +5,11 @@ import {
   FileText, Layers3, Network, Rocket, Sparkles, Trophy, X,
 } from 'lucide-react';
 import type { EvidenceKind, Mission } from './domain/types';
+import { missionAccentStyle } from './missionVisuals';
 
 export function MissionIcon({ mission, size = 20 }: { mission: Mission; size?: number }) {
   const Icon = { code: Code2, layers: Layers3, rocket: Rocket, network: Network, compass: Compass, award: Award, cpu: BrainCircuit, trophy: Trophy }[mission.icon] ?? Blocks;
-  return <span className={`mission-icon ${mission.color}`}><Icon size={size} strokeWidth={1.7} /></span>;
+  return <span className={`mission-icon ${mission.color}`} style={missionAccentStyle(mission.id)}><Icon size={size} strokeWidth={1.7} /></span>;
 }
 
 export function Star({ className = '' }: { className?: string }) {

@@ -24,10 +24,23 @@ async function finish(page: Page, before: Awaited<ReturnType<typeof snapshot>>) 
   expect(await snapshot(page)).toEqual(before);
 }
 
-test('source adoption needs confirmation and never changes the real roadmap', async ({ page }) => {
+test('bulk preview cancels before per-mission adoption and never changes the real roadmap', async ({ page }) => {
   const before = await begin(page, 'sources');
+  await next(page, 'source-bulk-preview');
+  await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Adopt all documented roadmaps', exact: true }).click();
+  const review = page.locator('dialog.bulk-roadmap-modal[open]');
+  await expect(review.locator('.tutorial-panel')).toBeVisible();
+  await expect(review).toContainText('v1.0.0 → v3.0.0');
+  await expect(review).toContainText('No new checkpoint is marked complete');
+  await next(page, 'source-bulk-cancel');
+  await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await review.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(review).toHaveCount(0);
   await next(page, 'source-select-fabric');
   await page.locator('[data-tour="source-mission"]').selectOption('fabric');
+  await expect(page.locator('.source-heading')).toContainText('Active tracker v1.0.0');
+  await expect(page.locator('[data-tour="source-archive"]')).toHaveCount(0);
   await next(page, 'source-preview');
   await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
   await page.locator('[data-tour="source-preview"] > summary').click();
@@ -42,6 +55,40 @@ test('source adoption needs confirmation and never changes the real roadmap', as
   await next(page, 'source-archive');
   await page.locator('[data-tour="source-archive"] > summary').click();
   await expect(page.locator('[data-tour="source-archive"]')).toContainText('0/5 completed');
+  await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+  await finish(page, before);
+});
+
+test('checkpoint visibility lessons require hide and restore without changing real data', async ({ page }) => {
+  const before = await begin(page, 'career-graph');
+  await next(page, 'career-graph-orbits');
+  await next(page, 'career-graph-checkpoints-hide');
+  const nextButton = page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true });
+  await expect(nextButton).toBeDisabled();
+  await page.locator('[data-graph-panel-trigger="view"]').click();
+  const checkpoints = page.getByRole('checkbox', { name: 'Checkpoints', exact: true });
+  await expect(checkpoints).toBeChecked();
+  await checkpoints.uncheck();
+  await next(page, 'career-graph-checkpoints-show');
+  await expect(nextButton).toBeDisabled();
+  await checkpoints.check();
+  await next(page, 'career-graph-visibility');
+  await finish(page, before);
+});
+
+test('saved practice evidence explains a work day without requiring completion', async ({ page }) => {
+  const before = await begin(page, 'evidence');
+  await page.locator('[data-tour="record-evidence"]').click();
+  await next(page, 'evidence-save');
+  await page.locator('[data-tour="evidence-example"]').click();
+  await expect(page.locator('[data-tour="checkpoint-complete"]')).not.toBeChecked();
+  await page.locator('[data-tour="evidence-submit"]').click();
+  await next(page, 'evidence-activity');
+  const streak = page.locator('.mission-work-streak[data-mission-id="pattern"]');
+  await expect(streak).toHaveAttribute('data-worked-today', 'true');
+  await expect(streak).toHaveAttribute('data-work-streak', '1');
+  await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  await streak.locator('summary').click();
   await expect(page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
   await finish(page, before);
 });

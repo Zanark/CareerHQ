@@ -35,47 +35,57 @@ and the interface explains that it could not save the choice.
 
 CareerOS is a **career operating system**, not a general life-management operating system.
 The logo is an original orbital network around a luminous ivory core,
-using DeepSeaFoam seafoam, blue, violet and warm light. It replaces the earlier
+using blue, violet, orange and rose identity hues. It replaces the earlier
 interlocking-loop mark. Film-reference images are not used as application assets.
 
 [`src/assets/careerhq-mark.svg`](../src/assets/careerhq-mark.svg) is the single
 editable source for navigation, safe recovery and the favicon. Vite emits a
 content-hashed asset so updated tabs and the app use the same mark. It echoes the
-current graph: green, blue and orange orbital lanes, shaded planet-like nodes,
-a smaller muted gray inner orbit, and orange network connections behind an opaque
+current graph: blue, violet and orange orbital lanes, flat glowing dots with
+same-color circumference borders, a smaller rose inner orbit, and orange network connections behind an opaque
 ivory core. The deep-water tile and canonical DeepSeaFoam colors stay consistent in both themes;
-the surrounding wordmark follows the current theme's heading and muted roles.
+the surrounding wordmark follows the current theme's heading and muted roles. The logo is
+static artwork, not a display of today's workspace activity; its dots have no sphere lighting.
 
 The home graph is a real WebGL 3D scene with an original procedural core, meaningful
 data orbits, sparks and luminous depth. Its stage remains deep-water in both themes.
 The canvas-first layout uses a compact toolbar, a floating camera dock and bounded
 on-demand panels instead of permanent filter/list stacks. Controls keep their
 accessible names on small screens; graph-only sizing does not change other pages.
-Green work points mark recorded completion, orange unfinished work, and blue
-reference context. A mission hub summarizes that mission's saved checkpoint status;
-notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orange
+Bright green `#45D072` is reserved for **completed checkpoints**, including archived ones;
+orange marks unfinished checkpoints. Mission hubs keep their mission hue and records
+use their collection hue, even for a done daily action or past accomplishment.
+Names/status labels still explain those records; notes do not award mastery.
+Real connections use fine, glowing DeepSeaFoam orange
 `#F34B00` strokes; hovering bends their interiors away from the cursor without detaching
 their endpoints. The maximum push is 56 CSS pixels at the fitted view, tapering
 with the square root of relative camera distance as you zoom in.
 Nine mission orbits use the saved roadmap's stages and checkpoint statuses;
 six record/reference orbits show the appropriate collection groups and counts.
-Active mission rings retain their content hues and saved green/orange/reference
-checkpoint ticks. Background/planned mission rings, ticks and tethers use muted
-DeepSeaFoam gray `#657B83`, smaller near-core radii and no independent animation.
-The formerly gray Algorithm view uses DeepSeaFoam magenta `#D33682` when active.
-Gray indicates mission focus mode, not lost completion: work-node and inspector
-statuses retain their true recorded colors. Stage marks stay together as active rings turn.
+All fifteen rings have distinct nongreen identity hues from `src/missionVisuals.ts`.
+The nine mission hues match the Missions interface. Ring checkpoint ticks vary in intensity,
+not by repainting the ring green. Background/planned missions retain those hues on their
+rings, dots, ticks and tethers, but use smaller near-core radii and no independent animation.
+Focus mode controls placement and motion, not loss of color or saved completion.
+Stage marks stay together as active rings turn.
 Their moving anchors remain attached to genuine hubs or selected members by
 stretching membership tethers. These are derived views, excluded from work totals.
-Orbit identities are larger planet-like points with a solid shaded body and soft
-atmospheric edge (32 CSS pixels including the edge, 36 when selected). Selection
-retains the ring hue; quiet missions stay gray. Saved-status packets remain small.
+Orbit anchors are **flat glowing dots** with an even-color body and thicker same-color
+circumference border (32 CSS pixels including the edge, 36 when selected). No directional
+sphere lighting or planet shading remains. A mission border is bright after any saved
+evidence/progress or recall result today and dim otherwise; selection does not fabricate
+a worked day. The shader uses border strength 1 for worked today and 0.18 otherwise.
+Collection borders stay at 0.55 and make no mission-activity claim. Saved-status packets
+remain small and separate.
 Selection adds a brighter, thicker full-circumference glow in the ring's hue,
 including when a single stage/group is selected. It follows the real ring geometry,
 retains quiet-ring stillness, and respects Rings visibility and Clear center.
 Full-shell projection is the default; **Clear center** masks ring paths rather
 than their data anchors. **Rings** hides the orbit paths, anchors and tethers;
 **Sparks** independently hides the decorative particles. Both start enabled.
+**Checkpoints**, also on by default, hides tracked, archived and untracked curriculum
+checkpoint nodes without hiding mission hubs, records or rings. It preserves framing
+and is view-only; explicit reveal can restore this layer without enabling Sparks.
 Spark amount defaults to 50% of the previous budget: 900 desktop / 450 compact dots
 in the main view and 150 / 88 in focus (half of the odd 175-point budget rounds to 88).
 The main-view slider spans 0-100%; 100% restores the previous full budget.
@@ -90,6 +100,10 @@ Quiet mission rings remain fixed during the heartbeat, with tethers still attach
 to the displayed work nodes.
 Focus mode centers the camera on the core and removes viewport-dependent backdrop
 offsets, keeping the ripple source centered behind the frosted timer.
+Its graph is a fixed snapshot taken on opening. The shared local-date gate dims stale
+mission activity borders after midnight in both main and focus views, even while paused,
+without rebuilding the focus snapshot. Streaks describe recorded local-calendar work
+days, not attention, checkpoint completion or live telemetry.
 Glow and sparks remain decorative; orbit motion is not evidence of a connected AI
 or progress by itself. **Pause animation** is separate from camera orbit and inspection.
 Reduced motion starts paused, while direct pointer/keyboard navigation remains available.
@@ -102,30 +116,46 @@ The Three.js runtime is distributed with its [MIT notice](../public/licenses/Thr
 paper, reading ink, headings, controls and status colors. Layout and typography
 remain in `src/styles.css`. The switch owns its decorative animation separately.
 
-Canonical solids are copied without recoloring. Dark cards use the panel role;
+Canonical theme-role solids are copied without recoloring. Mission/collection identities
+use the separate application palette below, not a claim that every added identity hue is
+a canonical DeepSeaFoam token. Dark cards use the panel role;
 daylight cards use paper, distinct from structural sea-glass surfaces. Hero,
 north-star and guide panels deliberately remain inverse in both modes.
 
 ### The full accent palette
 
 The neutral workspace stays deep-water / warm-paper, but teal is not the only
-content color. `src/accents.css` carries the palette into visible headings,
+content color. `src/missionVisuals.ts` supplies the shared mission accents and graph
+collection identities; `missionAccentStyle` supplies the same mission `--accent` to UI
+components. `src/accents.css` carries those accents into visible headings,
 card borders, navigation identities, daily rows and roadmap stages, including
 when a workspace has zero completed checkpoints.
 
-| Content | Accent |
+| Mission / operation | Identity hue |
 | --- | --- |
-| System Design, overview navigation | Blue `#268BD2` |
-| Architecture, recall, focus timer | Violet `#6C71C4` |
-| Certifications, daily planning, encouragement | Yellow `#EBE565` |
-| Opportunities | Orange `#CB4B16` |
-| Service Fabric | Rose `#E84A5F` / daylight berry `#AD3E55` |
-| Saved-work navigation | Magenta `#D33682` |
-| DSA | Green document signal |
-| AI and freelance tracks | Seafoam |
+| DSA / Pattern Forge | Blue `#268BD2` |
+| System Design / System Forge | Violet `#6C71C4` |
+| Job Switch / Escape Velocity | Orange `#F34B00` |
+| Service Fabric / Fabric Core | Rose `#E84A5F` |
+| Architecture / Blueprint | Magenta `#D33682` |
+| Certifications / Credential Forge | Yellow `#EBE565` |
+| AI Engineering / Neural Edge | Cyan `#28B7C9` |
+| Competitive programming / Algorithm Forge | Lavender `#A989D8` |
+| Freelance / Side Income | Amber `#C89459` |
 
-Blue, orange, violet and magenta come from DeepSeaFoam's Solarized-heritage
-extension group. Colored ink is an explicit application adaptation: mix the
+| Graph collection | Identity hue |
+| --- | --- |
+| Daily work | Pink `#F4A6B8` |
+| Saved evidence | Sky blue `#85BADB` |
+| Applications | Copper `#D97938` |
+| Freelance leads | Silver `#C3CCD4` |
+| Past accomplishments | Orchid `#B65CBE` |
+| Untracked curriculum | Slate `#829AA6` |
+
+These stable identities do not depend on mission mode or completion. Silver/slate
+collection hues do not mean a mission is in the background. Navigation, timer,
+primary-action and semantic theme roles remain separate from graph identities.
+Colored ink is an explicit application adaptation: mix the
 identity color with the current heading ink (72% accent in dark mode, 28% in
 daylight). This keeps small labels readable instead of putting raw yellow or
 violet text on an unsuitable background. These derived inks and 9% paper washes
@@ -138,6 +168,12 @@ mission border is an identity, not an error. Errors retain their explicit
 messages and boundaries; color never replaces a name, status label, or icon.
 Primary actions, keyboard focus and tutorial glows stay seafoam for consistency.
 Print uses light paper and ink even when the on-screen theme is dark.
+
+Implementation references: [`MISSION_COLORS` / `COLLECTION_COLORS`](../src/missionVisuals.ts#L7),
+[`careerNodeColor`](../src/graph/careerGraphColors.ts#L4),
+[`flatDotFragment` / `activityPresentation`](../src/graph/CareerOrbitVisuals.ts#L110),
+[`shared logo`](../src/assets/careerhq-mark.svg#L38),
+[`theme roles`](../src/themes.css) and [`accent presentation`](../src/accents.css).
 
 These mappings are not a blanket accessibility certification. Check actual
 composited states, keyboard operation, responsive layouts and reduced motion.

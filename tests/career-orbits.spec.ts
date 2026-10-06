@@ -69,7 +69,7 @@ test('mission orbits inspect the exact saved roadmap and current checkpoint with
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 
-test('ring focus labels and gray presentation follow all mission modes without hiding recorded completion', async ({ page }) => {
+test('ring focus labels retain mission identity in every mode without hiding recorded completion', async ({ page }) => {
   const state = completeOne(createInitialState(false, '2.0.0'));
   state.missions.pattern.mode = 'background';
   const { raw, graph } = await open(page, state);
@@ -77,10 +77,10 @@ test('ring focus labels and gray presentation follow all mission modes without h
   await expect(cards.filter({ hasText: 'Active - colored outer ring' })).toHaveCount(2);
   const background = page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:pattern"]');
   await expect(background).toHaveAttribute('data-mission-mode', 'background');
-  await expect(background.locator('i')).toHaveCSS('background-color', 'rgb(101, 123, 131)');
+  await expect(background.locator('i')).toHaveCSS('background-color', 'rgb(38, 139, 210)');
   await expect(background).toContainText('Background - small stationary ring');
   const inspector = await inspect(page, graph.orbits.find(item => item.missionId === 'pattern')!);
-  await expect(inspector).toContainText('small gray stationary ring near the core');
+  await expect(inspector).toContainText('smaller stationary ring in its mission color near the core');
   await expect(inspector.getByRole('progressbar')).toHaveAttribute('value', '1');
   await expect(inspector.getByRole('button', { name: 'Record evidence', exact: true })).toBeDisabled();
   await inspector.locator('.career-orbit-member-details > summary').click();
@@ -88,7 +88,7 @@ test('ring focus labels and gray presentation follow all mission modes without h
   await expect(inspector.locator('.graph-status-tag.complete')).toHaveText('Recorded done');
   const planned = await inspect(page, graph.orbits.find(item => item.missionId === 'algorithm')!);
   await expect(planned).toHaveAttribute('data-mission-mode', 'planned');
-  await expect(planned).toContainText('Planned mission - small gray stationary ring');
+  await expect(planned).toContainText('Planned mission - smaller stationary ring in its mission color');
   const active = await inspect(page, graph.orbits.find(item => item.missionId === 'system')!);
   await expect(active).toHaveAttribute('data-mission-mode', 'active');
   await expect(active).toContainText('colored outer ring');
@@ -108,7 +108,7 @@ test('Bring into focus and Move to background update ring presentation without c
     const inspector = await inspect(page, fabric);
     await expect(inspector).toHaveAttribute('data-mission-mode', expectedMode);
     const card = page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:fabric"]');
-    await expect(card.locator('i')).toHaveCSS('background-color', expectedMode === 'active' ? 'rgb(232, 74, 95)' : 'rgb(101, 123, 131)');
+    await expect(card.locator('i')).toHaveCSS('background-color', 'rgb(232, 74, 95)');
     const after = JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!) as AppState;
     expect(after.missions.fabric).toEqual({ ...before.missions.fabric, mode: expectedMode });
     expect(after.focusMissionId).toBe(before.focusMissionId);

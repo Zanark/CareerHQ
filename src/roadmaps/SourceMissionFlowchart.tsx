@@ -7,6 +7,7 @@ import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
 import { checkpointLevels } from './roadmapGraph';
 import { packUnitForCheckpoint, packUnitHref } from '../domain/roadmapPacks/registry';
+import { missionAccentStyle } from '../missionVisuals';
 
 const completionEdges: DiagramEdge[] = [
   { from: 'rule-current', to: 'rule-decision' },
@@ -44,7 +45,7 @@ export function SourceMissionFlowchart({ mission, state, tutorialTarget = true }
     return result;
   }, [mission, checkpoints, completed]);
 
-  return <figure className={`mission-flowchart source-mission-flowchart ${mission.color}`} aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
+  return <figure className={`mission-flowchart source-mission-flowchart ${mission.color}`} style={missionAccentStyle(mission.id)} aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
     <figcaption><h3 id={titleId}>{mission.name} checkpoint flowchart</h3><p id={descriptionId}>Documented roadmap v{mission.roadmapVersion}. Stage topics and optional references are separate from tracked checkpoint completion.</p></figcaption>
     {!progress && <p className="source-preview-note">Preview only. No personal progress is assigned to this roadmap version.</p>}
     <details className="source-stage-tree">

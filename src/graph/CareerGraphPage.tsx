@@ -13,6 +13,7 @@ import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
 import { setCareerItemsVisible } from './careerVisibility';
 import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
+import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
 import './career-graph.css';
@@ -25,6 +26,7 @@ const kindLabels: Record<CareerGraphKind, string> = {
   history: 'Past accomplishment', curriculum: 'Untracked curriculum',
 };
 const recordKinds = new Set<CareerGraphKind>(['action', 'evidence', 'opportunity', 'freelance', 'history']);
+const checkpointKinds = new Set<CareerGraphKind>(['checkpoint', 'curriculum']);
 
 class GraphSceneBoundary extends Component<{ children: ReactNode; onFailure: () => void }, { failed: boolean }> {
   state = { failed: false };
@@ -64,6 +66,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const [scope, setScope] = useState('all');
   const [includeRecords, setIncludeRecords] = useState(true);
   const [includeReferences, setIncludeReferences] = useState(true);
+  const [includeCheckpoints, setIncludeCheckpoints] = useState(true);
   const [includeSharedSkills, setIncludeSharedSkills] = useState(true);
   const [includeRings, setIncludeRings] = useState(true);
   const [includeSparks, setIncludeSparks] = useState(true);
@@ -102,13 +105,14 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
       (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference')),
     [graph, scope, includeRecords, includeReferences]);
   const visible = useMemo(() => {
-    const nodes = framingNodes.filter(node => !hiddenIds.has(node.id));
+    const nodes = framingNodes.filter(node => !hiddenIds.has(node.id) &&
+      (includeCheckpoints || !checkpointKinds.has(node.kind)));
     const ids = new Set(nodes.map(node => node.id));
     const orbits = graph.orbits.filter(orbit => !hiddenIds.has(orbit.id) &&
       (scope === 'all' || orbit.kind !== 'mission' || orbit.missionId === scope));
     return { ...graph, nodes, orbits, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
       (includeSharedSkills || edge.kind !== 'shared-skill')) };
-  }, [graph, framingNodes, hiddenIds, scope, includeSharedSkills]);
+  }, [graph, framingNodes, hiddenIds, scope, includeSharedSkills, includeCheckpoints]);
   const visibleIds = useMemo(() => new Set(visible.nodes.map(node => node.id)), [visible.nodes]);
   const visibleOrbitIds = useMemo(() => new Set(includeRings ? visible.orbits.map(orbit => orbit.id) : []), [visible.orbits, includeRings]);
   const selected = visible.nodes.find(node => node.id === selectedId);
@@ -241,6 +245,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
 
   function inspectOrbitMember(node: CareerGraphNode) {
     changeVisibility([node.id], true);
+    if (checkpointKinds.has(node.kind)) setIncludeCheckpoints(true);
     if (!matchesScope(node, scope)) setScope('all');
     if (node.status === 'reference' && node.kind !== 'core' && node.kind !== 'mission') setIncludeReferences(true);
     if (recordKinds.has(node.kind)) setIncludeRecords(true);
@@ -268,6 +273,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     const ids = selectedSegment ? selectedSegment.members.map(member => member.nodeId) : selectedOrbit.memberIds;
     changeVisibility([selectedOrbit.id, selectedOrbit.hubNodeId, ...ids], true);
     const members = ids.map(id => nodeMap.get(id)!);
+    if (members.some(node => checkpointKinds.has(node.kind))) setIncludeCheckpoints(true);
     if (members.some(node => recordKinds.has(node.kind))) setIncludeRecords(true);
     if (members.some(node => node.status === 'reference')) setIncludeReferences(true);
     setIncludeRings(true);
@@ -330,7 +336,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
         <div className="career-graph-stage" data-tour="career-graph-stage">
           <GraphSceneBoundary onFailure={onSceneFailure}>
             <Suspense fallback={<div className="career-graph-loading" role="status">Loading the 3D career network...</div>}>
-              <CareerGraphScene ref={controls} graph={visible} framingNodes={framingNodes} selectedId={selected?.id ?? null} onSelect={selectNode}
+              <CareerGraphScene ref={controls} graph={visible} framingNodes={framingNodes} activityDate={date} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
                 rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} sparkDensity={sparkDensity} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
@@ -344,7 +350,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             {selected && <>
               <div className="career-graph-node-meta"><span>{kindLabels[selected.kind]}</span>
                 <button type="button" className="icon-button" aria-label="Close node details" onClick={() => setSelectedId(null)}><X size={17} /></button></div>
-              <span className={`graph-status-tag ${selected.status}`}>{statusLabels[selected.status]}</span>
+              <span className={`graph-status-tag ${careerNodeStatusClass(selected)}`} style={{ borderColor: careerNodeColor(selected) }}>{statusLabels[selected.status]}</span>
               <h2>{selected.label}</h2><p className="career-graph-node-context">{selected.context}</p>
               <p className="career-graph-node-detail">{selected.detail}</p>
               {selected.current && <p className="career-graph-current"><Focus size={15} />Saved current checkpoint</p>}
@@ -389,6 +395,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                  <option value="all">Whole career</option>{missionNodes.map(node => <option key={node.id} value={node.missionId}>{node.label}</option>)}
                </select></label>
                <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
+               <label className="graph-checkbox" title="Show tracked, archived and untracked checkpoint nodes. Mission hubs, records and rings stay available."><input type="checkbox" checked={includeCheckpoints} onChange={event => setIncludeCheckpoints(event.target.checked)} />Checkpoints</label>
                <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
                <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
                <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
@@ -424,13 +431,13 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
              </div></details>
              <div className="career-graph-stage-footer">
                <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
-               <div className="career-graph-legend"><span>Work nodes:</span><span><i className="graph-status-complete" />Done</span><span><i className="graph-status-incomplete" />Unfinished</span><span><i className="graph-status-reference" />Reference</span></div>
+               <div className="career-graph-legend"><span>Checkpoint nodes:</span><span><i className="graph-status-complete" />Completed</span><span><i className="graph-status-incomplete" />Unfinished</span><span>Other nodes use mission / collection colors.</span></div>
                <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
-               <p className="career-graph-orbit-key">{visible.orbits.length} ring views · active missions: colored outer rings · background/planned: small, gray, stationary inner rings.</p>
+               <p className="career-graph-orbit-key">{visible.orbits.length} distinct ring colors · active missions: outer rings · background/planned: smaller stationary inner rings.</p>
              </div>
              <footer className="career-graph-footer">
                <p className="button-row"><a href="#/guide">Help &amp; glossary</a><a href="#/settings">Data &amp; backups</a></p>
-               <p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks, glow and the core heartbeat are visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p>
+               <p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize saved missions and record collections. Mission ring colors match Missions; a bright dot border means work was recorded today. Green is reserved for checkpoints marked complete, not automatic mastery. Tethers show real membership, not extra tasks. Clear center hides ring paths, not their data anchors. Sparks and the core heartbeat are visual atmosphere, not live AI activity.</p>
                <p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
              </footer>
             </div>
@@ -468,7 +475,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                  inspectFromList.current = true;
                  selectNode(node.id);
                }}>
-                 <i className={`graph-status-${node.status}`} /><span><strong>{node.label}</strong><small>{kindLabels[node.kind]} · {statusLabels[node.status]}{node.archived ? ' · Archived' : ''}</small></span>
+                 <i className={`graph-status-${careerNodeStatusClass(node)}`} style={{ backgroundColor: careerNodeColor(node) }} /><span><strong>{node.label}</strong><small>{kindLabels[node.kind]} · {statusLabels[node.status]}{node.archived ? ' · Archived' : ''}</small></span>
                  {node.status === 'complete' && <Check size={15} />}
                </button>)}
              </div>

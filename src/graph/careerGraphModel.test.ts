@@ -110,7 +110,7 @@ describe('Career OS graph: real saved progress', () => {
     expect(graph.nodes.filter(item => item.kind === 'evidence').every(item => item.status === 'reference')).toBe(true);
   });
 
-  it('marks a fully completed tracked mission green without counting its hub or evidence as tasks', () => {
+  it('marks a fully completed tracked mission complete without counting its hub or evidence as tasks', () => {
     let state = createInitialState(false, '2.0.0');
     const mission = getMission('pattern', state);
     for (let index = 0; index < mission.checkpoints.length; index += 1) state = saveEvidence(state);
@@ -332,7 +332,7 @@ describe('Career OS graph: private records are not invented mastery', () => {
 });
 
 describe('Career OS graph: daily work is distinct from checkpoint mastery', () => {
-  it('shows real today actions and turns completed practice green without completing its checkpoint', () => {
+  it('shows real today actions and records completed practice without completing its checkpoint', () => {
     let state = createInitialState(false);
     const today = localDate();
     state.plans[today] = generatePlan(state);
@@ -492,7 +492,14 @@ describe('Career OS graph: stable true 3D and trustworthy connections', () => {
     const after = buildCareerGraph(state);
     for (const item of before.nodes) expect(node(after, item.id).position).toEqual(item.position);
     vi.setSystemTime(new Date('2035-01-01T12:00:00Z'));
-    expect(buildCareerGraph(state)).toEqual(after);
+    const future = buildCareerGraph(state);
+    const withoutActivity = (graph: CareerGraph) => ({
+      ...graph, orbits: graph.orbits.map(({ activity: _activity, ...orbit }) => orbit),
+    });
+    expect(withoutActivity(future)).toEqual(withoutActivity(after));
+    expect(future.orbits.find(orbit => orbit.missionId === 'pattern')?.activity).toMatchObject({
+      asOfDate: '2035-01-01', workedToday: false, streak: 0,
+    });
     state = { ...state, evidence: [...state.evidence].reverse(), personalProof: [proof('new-proof'), ...state.personalProof] };
     const extended = buildCareerGraph(state);
     for (const item of after.nodes) expect(node(extended, item.id).position).toEqual(item.position);

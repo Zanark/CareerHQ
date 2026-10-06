@@ -771,6 +771,53 @@ export function upgradeRoadmap(state: AppState, missionId: MissionId): AppState 
   return parseState(next);
 }
 
+export interface RoadmapUpgrade {
+  readonly missionId: MissionId;
+  readonly name: string;
+  readonly fromVersion: RoadmapVersion;
+  readonly toVersion: RoadmapVersion;
+  readonly preservesProgress: boolean;
+}
+
+export interface RoadmapUpgradePreview {
+  readonly upgrades: readonly RoadmapUpgrade[];
+  /** In-memory confirmation guard only; never persist or display this workspace snapshot. */
+  readonly workspaceSignature: string;
+}
+
+/** Read-only preview; only the catalog's verified DSA append may retain current progress. */
+export function previewRoadmapUpgrades(state: AppState): RoadmapUpgradePreview {
+  const current = parseState(state);
+  return {
+    upgrades: missionIds.flatMap(missionId => {
+      const progress = current.missions[missionId];
+      const latest = getLatestMission(missionId);
+      if (progress.roadmapVersion === latest.roadmapVersion) return [];
+      const previous = getMissionVersion(missionId, progress.roadmapVersion);
+      return [{
+        missionId, name: latest.name, fromVersion: previous.roadmapVersion,
+        toVersion: latest.roadmapVersion, preservesProgress: isVerifiedAppend(latest, previous),
+      }];
+    }),
+    workspaceSignature: JSON.stringify(current),
+  };
+}
+
+/**
+ * Run inside one workspace commit. Every upgrade uses the single-mission rules;
+ * any stale confirmation or validation error discards the entire prospective result.
+ */
+export function upgradeAllRoadmaps(state: AppState, confirmed: RoadmapUpgradePreview): AppState {
+  let next = parseState(state);
+  const current = previewRoadmapUpgrades(next);
+  ensure(current.workspaceSignature === confirmed.workspaceSignature &&
+    JSON.stringify(current.upgrades) === JSON.stringify(confirmed.upgrades),
+  'The workspace changed since this roadmap preview. Review the roadmaps again before adopting.');
+  ensure(current.upgrades.length > 0, 'All documented roadmaps are already adopted.');
+  for (const upgrade of current.upgrades) next = upgradeRoadmap(next, upgrade.missionId);
+  return next;
+}
+
 /**
  * A read-only, self-reported spaced-repetition check-in: it can only reference a
  * checkpoint that already has learning evidence on the matching current or archived

@@ -3,6 +3,7 @@ import { getLatestMission, getMissionVersion, getMissions, recordRoadmapVersion 
 import { countCompletedCheckpoints, getSaveState } from './domain/engine';
 import type { AppState, DailyAction, MissionId } from './domain/types';
 import { MissionIcon, Progress, SectionTitle, statusLabels } from './components';
+import { missionAccentStyle } from './missionVisuals';
 
 export function Overview({ state, date, practice, onEvidence, onResume, onExport }: {
   state: AppState;
@@ -36,7 +37,7 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
           const mission = getMissionVersion(action.missionId, recordRoadmapVersion(action));
           const progress = state.missions[action.missionId];
           const unavailable = !!progress.blocker || progress.mode !== 'active' || progress.checkpointId !== action.checkpointId || progress.status === 'completed' || progress.roadmapVersion !== recordRoadmapVersion(action);
-          return <article className={`overview-action ${mission.color} ${action.completed ? 'is-complete' : ''}`} key={action.id}>
+          return <article className={`overview-action ${mission.color} ${action.completed ? 'is-complete' : ''}`} style={missionAccentStyle(mission.id)} key={action.id}>
             <MissionIcon mission={mission} size={18} />
             <div className="overview-row-content"><span>{mission.name}</span><h3>{action.title}</h3></div>
             <span className="overview-time"><Clock3 size={13} />{action.minutes}m</span>
@@ -53,10 +54,10 @@ export function Overview({ state, date, practice, onEvidence, onResume, onExport
         {visibleMissions.map(mission => {
           const save = getSaveState(mission, state);
           const progress = state.missions[mission.id];
-          return <article key={mission.id} className={`overview-checkpoint ${mission.color}`}>
+          return <article key={mission.id} className={`overview-checkpoint ${mission.color}`} style={missionAccentStyle(mission.id)}>
             <MissionIcon mission={mission} size={18} />
             <div className="overview-row-content"><h3>{mission.name}</h3><p>{save.checkpoint?.title}</p></div>
-            <div className={`overview-track-progress ${mission.color}`}><span>{save.completed}/{save.total} completed</span><Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} /></div>
+            <div className={`overview-track-progress ${mission.color}`} style={missionAccentStyle(mission.id)}><span>{save.completed}/{save.total} completed</span><Progress value={save.total ? save.completed / save.total * 100 : 0} label={`${mission.name} checkpoints`} /></div>
             <span className={`overview-status ${progress.blocker ? 'blocked' : ''}`}>{progress.blocker ? 'Blocked' : statusLabels[save.status]}</span>
             <button className="text-link" aria-label={`Resume ${mission.name}`} onClick={() => onResume(mission.id)}>Resume<ArrowRight size={14} /></button>
           </article>;

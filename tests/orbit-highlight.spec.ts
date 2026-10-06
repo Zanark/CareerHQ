@@ -34,15 +34,15 @@ async function capture(page: Page, scene: Locator) {
   });
 }
 
-function greenGains(before: Buffer, after: Buffer) {
+function blueGains(before: Buffer, after: Buffer) {
   const a = PNG.sync.read(before), b = PNG.sync.read(after);
   expect([b.width, b.height]).toEqual([a.width, a.height]);
   const quadrants = [0, 0, 0, 0];
   for (let y = 0; y < a.height; y++) for (let x = 0; x < a.width; x++) {
     const index = (y * a.width + x) * 4;
-    if (b.data[index + 1] > a.data[index + 1] + 35
-      && b.data[index + 1] > b.data[index] + 15
-      && b.data[index + 1] > b.data[index + 2] + 15) {
+    if (b.data[index + 2] > a.data[index + 2] + 35
+      && b.data[index + 2] > b.data[index] + 15
+      && b.data[index + 2] > b.data[index + 1] + 15) {
       quadrants[Number(x >= a.width / 2) + 2 * Number(y >= a.height / 2)]++;
     }
   }
@@ -62,7 +62,7 @@ test('selecting a card or stage visibly lights the whole ring without moving the
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
   const wholeTethers = Number(await scene.getAttribute('data-orbit-tether-count'));
   const whole = await capture(page, scene);
-  const wholeGain = greenGains(before, whole);
+  const wholeGain = blueGains(before, whole);
   expect(wholeGain.every(count => count > 80), `Full ring glow should reach all four quadrants: ${wholeGain}`).toBe(true);
   expect(wholeGain.reduce((sum, count) => sum + count, 0)).toBeGreaterThan(1000);
   const picker = inspector.getByRole('combobox', { name: 'Orbit stage or record group' });
@@ -72,7 +72,7 @@ test('selecting a card or stage visibly lights the whole ring without moving the
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', dsa);
   await expect.poll(async () => Number(await scene.getAttribute('data-orbit-tether-count'))).toBeLessThan(wholeTethers);
   const stageFrame = await capture(page, scene);
-  const stageGain = greenGains(before, stageFrame);
+  const stageGain = blueGains(before, stageFrame);
   expect(stageGain.every(count => count > 80), `Stage selection must not reduce glow to one arc: ${stageGain}`).toBe(true);
   await expect(scene).toHaveAttribute('data-animation-state', 'paused');
   await expect(scene).toHaveAttribute('data-view-revision', view!);

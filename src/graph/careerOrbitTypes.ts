@@ -1,5 +1,6 @@
 import type { MissionId, MissionMode, RoadmapVersion } from '../domain/types';
 import type { CareerGraphStatus } from './careerGraphModel';
+import type { MissionActivitySummary } from '../domain/missionActivity';
 
 export type CareerOrbitKind = 'mission' | 'action' | 'evidence' | 'opportunity' | 'freelance' | 'history' | 'curriculum';
 
@@ -30,6 +31,7 @@ export interface CareerOrbit {
   hubNodeId: string;
   missionId?: MissionId;
   missionMode?: MissionMode;
+  activity?: MissionActivitySummary;
   roadmapVersion?: RoadmapVersion;
   currentNodeId?: string;
   progress?: { completed: number; total: number };

@@ -5,6 +5,7 @@ import { Diagram } from './Diagram';
 import type { DiagramEdge } from './Diagram';
 import { getProgressForVersion } from '../domain/catalog';
 import { SourceMissionFlowchart } from './SourceMissionFlowchart';
+import { missionAccentStyle } from '../missionVisuals';
 
 interface FlowProps { mission: Mission; state: AppState; tutorialTarget?: boolean }
 const emptyCompleted: string[] = [];
@@ -42,7 +43,7 @@ function LegacyMissionFlowchart({ mission, state, tutorialTarget = true }: FlowP
 
   if (mission.planned) return <p className="diagram-pending">Roadmap pending. No checkpoints or prerequisite branches have been invented.</p>;
 
-  return <figure className={`mission-flowchart ${mission.color}`} aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
+  return <figure className={`mission-flowchart ${mission.color}`} style={missionAccentStyle(mission.id)} aria-labelledby={titleId} aria-describedby={descriptionId} data-tour={tutorialTarget ? 'mission-roadmap' : undefined}>
     <figcaption><h3 id={titleId}>{mission.name} checkpoint flowchart</h3><p id={descriptionId}>Follow the arrows downward. Evidence and confirmed criteria unlock the next milestone; otherwise, practice and return.</p></figcaption>
     <Diagram edges={edges} className="flow-canvas">
       <div className="flow-terminal" data-diagram-node="start">Start mission</div>

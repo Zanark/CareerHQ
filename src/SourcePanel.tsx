@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowRight, FileText, History, RefreshCw } from 'lucide-react';
 import { getCheckpoint, getLatestMission, getMission, getMissionVersion, missions } from './domain/catalog';
-import { upgradeRoadmap } from './domain/engine';
+import { previewRoadmapUpgrades, upgradeAllRoadmaps, upgradeRoadmap, type RoadmapUpgradePreview } from './domain/engine';
 import type { AppState, Mission, MissionId } from './domain/types';
-import { Badge, PageHeading } from './components';
+import { Badge, Modal, PageHeading } from './components';
 import { MissionFlowchart } from './roadmaps/MissionFlowchart';
 import { SYSTEM_CONCEPT_SOURCE } from './system/concepts';
 import { SYSTEM_PRACTICE_SOURCE } from './domain/operations/systemPracticeStudy';
 import { getPackOutline, packUnitHref } from './domain/roadmapPacks/registry';
+import { missionAccentStyle } from './missionVisuals';
 
 type Commit = (transform: (state: AppState) => AppState) => boolean;
 
@@ -31,7 +32,7 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
     setNotice(ok ? append ? 'Expanded roadmap appended. Existing HashMap progress is retained; new topics start unconfirmed. Refresh an untouched daily plan when ready.' : 'Documented roadmap adopted. Previous progress is preserved below; refresh an untouched daily plan when ready.' : 'Roadmap was not changed. Check the workspace warning.');
   }
 
-  return <section className={`source-panel ${latest.color}`} data-tour="operation-source">
+  return <section className={`source-panel ${latest.color}`} style={missionAccentStyle(latest.id)} data-tour="operation-source">
     <div className="source-heading"><FileText size={18} /><div><h3>Operation documents</h3><p>Documented roadmap v{latest.roadmapVersion} · Active tracker v{active.roadmapVersion}</p></div><Badge>{latest.coverage ?? 'documented'}</Badge></div>
     {pending && <div className="source-upgrade">
       <p>{append ? 'Full roadmap shows the complete expanded DSA curriculum, including BFS, DFS and DP. Append it to your saved HashMap tracker when ready; your current position and genuine completions stay.' : missionId === 'pattern' ? `Full roadmap shows all ${latest.checkpoints.length} checkpoints from the expanded PDF, including BFS, DFS and DP. Your saved tracker is still v${active.roadmapVersion}. Browsing the complete map does not change it; adoption is a separate confirmed action.` : 'Your saved position still uses the previous roadmap. Review the documented content before switching; no existing work will be silently reclassified.'}</p>
@@ -76,11 +77,45 @@ export function SourcePanel({ missionId, state, commit, expanded = false }: {
 
 export function OperationSourcesPage({ state, commit, initialSelection = 'pattern' }: { state: AppState; commit: Commit; initialSelection?: MissionId }) {
   const [selection, setSelection] = useState<MissionId>(initialSelection);
+  const [preview, setPreview] = useState<RoadmapUpgradePreview | null>(null);
+  const [notice, setNotice] = useState('');
+  const available = useMemo(() => previewRoadmapUpgrades(state), [state]);
   const mission: Mission = getLatestMission(selection);
+
+  function adoptAll() {
+    if (!preview) return;
+    const ok = commit(current => upgradeAllRoadmaps(current, preview));
+    setPreview(null);
+    setNotice(ok
+      ? 'All pending documented roadmaps were adopted together. Previous records and daily plans are preserved; no new work was marked complete.'
+      : 'No roadmaps were changed. Check the workspace warning, then review a fresh preview before trying again.');
+  }
+
   return <>
-    <PageHeading eyebrow="DOCUMENTED MATERIAL" title="Operation documents" description="Complete source-based curricula, exercises and supporting references. Your private progress stays on its saved version until you explicitly adopt an update."><a href="#/practice" className="button secondary">Practice libraries<ArrowRight size={15} /></a></PageHeading>
+    <PageHeading eyebrow="DOCUMENTED MATERIAL" title="Operation documents" description="Complete source-based curricula, exercises and supporting references. Your private progress stays on its saved version until you explicitly adopt an update."><div className="button-row source-page-actions"><button className="button primary" disabled={available.upgrades.length === 0} onClick={() => { setNotice(''); setPreview(available); }}><RefreshCw size={15} />Adopt all documented roadmaps</button><a href="#/practice" className="button secondary">Practice libraries<ArrowRight size={15} /></a></div></PageHeading>
+    <div className="source-bulk-status">
+      <p>{available.upgrades.length === 0 ? 'All documented roadmaps are already adopted.' : `${available.upgrades.length} roadmap ${available.upgrades.length === 1 ? 'update' : 'updates'} available. Review every change in one confirmation; individual adoption remains available below.`}</p>
+      {available.upgrades.length > 0 && <p>Recommended before adoption: <a className="text-link" href="#/settings">export a workspace backup in Settings<ArrowRight size={14} /></a>.</p>}
+      {notice && <p role="status">{notice}</p>}
+    </div>
     <div className="source-selector"><label>Mission<select data-tour="source-mission" value={selection} onChange={event => setSelection(event.target.value as MissionId)}>{missions.map(item => <option key={item.id} value={item.id}>{item.name} · {item.operation}</option>)}</select></label><a className="button secondary" href={`#/mission/${selection}`}>Open current tracker<ArrowRight size={15} /></a></div>
     <SourcePanel key={selection} missionId={selection} state={state} commit={commit} expanded />
     <MissionFlowchart key={`${selection}-latest`} mission={mission} state={state} tutorialTarget={false} />
+    {preview && <Modal title="Adopt all documented roadmaps?" eyebrow="REVIEW BEFORE ADOPTING" className="bulk-roadmap-modal" onClose={() => setPreview(null)} restoreFocus>
+      <div className="bulk-roadmap-body">
+        <p>{preview.upgrades.length} pending {preview.upgrades.length === 1 ? 'update' : 'updates'}. Already-current missions are unchanged.</p>
+        <p>Recommended: <a className="text-link" href="#/settings" onClick={() => setPreview(null)}>export a workspace backup in Settings<ArrowRight size={14} /></a> before adopting. Nothing is downloaded or adopted automatically.</p>
+        <ul className="bulk-roadmap-list">{preview.upgrades.map(upgrade => <li key={upgrade.missionId}>
+          <h3>{upgrade.name}</h3>
+          <p className="bulk-roadmap-versions">v{upgrade.fromVersion} → v{upgrade.toVersion}</p>
+          <p>{upgrade.preservesProgress
+            ? 'Verified DSA append: retain HashMap progress, evidence and blocker; archive the previous tracker. Keep the current position, or continue at the first new topic if the old track is complete. New topics start unconfirmed.'
+            : 'Archive previous progress and start the new tracker unconfirmed. No old completion is credited to different topics.'}</p>
+        </li>)}</ul>
+        <p>Daily plans, evidence, recalls, history, personal accomplishments and focus-session records stay intact. Your primary focus and active/background modes stay the same; a previously planned mission becomes background when its roadmap is available.</p>
+        <p>No new checkpoint is marked complete. Refresh an untouched daily plan separately when ready. If any update fails or the workspace changes, none of these updates will be saved.</p>
+      </div>
+      <div className="bulk-roadmap-actions"><button className="button secondary" onClick={() => setPreview(null)}>Cancel</button><button className="button primary" onClick={adoptAll}>Confirm all roadmaps</button></div>
+    </Modal>}
   </>;
 }

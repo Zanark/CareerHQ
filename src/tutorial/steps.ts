@@ -18,7 +18,7 @@ export interface TutorialStep {
   title: string;
   body: string;
   kind: StepKind;
-  /** data-tour values to search for, in priority order. First match wins. */
+  /** Named real-control targets, usually data-tour values, in priority order. */
   targets?: string[];
   /** Route to navigate to once, when this step becomes current. */
   route?: string;
@@ -33,6 +33,12 @@ export interface TutorialStep {
 export interface TutorialChapter {
   id: string;
   title: string;
+}
+
+export function graphCheckpointToggle(root: Document): HTMLInputElement | null {
+  const label = [...root.querySelectorAll<HTMLLabelElement>('[data-tour="career-graph-filters"] label')]
+    .find(candidate => candidate.textContent?.trim() === 'Checkpoints');
+  return label?.querySelector<HTMLInputElement>('input') ?? null;
 }
 
 export const chapters: TutorialChapter[] = [
@@ -72,13 +78,27 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-intro', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-summary'],
     title: 'Your career in a 3D view',
-    body: 'The graph fills the workspace. Green is recorded done, orange unfinished, and references are not extra tasks. Drag to rotate or scroll to zoom; the camera dock stays available. View, Rings, Nodes and Work open compact panels without moving the graph. Core heartbeat ripples every ten seconds. This is temporary practice data, not AI activity.',
+    body: 'The graph fills the workspace. Green marks completed checkpoints, including archived ones; orange marks unfinished checkpoints. Hubs and records keep their identity colors, not completion green. Drag to rotate or scroll to zoom. View, Rings, Nodes and Work open panels without moving the graph. The ten-second heartbeat is visual atmosphere, not AI activity.',
   },
   {
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-orbits'],
     title: 'Read the mission rings',
-    body: 'Rings opens nine saved missions and six record/reference views. Select a card to light its entire ring and open inspection. Active missions have colored moving outer rings; background/planned missions keep smaller gray stationary rings. View holds the Rings/Sparks switches and Spark amount, initially 50%. Stage selection keeps the whole ring highlighted; tethers show that group, not new prerequisites or completion credit.',
+    body: 'Rings has nine missions and six collections with distinct nongreen hues; mission colors match Missions. Select a card for its ring/stages. Flat glowing mission dots have thick same-color borders: bright after saved evidence/progress or any recall today, dim otherwise. Active missions revolve outside; background/planned stay smaller and still, but colored. Selection highlights the ring path; group tethers mean membership, not prerequisites. Collection borders claim no mission activity.',
+  },
+  {
+    id: 'career-graph-checkpoints-hide', chapter: 'career-graph', kind: 'action', route: 'home',
+    targets: ['career-graph-checkpoints'],
+    title: 'Hide the checkpoint layer',
+    body: 'Open View, then uncheck Checkpoints (on by default). This hides tracked, archived and untracked curriculum checkpoint nodes, not mission hubs, rings or work records. The framing stays stable and no work is deleted. Rings and Sparks have separate switches; Spark amount starts at 50%.',
+    checkUi: root => graphCheckpointToggle(root)?.checked === false,
+  },
+  {
+    id: 'career-graph-checkpoints-show', chapter: 'career-graph', kind: 'action', route: 'home',
+    targets: ['career-graph-checkpoints'],
+    title: 'Restore checkpoints for inspection',
+    body: 'Check Checkpoints again. Other mission, reference and individual visibility choices still apply. These settings last only while the graph page is open and never change your backup. Reveal and inspect or Reveal orbit and members may explicitly turn this layer on; neither turns Sparks on.',
+    checkUi: root => graphCheckpointToggle(root)?.checked === true,
   },
   {
     id: 'career-graph-visibility', chapter: 'career-graph', kind: 'explain', route: 'home',
@@ -117,7 +137,7 @@ export const steps: TutorialStep[] = [
     id: 'overview-missions', chapter: 'overview', kind: 'explain',
     targets: ['overview-missions', 'overview-summary'],
     title: 'Missions and checkpoints',
-    body: 'A mission is a career area, like DSA or system design. Each mission has an ordered list of checkpoints, which are small milestones. There are no accounts, logins, or streak counters here.',
+    body: 'A mission is a career area, like DSA or system design, with source-defined checkpoints. Its mission page also shows a recorded-work streak from saved evidence and recall, not an attention or mastery score. There are no accounts or logins.',
   },
   // Plan & focus
   {
@@ -183,7 +203,7 @@ export const steps: TutorialStep[] = [
     id: 'mission-list', chapter: 'mission', kind: 'explain', route: 'missions',
     targets: ['mission-list'],
     title: 'Find all learning areas',
-    body: 'Missions lists every area. Use In focus, Background, or Planned to filter it, then open a card for its checkpoint. All nine latest curricula are available; Planned can contain older forecast-only trackers until their updates are adopted.',
+    body: 'Missions lists every area using the same mission hues as the graph rings. Use In focus, Background, or Planned to filter it, then open a card for its checkpoint and recorded-work streak. All nine latest curricula are available; Planned can contain older forecast-only trackers until their updates are adopted.',
   },
   // Evidence
   {
@@ -197,8 +217,15 @@ export const steps: TutorialStep[] = [
     id: 'evidence-save', chapter: 'evidence', kind: 'action', command: 'open-evidence',
     targets: ['evidence-example', 'evidence-form', 'evidence-submit'],
     title: 'Record evidence without completing',
-    body: "Click Fill example (or write your own practice note), leave 'This checkpoint is complete' unchecked, then click Save evidence.",
+    body: "Click Fill example (or write your own practice note), leave 'This checkpoint is complete' unchecked, then click Save evidence. A saved note counts toward this mission's recorded-work day without completing the checkpoint; this example stays in practice only.",
     check: ({ state }) => state.evidence.length >= 1,
+  },
+  {
+    id: 'evidence-activity', chapter: 'evidence', kind: 'action', route: 'mission/pattern', command: 'close-dialogs',
+    targets: ['mission-work-streak'],
+    title: 'Read the recorded-work streak',
+    body: 'Expand How this is counted below the streak. Any evidence/progress or recall result counts, even without completion. Same-day records across editions count once using this browser’s local date; future calendar days are excluded. No record today keeps yesterday’s streak for today; no record on either day means zero. Timers, browsing, settings, adoption, plans and personal history do not count.',
+    checkUi: root => !!root.querySelector('.mission-work-streak[data-mission-id="pattern"] details[open]'),
   },
   {
     id: 'evidence-criteria', chapter: 'evidence', kind: 'explain', command: 'open-evidence',
@@ -241,7 +268,7 @@ export const steps: TutorialStep[] = [
     id: 'review-recall', chapter: 'review', kind: 'action', route: 'recall',
     targets: ['recall-outcome', 'recall-add'],
     title: 'Practice a recall check',
-    body: 'Click Record recall, choose Partial, then Save recall. Reviews track memory separately; they do not undo or grant checkpoint completion. Independent recall requires its self-checks and spaced reviews before Retained.',
+    body: 'Click Record recall, choose Partial, then Save recall. Any saved outcome, including Partial or Needs review, counts as a mission work day; multiple records today still count once. Recall never grants or undoes checkpoint completion. Independent recall requires its self-checks and spaced reviews before Retained.',
     check: ({ state }) => state.recalls.some(review => review.outcome === 'partial'),
   },
   {
@@ -312,7 +339,7 @@ export const steps: TutorialStep[] = [
   {
     id: 'focus-room-data', chapter: 'focus-room', kind: 'explain',
     targets: ['focus-room-count'], title: 'Keep the data, not a judgment',
-    body: 'The log can support later charts. It retains individual presses, pause/resume transitions and recorded session endings. Resetting the clock does not delete those reports, and timer completion does not award checkpoint mastery.',
+    body: 'The log retains presses, pause/resume transitions and session endings. Reset does not delete reports; timer activity never earns a mission work day or checkpoint completion. The backdrop is a fixed graph snapshot. At local midnight its old activity borders dim, even with Ambient motion off, without rebuilding the snapshot.',
   },
   {
     id: 'focus-room-close', chapter: 'focus-room', kind: 'action',

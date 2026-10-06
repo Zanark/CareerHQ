@@ -9,6 +9,7 @@ import {
   packUnitHref, roadmapPackOutlines,
 } from '../domain/roadmapPacks/registry';
 import type { PackMissionId, PackSection, PackUnit, RoadmapPack } from '../domain/roadmapPacks/types';
+import { missionAccentStyle } from '../missionVisuals';
 import './pack-practice.css';
 
 export function PackPracticeLink({ mission, checkpoint }: { mission: Mission; checkpoint?: Checkpoint }) {
@@ -45,7 +46,7 @@ function PracticeIndex() {
     <div className="pack-library-grid">
       {roadmapPackOutlines.map(pack => {
         const mission = getLatestMission(pack.missionId);
-        return <a key={pack.missionId} href={packUnitHref(pack.missionId)} className={`pack-library-card ${mission.color}`}>
+        return <a key={pack.missionId} href={packUnitHref(pack.missionId)} className={`pack-library-card ${mission.color}`} style={missionAccentStyle(mission.id)}>
           <MissionIcon mission={mission} /><h2>{mission.name}</h2><p>{pack.title}</p>
           <span>{pack.units.filter(unit => unit.role === 'checkpoint').length} checkpoints / {pack.exerciseCount} exercises</span>
           <span>{pack.pageCount}-page source<ArrowRight size={16} /></span>
@@ -96,7 +97,7 @@ function LoadedPractice({ state, missionId, entryId }: { state: AppState; missio
   const currentCheckpoint = unit?.role === 'checkpoint' && active.roadmapVersion === '3.0.0' &&
     state.missions[missionId].checkpointId === packCheckpointId(missionId, unit.id);
 
-  return <div className={`pack-practice-page ${mission.color}`} data-tour="pack-library">
+  return <div className={`pack-practice-page ${mission.color}`} style={missionAccentStyle(mission.id)} data-tour="pack-library">
     <PageHeading eyebrow={`${mission.operation.toUpperCase()} / COMPLETE PRACTICE`} title={`${mission.name} practice`}
       description={outline?.overview ?? mission.description}>
       <a className="button secondary" href={`#/mission/${missionId}`}>My saved tracker<ArrowRight size={15} /></a>

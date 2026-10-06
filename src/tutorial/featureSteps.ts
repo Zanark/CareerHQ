@@ -11,6 +11,20 @@ export const sourceSteps: TutorialStep[] = [
     body: 'The PDFs supply built-in curricula, detailed study notes and exercises, not imported achievements. This page shows their sources and scope. No PDF upload is needed. Our temporary Service Fabric example uses an older tracker so you can safely practice adoption.',
   },
   {
+    id: 'source-bulk-preview', chapter: 'sources', kind: 'action',
+    targets: ['source-bulk-preview'], title: 'Review the all-roadmaps option',
+    body: 'Click Adopt all documented roadmaps to open its review dialog, not to save. Read the version changes: only the verified DSA v2-to-v3 append carries its unchanged HashMap progress; other updates archive and start unconfirmed. Export a backup first in real use. We will cancel here to keep the separate Fabric adoption exercise. If all updates are already adopted, continue.',
+    checkUi: root => !!root.querySelector('dialog.bulk-roadmap-modal[open]') ||
+      root.querySelector<HTMLButtonElement>('.source-page-actions button')?.disabled === true,
+  },
+  {
+    id: 'source-bulk-cancel', chapter: 'sources', kind: 'action',
+    targets: ['source-bulk-cancel'], title: 'Cancel without changing any tracker',
+    body: 'Click Cancel, not Confirm all roadmaps. In real use, confirmation saves every pending update together or none if the workspace changed or validation/storage fails. Prior plans and records stay; active/background modes remain and a newly available planned mission becomes background, never automatically active. Cancel keeps our older practice tracker untouched.',
+    checkUi: root => !!root.querySelector('[data-tour="source-mission"]') &&
+      !root.querySelector('dialog.bulk-roadmap-modal[open]'),
+  },
+  {
     id: 'source-select-fabric', chapter: 'sources', kind: 'action',
     targets: ['source-mission'], title: 'Choose an operation',
     body: 'Choose Service Fabric / Fabric Core in Mission. Compare Documented roadmap with Active tracker. These can differ because an update never silently reclassifies your saved position.',

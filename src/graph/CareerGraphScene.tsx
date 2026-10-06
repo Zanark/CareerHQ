@@ -38,7 +38,8 @@ import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
 import { careerEdgeVertexShader, careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import { CareerOrbitVisuals, ORBIT_ANCHOR_DIAMETER, SELECTED_ORBIT_ANCHOR_DIAMETER } from './CareerOrbitVisuals';
-import type { OrbitAnchorInfo } from './CareerOrbitVisuals';
+import type { OrbitActivityPresentation, OrbitAnchorInfo } from './CareerOrbitVisuals';
+import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import { chooseCareerSceneHit, compactOrbitTooltip, showOrbitIdentityLabels } from './careerSceneInteraction';
 import type { CareerNodeScreenHit, CareerSceneHit } from './careerSceneInteraction';
@@ -62,6 +63,8 @@ export interface CareerGraphSceneHandle {
 
 export interface CareerGraphSceneProps {
   graph: CareerGraph;
+  /** Current workspace calendar date; updates snapshot activity borders without rebuilding the graph. */
+  activityDate?: string;
   /** Bounds before item-level hiding, so checkbox choices do not shift remaining orbits. */
   framingNodes?: readonly GraphNode[];
   selectedId: string | null;
@@ -95,11 +98,6 @@ interface SceneCallbacks {
   onStatusChange: (status: SceneStatus, message?: string) => void;
 }
 
-const STATUS_COLORS = {
-  complete: new Color('#45D072'),
-  incomplete: new Color('#F34B00'),
-  reference: new Color('#268BD2'),
-};
 const CORE_COLOR = new Color('#EEE8D5');
 // Every supplied relationship, including shared-skill, uses the same palette orange.
 const EDGE_COLOR = new Color('#F34B00');
@@ -248,7 +246,7 @@ function writePointGeometry(geometry: BufferGeometry, nodes: readonly GraphNode[
   const kinds = new Float32Array(nodes.length);
   nodes.forEach((node, index) => {
     positions.set(node.position, index * 3);
-    const color = selected ? CORE_COLOR : node.kind === 'core' ? CORE_COLOR : STATUS_COLORS[node.status];
+    const color = selected ? CORE_COLOR : new Color(careerNodeColor(node));
     color.toArray(colors, index * 3);
     sizes[index] = selected ? Math.max(14, nodeSize(node) * 1.85) : nodeSize(node);
     kinds[index] = node.kind === 'core' ? 3 : node.kind === 'mission' ? 2 : node.kind === 'evidence' || node.status === 'reference' ? 1 : 0;
@@ -258,6 +256,13 @@ function writePointGeometry(geometry: BufferGeometry, nodes: readonly GraphNode[
   geometry.setAttribute('aSize', new Float32BufferAttribute(sizes, 1));
   geometry.setAttribute('aKind', new Float32BufferAttribute(kinds, 1));
   geometry.computeBoundingSphere();
+}
+
+function writeActivityDiagnostics(element: HTMLElement, activity?: OrbitActivityPresentation): void {
+  element.dataset.workedToday = activity?.workedToday == null ? '' : String(activity.workedToday);
+  element.dataset.workStreak = activity?.streak == null ? '' : String(activity.streak);
+  element.dataset.activityAsOfDate = activity?.asOfDate ?? '';
+  element.dataset.activityBorderStrength = activity?.borderStrength.toFixed(2) ?? '';
 }
 
 function writeEdgeGeometry(
@@ -501,7 +506,7 @@ class CareerScene implements CareerGraphSceneHandle {
     const previous = this.graph;
     const pointsChanged = !previous || previous.nodes.length !== graph.nodes.length || graph.nodes.some((node, index) => {
       const before = previous.nodes[index];
-      return node.id !== before.id || node.kind !== before.kind || node.status !== before.status
+      return node.id !== before.id || node.kind !== before.kind || node.status !== before.status || node.missionId !== before.missionId
         || node.current !== before.current || node.position.some((value, axis) => value !== before.position[axis]);
     });
     const edgesChanged = pointsChanged || !previous || previous.edges.length !== graph.edges.length
@@ -678,12 +683,22 @@ class CareerScene implements CareerGraphSceneHandle {
     this.orbitMarker.dataset.orbitRevolving = revolving;
     this.orbitMarker.dataset.orbitMotionRunning = motionRunning;
     this.orbitMarker.dataset.orbitColor = orbit?.color ?? '';
+    writeActivityDiagnostics(this.orbitMarker, orbit ? this.orbits.getActivity(orbit.id) : undefined);
     for (const entry of this.orbitLabels) {
+      const activity = this.orbits.getActivity(entry.orbit.id);
       for (const marker of [entry.element, entry.diagnostic]) {
         marker.dataset.orbitRevolving = String(entry.motion.revolving);
         marker.dataset.orbitMotionRunning = String(entry.motion.revolving && this.orbitMotionAllowed);
+        writeActivityDiagnostics(marker, activity);
       }
     }
+  }
+
+  setActivityDate(date: string): void {
+    this.orbits.setActivityDate(date);
+    this.root.dataset.activityDate = this.canvas.dataset.activityDate = date;
+    this.updateSelectedOrbitDiagnostics();
+    this.requestFrame();
   }
 
   setMotion(autoRotate: boolean, animate: boolean, allowReducedMotion: boolean): void {
@@ -1295,7 +1310,7 @@ class CareerScene implements CareerGraphSceneHandle {
     if (!node || !visible) return;
     if (this.labelId !== node.id) {
       this.label.textContent = node.label;
-      this.label.dataset.status = node.status;
+      this.label.dataset.status = careerNodeStatusClass(node);
       this.labelId = node.id;
     }
     const labelWidth = Math.min(this.label.offsetWidth, this.width - 16);
@@ -1480,7 +1495,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, sparkDensity = DEFAULT_SPARK_DENSITY, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, activityDate, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, sparkDensity = DEFAULT_SPARK_DENSITY, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1556,6 +1571,7 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
     };
   }, [instructionsId, visualProfile]);
 
+  useEffect(() => { runtimeRef.current?.setActivityDate(activityDate ?? ''); }, [activityDate, visualProfile]);
   useEffect(() => { runtimeRef.current?.setGraph(graph, framingNodes); }, [graph, framingNodes, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSelection(selectedId); }, [selectedId, visualProfile]);
   const selectedOrbitId = selectedOrbit?.orbitId;

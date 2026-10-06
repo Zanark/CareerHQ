@@ -32,7 +32,7 @@ async function open(page: Page, profile: 'main' | 'focus') {
 }
 
 for (const profile of ['main', 'focus'] as const) {
-  test(`${profile}: active rings revolve while smaller gray mission rings stay fixed through the heartbeat`, async ({ page }, testInfo) => {
+  test(`${profile}: active rings revolve while smaller quiet mission rings stay fixed through the heartbeat`, async ({ page }, testInfo) => {
     const scene = await open(page, profile);
     await expect(scene).toHaveAttribute('data-camera-rotation-speed', profile === 'focus' ? '0.24' : '0.3');
     await expect(scene).toHaveAttribute('data-rings-visible', 'true');

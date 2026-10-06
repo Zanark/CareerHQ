@@ -12,6 +12,9 @@ plan as proof of capability.
 | `src/domain/types.ts` — `AppState` | Versioned runtime shape: progress, plans, evidence, history, readiness, opportunities. |
 | `src/domain/engine.ts` — `parseState` | Schema and cross-reference validation before accepting persisted or imported state. |
 | `src/domain/engine.ts` — `generatePlan`, `recordEvidence` | Capacity-bounded planning and evidence-gated, prerequisite-aware completion. |
+| `src/domain/engine.ts` — `previewRoadmapUpgrades`, `upgradeAllRoadmaps` | Exact-workspace confirmation preview and all-or-none adoption through the existing single-mission rules. |
+| `src/domain/missionActivity.ts` — `getMissionActivity`; `src/MissionWorkStreak.tsx` | Read-only local-calendar work days from evidence/recalls across editions, shown separately from mastery. |
+| `src/missionVisuals.ts` | Shared nine-mission/six-collection nongreen identity palette and the separate completed-checkpoint green. |
 | `src/useWorkspace.ts` — `useWorkspace` | Browser load/save, storage errors, date rollover, stale-tab detection, explicit replacement. |
 | `src/usePracticeWorkspace.ts` | Separate in-memory tutorial data using the same schema and domain operations, without storage writes. |
 | `src/tutorial/*` | Guided steps, state-derived completion gates, real-control highlighting and dialog-aware coaching. |
@@ -22,12 +25,13 @@ plan as proof of capability.
 | `operations/systemPractice*`, `src/system/SystemPractice.tsx` | The 72-module System v3 source progression, 15 read-only cases, complete practice prompts and diagnostics. Context links connect the separate concepts source without inventing case prerequisites. |
 | `src/domain/roadmapPacks/*`, `src/practice/*` | Typed outlines generate 377 new-edition checkpoints; seven lazy study chunks preserve 806 source units and 5,944 exercise occurrences. Reference/practice roles stay outside required checkpoint identity. |
 | `src/roadmaps/useMapViewport.ts` | Shared fit/zoom, pointer panning, focus/centering, resize measurement and lifecycle cleanup for both tracked and concept maps. |
-| `src/graph/*` | Read-only career graph model, stable 3D positions and Three.js rendering. Recorded statuses drive colors; context/archives are not silently promoted to current mastery. |
+| `src/graph/*` | Read-only career graph model, stable 3D positions and Three.js rendering. Mission/collection identities remain distinct; green is reserved for completed checkpoints, including archived ones. |
 | `src/graph/careerOrbitModel.ts`, `careerOrbitTypes.ts` | Fifteen derived data views: exact saved-mission stages and six record/reference collections. Membership reuses real graph IDs, never new task identities or completion gates. |
 | `src/domain/focusSession.ts`, focus operations in `engine.ts` | Optional, bounded focus-session event records, strict chronology/state/ID validation and conditional ownership checks before appending reports. |
 | `src/focus/*` | One tab-local controller shared by compact/fullscreen timers, immediately persisted self-reports, retained history, and an inert calm-profile 3D backdrop. |
 | `src/workspaceFile.ts` — `serializeWorkspace` | Identical compact JSON encoding for saved and exported state, with a shared 5 MiB UTF-8 limit also used by import. |
 | `src/App.tsx`, `src/pages.tsx`, `src/dialogs.tsx` | Hash navigation, views, accessible forms, and user-confirmed commands. |
+| `src/SourcePanel.tsx` — `OperationSourcesPage` | Native Modal for reviewing all pending roadmap versions before one confirmed commit; per-mission adoption stays separate. |
 | `vite.config.ts` | `/CareerOS/` asset base matching the renamed repository; Vite emits the static deployment into `dist`. |
 
 Large DSA problem references and System practice summaries are emitted into a
@@ -53,7 +57,7 @@ Selection restores the inspector without page scrolling. The page exposes a smal
 imperative panel handle so tutorial commands can reveal the real Work search before
 measuring or gating it, including direct jumps and Show this step.
 
-Mission progress includes only active saved-version checkpoints, not archived
+Mission progress includes only current saved-version checkpoints, not archived
 completions or latest-version previews. Collection membership follows the graph's
 record-inclusion rules, and collection groups do not get invented progress percentages.
 Orbits are not added to `nodes`, `edges` or completion statistics. Their separate
@@ -62,7 +66,12 @@ stay listed with explicit reveal actions instead of silently becoming "no record
 
 Mission orbits carry their saved `missionMode`: only `active` missions revolve
 outside the enclosing data sphere. Background/planned mission rings use smaller
-stable radii near the core, muted gray presentation and no independent animation.
+stable radii near the core and no independent animation, but retain their mission hue.
+`MISSION_COLORS` and `COLLECTION_COLORS` supply fifteen distinct nongreen ring identities;
+`missionAccentStyle` uses the same mission hue throughout the Missions UI.
+`careerNodeColor` reserves green for `kind === 'checkpoint' && status === 'complete'`,
+including archived checkpoints, not mission hubs, completed actions or personal history.
+Ring ticks represent member status through intensity in the ring hue, not completion green.
 The single `focusMissionId` does not override this mode. Six collection orbits retain
 their existing behavior. Work-node positions, statuses and membership stay unchanged.
 Full-shell projection is the default; Clear center masks orbit paths but not
@@ -71,6 +80,10 @@ The animation pause control is independent of inspection and camera manipulation
 Separate view-only Rings and Sparks switches control `CareerOrbitVisuals` and
 the `HolographicCore` particle object independently. Ring picking, labels, focus
 and explicit reveal follow only ring visibility; core glow is outside both switches.
+The default-on Checkpoints switch filters both `checkpoint` and `curriculum` node kinds,
+including completed archives, but not hubs, rings or records. Other scope, reference,
+record and individual-item filters still compose with it. Explicit node/ring-member
+reveal may re-enable Checkpoints without enabling Sparks.
 Spark density is a validated 0-100% view setting, default 50. It changes only the
 existing particle geometry's draw range; resizing preserves density and recomputes
 the appropriate profile/compact budget without reallocating or reseeding particles.
@@ -81,7 +94,7 @@ Per-item visibility is an in-memory set of existing node/orbit IDs, outside work
 data. Tri-state groups derive from the same set, including overlapping mission and
 collection membership. The full source catalog stays searchable; only the rendered
 node/orbit arrays and edges with two visible endpoints are filtered.
-`framingNodes` supplies the pre-item-filter bounds so checkbox choices do not shift
+`framingNodes` supplies bounds before the individual-item and Checkpoints filters so those choices do not shift
 remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
 visible core, not a framing-only node. One non-animated initial render may occur
 below the fold to finish initialization; subsequent offscreen frames stay suspended.
@@ -136,6 +149,68 @@ System and the seven expanded workbook editions therefore archive v1/v2 on expli
 adoption and start detailed modules unconfirmed. Case references are deliberately outside checkpoint identity,
 completion counts and evidence validation.
 
+### Reviewed bulk adoption
+
+[`OperationSourcesPage`](../src/SourcePanel.tsx#L78) derives a read-only
+[`previewRoadmapUpgrades`](../src/domain/engine.ts#L789) result: pending mission IDs,
+names, old/new versions, verified-append flags and a signature of the entire validated
+workspace. The signature remains in memory; it is neither displayed nor persisted.
+Opening **Adopt all documented roadmaps** sets this preview and opens the existing
+native `Modal`; Cancel/close discards it without a commit.
+
+**Confirm all roadmaps** calls `commit(current => upgradeAllRoadmaps(current, preview))`
+exactly once. [`upgradeAllRoadmaps`](../src/domain/engine.ts#L810) revalidates both the
+exact workspace signature and upgrade list, then runs `upgradeRoadmap` against successive
+prospective copies. An unrelated workspace change also invalidates the confirmation;
+the UI closes the stale preview and requires a fresh review.
+
+No intermediate result is saved. Archive collisions, schema/record limits or any
+upgrade failure reject the whole transform. `useWorkspace.replace` performs the normal
+stale-storage check, full validation and 5 MiB serialization check before its single
+`localStorage.setItem`; state is published only after that write succeeds. Thus storage
+failure also leaves no partially adopted set. This is application-level all-or-none
+behavior, not a new localStorage multi-writer transaction.
+
+Only the verified unchanged DSA v2→v3 prefix carries real progress; all other older
+definitions archive/reset without guessed equivalence. Already-current missions are
+untouched. Existing evidence, recalls, plans, history, personal proof and focus sessions
+retain their original records. Primary focus and active/background modes remain;
+previously planned missions with newly available curriculum become background rather
+than active. New checkpoints stay unconfirmed. Backup is recommended before either
+individual or bulk adoption; no automatic export or plan refresh is implied.
+
+### Recorded-work projection and date rollover
+
+[`getMissionActivity`](../src/domain/missionActivity.ts#L19) reads only `evidence` and
+`recalls`, selecting by mission ID across all roadmap versions. Each validated `createdAt`
+timestamp is converted to a browser-local calendar day and deduplicated in a set.
+Local date components are placed on a UTC day-number axis so daylight-saving transitions
+do not turn a consecutive day into a 23/25-hour gap. Future calendar days are excluded;
+slightly later timestamps on the same local day still belong to that day.
+
+Any evidence/progress entry and every recall outcome counts, without requiring checkpoint
+completion. The consecutive streak ends today if work exists today; otherwise it starts
+checking yesterday for a one-day grace period. If both days are absent it is zero.
+Browsing, settings, roadmap adoption, timer/distraction events, generated plans and
+personal-history records never enter this calculation. `MissionWorkStreak` renders the
+derived count and an explicit recorded-today/no-record-today label; there is no stored
+streak field, schema migration or mastery inference.
+
+`buildCareerOrbits` attaches the same summary, including `asOfDate`, to each mission
+orbit. [`CareerOrbitVisuals.activityPresentation`](../src/graph/CareerOrbitVisuals.ts#L170)
+uses it for a flat, same-color glowing dot: the thicker circumference border is bright
+only when `workedToday` belongs to the current supplied date, dim otherwise. Six
+collection dots retain a constant border and have no mission-work summary. Selecting
+a ring highlights the ring path separately; it cannot manufacture a bright work-today border.
+
+The existing workspace local-date state refreshes every 30 seconds, independently of
+animation. The main graph derives fresh activity from `[state, date]`.
+Both main and focus scenes also receive `activityDate`, whose `setActivityDate` updates
+border presentation and requests a frame even while paused. A stale snapshot's work-today
+claim is dimmed, not relabeled as fresh activity. The focus room keeps its original graph
+object until reopened; date rollover changes the presentation gate, not the snapshot,
+focus log or timer state.
+
 `defineOperation` defaults to v2 to preserve every original definition and accepts an
 explicit v3 for new books. Per-checkpoint citations override stage-level citations.
 `documentedPackMission` includes only source units marked `checkpoint`; practice and
@@ -183,6 +258,8 @@ the background on every press. Its focus profile uses the current full-shell geo
 and fine orange strokes, with subdued glow, fewer particles and slower but visible motion.
 Labels and picking stay disabled. Ambient motion is independent of the countdown;
 reduced motion starts it still and requires an explicit opt-in. Closing releases the scene.
+The separately supplied local-date gate still dims yesterday's activity borders while
+that snapshot and its camera remain fixed.
 
 ## Practice isolation
 
@@ -204,6 +281,14 @@ Coaching portals into an open native dialog so controls remain usable in the top
 Highlights follow actual controls, with state-derived Next gates and optional skips.
 No artificial user achievement is recorded to make a step pass. Exported practice files
 are explicitly labeled examples. Practice state itself is not saved across reloads.
+
+The 102-step, 23-chapter walkthrough keeps Fabric deliberately on v1 initially. Its
+bulk-update lesson opens the real review Modal and **cancels**, so the later individual
+adoption and archive exercise remains meaningful. Checkpoints lessons gate on the actual
+View checkbox in both directions; the work-streak lesson expands its actual explanation
+after saving practice evidence without completion. Tutorial target lookup can point first
+to the closed View panel's opener, then to Checkpoints, or to the native bulk dialog's
+Cancel button. These lessons do not need new app commands or automatic adoption.
 
 Tutorial cues share that portal: an animated opacity halo traces the current target,
 and a transform-animated pointing hand indicates buttons. They track scroll/resize

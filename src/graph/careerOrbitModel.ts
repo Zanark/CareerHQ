@@ -3,12 +3,9 @@ import { freelanceVerdicts, missionIds, opportunityStages } from '../domain/type
 import type { AppState, Mission, MissionProgress } from '../domain/types';
 import type { CareerGraphNode } from './careerGraphModel';
 import type { CareerOrbit, CareerOrbitSegment } from './careerOrbitTypes';
-
-// Match the canonical content hues in themes.css, not the legacy CSS class names.
-const colors: Readonly<Record<string, string>> = {
-  sage: '#45D072', blue: '#268BD2', amber: '#CB4B16', rose: '#E84A5F',
-  violet: '#6C71C4', sand: '#EBE565', magenta: '#D33682', teal: '#00A591', gray: '#586E75',
-};
+import { COLLECTION_COLORS, missionColor } from '../missionVisuals';
+import { getMissionActivity } from '../domain/missionActivity';
+import type { MissionActivitySummary } from '../domain/missionActivity';
 
 function members(nodes: readonly CareerGraphNode[]): CareerOrbitSegment['members'] {
   return nodes.map(node => ({ nodeId: node.id, status: node.status, current: node.current === true }));
@@ -24,6 +21,7 @@ function recordCount(count: number): string {
 
 function missionOrbit(
   mission: Mission, progress: MissionProgress, index: number, nodes: ReadonlyMap<string, CareerGraphNode>,
+  activity: MissionActivitySummary,
 ): CareerOrbit {
   const id = `orbit:mission:${mission.id}`;
   const href = `#/mission/${mission.id}`;
@@ -87,15 +85,13 @@ function missionOrbit(
   return {
     id, index, kind: 'mission', label: mission.name, href, hubNodeId: `mission:${mission.id}`,
     missionId: mission.id, missionMode: progress.mode, roadmapVersion: mission.roadmapVersion,
-    color: progress.mode === 'active'
-      ? mission.color === 'gray' ? colors.magenta : colors[mission.color] ?? colors.teal
-      : '#657B83',
+    color: missionColor(mission.id), activity,
     summary: ids.length ? `${completed}/${ids.length} checkpoints marked complete · ${context}` : 'No tracked checkpoints · reference only',
     detail: [
       `Saved ${mission.name} roadmap v${mission.roadmapVersion} · ${progress.mode} · ${progress.status}.`,
       progress.mode === 'active'
         ? 'Active mission: a colored outer ring that revolves while animation is enabled.'
-        : 'Background or planned mission: a smaller gray ring near the core, with no independent animation.',
+        : 'Background or planned mission: a smaller ring in its mission color near the core, with no independent animation.',
       ids.length
         ? `${completed} of ${ids.length} tracked checkpoints have user-recorded completion; this is not assessed mastery. ${context}.`
         : 'This saved definition is planned/reference material, with no tracked checkpoints or completion percentage.',
@@ -113,32 +109,32 @@ const collections: readonly {
   kind: CollectionKind; label: string; href: string; color: string; detail: string;
 }[] = [
   {
-    kind: 'action', label: 'Daily work', href: '#/plan', color: colors.sand,
+    kind: 'action', label: 'Daily work', href: '#/plan', color: COLLECTION_COLORS.action,
     detail: 'Today’s saved actions and completed actions from earlier days, grouped by recorded status. Future plans and unfinished past actions are outside this graph. Done actions are not checkpoint completion or assessed mastery.',
   },
   {
-    kind: 'evidence', label: 'Saved evidence', href: '#/evidence', color: colors.magenta,
+    kind: 'evidence', label: 'Saved evidence', href: '#/evidence', color: COLLECTION_COLORS.evidence,
     detail: 'Saved evidence grouped by its recorded mission, including records from older roadmap versions. These are supporting references, not an automatic mastery assessment or additional checkpoint credit.',
   },
   {
-    kind: 'opportunity', label: 'Applications', href: '#/pipeline', color: colors.amber,
+    kind: 'opportunity', label: 'Applications', href: '#/pipeline', color: COLLECTION_COLORS.opportunity,
     detail: 'Saved application pipeline records grouped by their actual stage. Accepted is a recorded outcome; Rejected and Withdrawn remain closed references. No stage is checkpoint credit or assessed mastery.',
   },
   {
-    kind: 'freelance', label: 'Freelance leads', href: '#/freelance', color: colors.teal,
+    kind: 'freelance', label: 'Freelance leads', href: '#/freelance', color: COLLECTION_COLORS.freelance,
     detail: 'Saved research leads grouped by their actual verdict. Ignore is a reference classification; every other verdict remains unfinished research. These records do not establish paid work, income or checkpoint completion.',
   },
   {
-    kind: 'history', label: 'Past accomplishments', href: '#/perspective', color: colors.sage,
+    kind: 'history', label: 'Past accomplishments', href: '#/perspective', color: COLLECTION_COLORS.history,
     detail: 'User-reviewed past accomplishment records, kept together without inferring dates, source credibility or current ability. Recorded past work grants no checkpoint credit and is not a current mastery assessment.',
   },
   {
-    kind: 'curriculum', label: 'Untracked curriculum', href: '#/sources', color: colors.violet,
+    kind: 'curriculum', label: 'Untracked curriculum', href: '#/sources', color: COLLECTION_COLORS.curriculum,
     detail: 'Latest curriculum checkpoint references not represented by the saved tracker or completed archives, grouped by mission. Browsing does not adopt a roadmap, add work or grant completion credit.',
   },
 ];
 
-/** Derive views from the full graph before display filters; never project dates or mutate saved state here. */
+/** Derive views before display filters; activity reads actual records without altering saved dates or state. */
 export function buildCareerOrbits(state: AppState, nodes: readonly CareerGraphNode[]): CareerOrbit[] {
   const byId = new Map(nodes.map(node => [node.id, node]));
   const byKind = new Map<CareerGraphNode['kind'], CareerGraphNode[]>();
@@ -148,7 +144,10 @@ export function buildCareerOrbits(state: AppState, nodes: readonly CareerGraphNo
     byKind.set(node.kind, group);
   }
   const missions = missionIds.map(id => getMission(id, state));
-  const orbits = missions.map((mission, index) => missionOrbit(mission, state.missions[mission.id], index, byId));
+  const now = new Date();
+  const orbits = missions.map((mission, index) => missionOrbit(
+    mission, state.missions[mission.id], index, byId, getMissionActivity(state, mission.id, now),
+  ));
   // These keys use the same kind + encoded raw ID namespace as the graph's recordNodeId.
   const opportunityStage = new Map(state.opportunities.map(record => [`opportunity:${encodeURIComponent(record.id)}`, record.stage]));
   const freelanceVerdict = new Map(state.freelanceOpportunities.map(record => [`freelance:${encodeURIComponent(record.id)}`, record.verdict]));
