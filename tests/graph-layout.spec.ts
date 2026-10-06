@@ -30,7 +30,8 @@ for (const viewport of [
     expect(bounds.y).toBeGreaterThanOrEqual(0);
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height + 1);
     await expect(page.locator('[data-graph-panel][data-open="true"]')).toHaveCount(0);
-    await expect(page.locator('.career-graph-page').getByRole('checkbox')).toHaveCount(0);
+    await expect(page.locator('.career-graph-page').getByRole('checkbox')).toHaveCount(1);
+    await expect(page.getByRole('checkbox', { name: 'Node labels', exact: true })).toBeInViewport({ ratio: 1 });
     for (const name of ['View options', 'Explore ring views', 'Choose visible nodes and rings', 'Find work',
       'Frame all', 'Zoom career graph in', 'Zoom career graph out', 'Resume animation', 'Full screen']) {
       await expect(page.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 });
