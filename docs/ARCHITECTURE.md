@@ -46,6 +46,13 @@ Multiple reasons for the same unordered pair share one edge. View filters may hi
 lines, but the collapsible connection inspector retains reasons and explicit reveal actions.
 
 `CareerGraph.orbits` is a read-only projection shared by home and the focus snapshot.
+The graph page uses a graph-only viewport flex layout, leaving other routes unchanged.
+View, Rings, Nodes and Work panels stay mounted but are hidden until requested;
+one panel overlays the canvas at a time without rebuilding the renderer or changing its bounds.
+Selection restores the inspector without page scrolling. The page exposes a small
+imperative panel handle so tutorial commands can reveal the real Work search before
+measuring or gating it, including direct jumps and Show this step.
+
 Mission progress includes only active saved-version checkpoints, not archived
 completions or latest-version previews. Collection membership follows the graph's
 record-inclusion rules, and collection groups do not get invented progress percentages.

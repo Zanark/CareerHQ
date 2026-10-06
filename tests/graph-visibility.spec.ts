@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate, parseState } from '../src/domain/engine';
 import { buildCareerGraph } from '../src/graph/careerGraphModel';
 import type { RoadmapVersion } from '../src/domain/types';
+import { closeGraphPanels, graphCheckbox, openGraphPanel, searchGraphNodes, setGraphCheckbox } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -29,9 +30,9 @@ async function open(page: Page, graphics = false, version: RoadmapVersion = '3.0
 }
 
 async function choices(page: Page) {
-  await page.getByRole('button', { name: 'Choose visible nodes and rings', exact: true }).click();
-  const panel = page.locator('.career-node-visibility');
-  await expect(panel).toHaveAttribute('open', '');
+  await openGraphPanel(page, 'visibility');
+  const panel = page.locator('[data-graph-panel="visibility"]');
+  await expect(panel).toHaveAttribute('data-open', 'true');
   return panel;
 }
 
@@ -55,8 +56,9 @@ test('groups and individual nodes are independent, searchable and reversible wit
   await checkbox.check();
   await expect(group).toHaveJSProperty('indeterminate', true);
   await expect(checkbox).toBeChecked();
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill(current.label);
+  await searchGraphNodes(page, current.label);
   await expect(page.locator('.career-graph-node-list > button')).toHaveCount(1);
+  await choices(page);
   await checkbox.uncheck();
   await expect(group).toHaveJSProperty('indeterminate', false);
   await expect(group).not.toBeChecked();
@@ -70,8 +72,8 @@ test('groups and individual nodes are independent, searchable and reversible wit
 
 test('individual choices distinguish another filter from a hidden choice and ring reveal restores only requested items', async ({ page }) => {
   const { raw, graph } = await open(page, false, '2.0.0');
-  await page.getByRole('checkbox', { name: 'References', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'References', false);
+  await setGraphCheckbox(page, 'Sparks', false);
   const panel = await choices(page);
   const reference = graph.nodes.find(node => node.kind === 'curriculum')!;
   const referenceChoice = await individual(panel, reference.id, reference.label, 'node');
@@ -79,16 +81,16 @@ test('individual choices distinguish another filter from a hidden choice and rin
   await expect(panel.locator(`[data-visibility-item="${reference.id}"]`)).toContainText('Hidden by another filter');
   await referenceChoice.uncheck();
   await referenceChoice.check();
-  await expect(page.getByRole('checkbox', { name: 'References', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'References')).not.toBeChecked();
   const ring = await individual(panel, 'orbit:mission:pattern', 'DSA', 'orbit');
   await ring.uncheck();
-  await page.locator('.career-orbit-index > summary').click();
-  await expect(panel).not.toHaveAttribute('open');
+  await openGraphPanel(page, 'rings');
+  await expect(panel).toHaveAttribute('data-open', 'false');
   await page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:pattern"]').click();
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
   await expect(inspector).toContainText('Rings are hidden');
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: 'Sparks', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Sparks')).not.toBeChecked();
   await choices(page);
   await expect(await individual(panel, 'orbit:mission:pattern', 'DSA', 'orbit')).toBeChecked();
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
@@ -96,7 +98,7 @@ test('individual choices distinguish another filter from a hidden choice and rin
 
 test('item hiding preserves remaining geometry and zoom, removes incident edges, and can hide or restore the core and every item', async ({ page }) => {
   const { raw, graph, scene } = await open(page, true);
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
   await page.getByRole('button', { name: 'Zoom career graph in', exact: true }).click();
   await expect.poll(async () => Number(await scene.getAttribute('data-cursor-offset'))).toBeLessThan(56);
   const zoom = await scene.getAttribute('data-cursor-offset');
@@ -113,7 +115,7 @@ test('item hiding preserves remaining geometry and zoom, removes incident edges,
   await expect(scene).toHaveAttribute('data-orbit-count', '14');
   await expect(scene).toHaveAttribute('data-orbit-data-radius', radius!);
   await expect(scene).toHaveAttribute('data-cursor-offset', zoom!);
-  expect(await quiet.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')])).toEqual(position);
+  await expect.poll(() => quiet.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')])).toEqual(position);
   await panel.getByRole('button', { name: 'Clear all items', exact: true }).click();
   for (const name of ['data-node-count', 'data-edge-count', 'data-orbit-count']) await expect(scene).toHaveAttribute(name, '0');
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'false');
@@ -139,8 +141,8 @@ test('item hiding preserves remaining geometry and zoom, removes incident edges,
 test('a hidden ring loses its glow and can be explicitly revealed without showing other hidden nodes or sparks', async ({ page }) => {
   const { raw, graph, scene } = await open(page, true);
   await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
-  await page.locator('.career-orbit-index > summary').click();
+  await setGraphCheckbox(page, 'Sparks', false);
+  await openGraphPanel(page, 'rings');
   await page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:pattern"]').click();
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
   const panel = await choices(page);
@@ -150,19 +152,19 @@ test('a hidden ring loses its glow and can be explicitly revealed without showin
   await expect(scene).toHaveAttribute('data-orbit-count', '14');
   const unrelated = graph.nodes.find(node => node.kind === 'checkpoint' && node.missionId === 'system')!;
   await (await individual(panel, unrelated.id, unrelated.label, 'node')).uncheck();
-  await panel.locator(':scope > summary').click();
+  await closeGraphPanels(page);
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', 'orbit:mission:pattern');
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
-  await expect(page.getByRole('checkbox', { name: 'Sparks', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Sparks')).not.toBeChecked();
   await choices(page);
   await expect(await individual(panel, unrelated.id, unrelated.label, 'node')).not.toBeChecked();
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 
 test('a below-the-fold graph initializes once, then keeps animation suspended until scrolled into view', async ({ page }) => {
-  await page.setViewportSize({ width: 568, height: 320 });
+  await page.setViewportSize({ width: 568, height: 50 });
   const { scene, raw } = await open(page, true);
   await expect(scene).toHaveAttribute('data-animation-state', 'suspended');
   const revision = await scene.getAttribute('data-animation-revision');
@@ -181,7 +183,9 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }
     await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
     await page.getByRole('button', { name: 'Full screen', exact: true }).click();
     const panel = await choices(page);
-    expect((await panel.boundingBox())!.height).toBeLessThanOrEqual(Math.min(viewport.height * .55, 480) + 2);
+    const box = (await panel.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
     await expect(panel.getByRole('checkbox', { name: 'Show CareerOS core group', exact: true })).toBeInViewport({ ratio: 1 });
     await panel.getByRole('button', { name: 'Clear all items', exact: true }).click();
     await panel.getByRole('button', { name: 'Select all items', exact: true }).click();
@@ -191,7 +195,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }
     await expect(ring).toBeInViewport({ ratio: 1 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('visibility-fullscreen.png') });
-    await panel.locator(':scope > summary').click();
+    await closeGraphPanels(page);
     await page.getByRole('button', { name: 'Exit full screen', exact: true }).click();
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
   });

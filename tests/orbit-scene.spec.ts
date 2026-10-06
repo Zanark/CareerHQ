@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { clickGraphOption, graphCheckbox, openGraphPanel, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -14,7 +15,7 @@ async function open(page: Page, paused = true) {
 }
 
 async function selectDsa(page: Page) {
-  await page.locator('.career-orbit-index > summary').click();
+  await openGraphPanel(page, 'rings');
   await page.locator('.career-orbit-list > button').filter({ has: page.getByText('DSA', { exact: true }) }).click();
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
   await expect(inspector).toHaveAttribute('data-orbit-id', orbitId);
@@ -62,19 +63,21 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }
     await open(page);
     await page.getByRole('button', { name: 'Full screen', exact: true }).click();
     await expect.poll(() => page.evaluate(() => document.fullscreenElement?.classList.contains('career-graph-stage-wrap'))).toBe(true);
-    await page.locator('.career-orbit-index > summary').click();
+    await openGraphPanel(page, 'rings');
     const index = page.locator('.career-orbit-index');
-    expect((await index.boundingBox())!.height).toBeLessThanOrEqual(viewport.height / 2 + 1);
+    const panelBounds = (await index.boundingBox())!;
+    expect(panelBounds.y).toBeGreaterThanOrEqual(0);
+    expect(panelBounds.y + panelBounds.height).toBeLessThanOrEqual(viewport.height);
     expect((await page.locator('.career-graph-stage').boundingBox())!.height).toBeGreaterThanOrEqual(159);
     await page.locator('.career-orbit-list > button').last().click();
-    await expect(index).not.toHaveAttribute('open');
+    await expect(index).toHaveAttribute('data-open', 'false');
     const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
     await expect(inspector).toBeVisible();
     await expect(inspector.getByRole('button', { name: 'Close orbit details', exact: true })).toBeInViewport({ ratio: 1 });
     expect((await page.locator('.career-graph-stage').boundingBox())!.height).toBeGreaterThanOrEqual(159);
     await testInfo.attach('compact-fullscreen-orbit', { body: await page.screenshot(), contentType: 'image/png' });
     await inspector.getByRole('button', { name: 'Close orbit details', exact: true }).click();
-    await page.locator('.career-orbit-index > summary').click();
+    await openGraphPanel(page, 'rings');
     await page.locator('.career-orbit-list > button').filter({ has: page.getByText('DSA', { exact: true }) }).click();
     await inspector.locator('.career-orbit-current').click();
     const nodeInspector = page.getByRole('complementary', { name: 'Selected career node', exact: true });
@@ -87,7 +90,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }
 
 test('orbit anchors keep revolving with attached tethers until animation is explicitly paused', async ({ page }) => {
   const scene = await open(page, false);
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
   await selectDsa(page);
   await expect(scene).toHaveAttribute('data-animation-state', 'running');
@@ -108,19 +111,19 @@ test('orbit anchors keep revolving with attached tethers until animation is expl
 test('ring visibility, mission scope and Clear center retain data identities and inspection', async ({ page }) => {
   const scene = await open(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
+  await setGraphScope(page, 'pattern');
   await expect(scene).toHaveAttribute('data-orbit-count', '7');
   const inspector = await selectDsa(page);
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Sparks', false);
   await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
   await expect(scene.locator('.career-graph-scene__selected-orbit-marker')).toHaveAttribute('data-screen-visible', 'true');
   await expect(page.getByRole('button', { name: 'Focus ring', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Clear center', exact: true }).click();
+  await clickGraphOption(page, 'Clear center');
   await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
   await expect(scene.locator('.career-graph-scene__selected-orbit-marker')).toHaveAttribute('data-screen-visible', 'true');
   const nodes = await scene.getAttribute('data-node-count');
   const edges = await scene.getAttribute('data-edge-count');
-  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Rings', false);
   await expect(scene).toHaveAttribute('data-rings-visible', 'false');
   await expect(scene.locator('.career-graph-scene__selected-orbit-marker')).toHaveAttribute('data-screen-visible', 'false');
   await expect(inspector).toContainText('Rings are hidden');
@@ -130,14 +133,14 @@ test('ring visibility, mission scope and Clear center retain data identities and
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(scene).toHaveAttribute('data-rings-visible', 'true');
   await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
-  await expect(page.getByRole('checkbox', { name: 'Sparks', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Sparks')).not.toBeChecked();
   await expect(scene).toHaveAttribute('data-selected-orbit-id', orbitId);
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
 
 test('recording through a mission orbit uses the existing criteria form and updates the same scene', async ({ page }) => {
   const scene = await open(page, false);
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
   const inspector = await selectDsa(page);
   const canvas = scene.locator('canvas');
   await canvas.evaluate(element => element.setAttribute('data-orbit-completion-canvas', 'original'));

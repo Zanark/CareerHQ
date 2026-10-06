@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PNG } from './png';
+import { openGraphPanel, setGraphCheckbox } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
@@ -13,8 +14,8 @@ for (const scale of [1, 2]) {
       const scene = page.locator('.career-graph-scene');
       await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
       const raw = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
-      await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
-      await page.locator('.career-orbit-index > summary').click();
+      await setGraphCheckbox(page, 'Sparks', false);
+      await openGraphPanel(page, 'rings');
       await page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:pattern"]').click();
       await page.getByRole('button', { name: 'Focus ring', exact: true }).click();
       const canvas = scene.locator('canvas');
@@ -36,7 +37,7 @@ for (const scale of [1, 2]) {
         return page.screenshot({ clip: { x: Math.floor(box.x + point.x - 20), y: Math.floor(box.y + point.y - 20), width: 40, height: 40 } });
       };
       const visible = await capture();
-      await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
+      await setGraphCheckbox(page, 'Rings', false);
       await expect(scene).toHaveAttribute('data-rings-visible', 'false');
       const hidden = await capture();
       const a = PNG.sync.read(visible), b = PNG.sync.read(hidden);
@@ -60,7 +61,7 @@ for (const scale of [1, 2]) {
       });
       expect(Math.max(...quadrants) - Math.min(...quadrants), 'The opaque body should have spherical light and shadow, not a flat disc').toBeGreaterThan(25);
       await testInfo.attach('planet-body', { body: visible, contentType: 'image/png' });
-      await page.getByRole('checkbox', { name: 'Rings', exact: true }).check();
+      await setGraphCheckbox(page, 'Rings', true);
       await expect(scene).toHaveAttribute('data-rings-visible', 'true');
       await canvas.scrollIntoViewIfNeeded();
       await canvas.click({ position: { x: point.x + 12, y: point.y } });

@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createInitialState, parseState } from '../src/domain/engine';
+import { openGraphPanel, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -78,10 +79,10 @@ for (const profile of ['main', 'focus'] as const) {
 
 test('a quiet inner ring remains pickable, inspectable and quiet after selection and filtering', async ({ page }) => {
   const scene = await open(page, 'main');
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
-  await page.getByLabel('Filter career graph by mission').selectOption('fabric');
+  await setGraphCheckbox(page, 'Auto-rotate', false);
+  await setGraphScope(page, 'fabric');
   await page.clock.runFor(100);
-  await page.locator('.career-orbit-index > summary').click();
+  await openGraphPanel(page, 'rings');
   await page.locator(`.career-orbit-list > button[data-orbit-id="${orbitId('fabric')}"]`).click();
   await page.clock.runFor(100);
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });

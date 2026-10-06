@@ -31,6 +31,7 @@ import { DsaLibrary, DsaPracticeLink } from './dsa/DsaLibrary';
 import { SystemConceptsPage } from './system/SystemConcepts';
 import { SystemPracticePage, SystemPracticeLink } from './system/SystemPractice';
 import { CareerGraphPage } from './graph/CareerGraphPage';
+import type { CareerGraphPageHandle } from './graph/CareerGraphPage';
 import { PackPracticePage, PackPracticeLink } from './practice/PackPractice';
 import { searchRoadmapPacks } from './domain/roadmapPacks/registry';
 import { useFocusSession } from './focus/useFocusSession';
@@ -110,6 +111,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const [opportunityDialog, setOpportunityDialog] = useState(false);
   const [fullRoadmapOpen, setFullRoadmapOpen] = useState(false);
   const focusRoom = useRef<FocusRoomHandle>(null);
+  const careerGraph = useRef<CareerGraphPageHandle>(null);
   const closeFullRoadmap = useCallback(() => setFullRoadmapOpen(false), []);
   const [exportCount, setExportCount] = useState(0);
   const [importCount, setImportCount] = useState(0);
@@ -123,6 +125,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const title = pageInfo?.label ?? selected?.name ?? 'Not found';
   const navigateTutorial = useCallback((target: string) => {
     focusRoom.current?.close();
+    careerGraph.current?.closePanels();
     setEvidenceDialog(null);
     setOpportunityDialog(false);
     setFullRoadmapOpen(false);
@@ -132,6 +135,8 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   }, []);
   const commandTutorial = useCallback((command: TutorialCommand) => {
     focusRoom.current?.close();
+    if (command === 'open-graph-search') careerGraph.current?.openPanel('work');
+    else careerGraph.current?.closePanels();
     setFullRoadmapOpen(command === 'open-roadmap');
     if (command === 'open-evidence') { setOpportunityDialog(false); setEvidenceDialog({ missionId: 'pattern' }); }
     else if (command === 'open-opportunity') { setEvidenceDialog(null); setOpportunityDialog(true); }
@@ -232,13 +237,13 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
           {query && <div className="search-results"><span className="eyebrow">MISSIONS, WORK & CURRICULUM</span>{searchResults.length ? searchResults.map(item => <a key={item.route} href={`#/${item.route}`}><span>{item.label}<small>{item.detail}</small></span><ArrowUpRight size={14} /></a>) : <p>No matches. Try a mission, topic or artifact title.</p>}<button className="text-button" onClick={() => setQuery('')}>Close search</button></div>}
         </div><ThemeToggle appearance={appearance} /><button className="tutorial-launch" onClick={onStartTutorial} aria-label={practice ? 'Restart tutorial' : 'Start tutorial'} title="Interactive tutorial"><CircleHelp size={17} /><span>Tutorial</span></button></div>
       </header>
-      <main id="main-content" className={`page-content ${selected?.color ?? pageInfo?.color ?? 'teal'}`} ref={headingRef} tabIndex={-1}>
+      <main id="main-content" className={`page-content ${selected?.color ?? pageInfo?.color ?? 'teal'}${page === 'home' ? ' career-graph-content' : ''}`} ref={headingRef} tabIndex={-1}>
         {appearance.notice && <div className="alert" role="status"><span>{appearance.notice}</span><button className="icon-button" aria-label="Dismiss theme notice" onClick={appearance.dismissNotice}><X size={17} /></button></div>}
         {workspace.conflict && <div className="alert error" role="alert"><span>This workspace changed in another tab. Reload to avoid overwriting newer work.</span><button onClick={() => location.reload()} className="button secondary">Reload</button></div>}
         {workspace.error && <div className="alert error" role="alert"><span>{workspace.error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => workspace.setError('')}><X size={17} /></button></div>}
         {practice && <div className="tutorial-practice-banner"><strong>Practice tutorial</strong><span>Temporary data. Your real progress is untouched.</span><button onClick={onExitTutorial}>Exit tutorial</button></div>}
         {state.sampleData && !practice && <div className="sample-banner"><span>Includes example data.</span><a href="#/settings">Start fresh <ArrowRight size={14} /></a></div>}
-        {page === 'home' && <CareerGraphPage state={state} practice={practice} date={date} onRecord={id => openEvidence(id)} />}
+        {page === 'home' && <CareerGraphPage ref={careerGraph} state={state} practice={practice} date={date} onRecord={id => openEvidence(id)} />}
         {page === 'perspective' && <Perspective state={state} practice={practice} commit={commit} />}
         {page === 'dsa' && <DsaLibrary key={route} state={state} sectionNumber={route.split('/')[1]} />}
         {page === 'system-concepts' && <SystemConceptsPage key={route} groupId={route.split('/')[1]} />}
@@ -270,7 +275,7 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
         {page === 'settings' && <DataPage state={state} commit={commit} onExport={exportBackup} onReplace={next => workspace.replace(next)} notify={setToast} practice={practice} onImported={() => setImportCount(count => count + 1)} />}
         {page === 'guide' && <GuidePage onStartTutorial={onStartTutorial} />}
         {(!['home', 'perspective', 'dsa', 'system-concepts', 'system-practice', 'practice', 'hq', 'missions', 'mission', 'roadmap', 'plan', 'evidence', 'history', 'pipeline', 'readiness', 'freelance', 'recall', 'sources', 'settings', 'guide'].includes(page) || (page === 'mission' && !selected)) && <Empty title="This page isn’t on the map."><a href="#/hq">Return to HQ overview</a></Empty>}
-        <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>
+        {page !== 'home' && <footer className="page-footer"><a href="#/guide">Help & glossary</a><a href="#/settings">Data & backups</a></footer>}
       </main>
     </div>
     {toast && <div className="toast" role="status"><Check size={17} />{toast}<button aria-label="Dismiss notification" className="icon-button" onClick={() => setToast('')}><X size={14} /></button></div>}

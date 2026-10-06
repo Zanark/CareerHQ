@@ -46,6 +46,9 @@ the surrounding wordmark follows the current theme's heading and muted roles.
 
 The home graph is a real WebGL 3D scene with an original procedural core, meaningful
 data orbits, sparks and luminous depth. Its stage remains deep-water in both themes.
+The canvas-first layout uses a compact toolbar, a floating camera dock and bounded
+on-demand panels instead of permanent filter/list stacks. Controls keep their
+accessible names on small screens; graph-only sizing does not change other pages.
 Green work points mark recorded completion, orange unfinished work, and blue
 reference context. A mission hub summarizes that mission's saved checkpoint status;
 notes do not award mastery. Real connections use fine, glowing DeepSeaFoam orange

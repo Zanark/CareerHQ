@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate, recordEvidence } from '../src/domain/engine';
 import type { AppState } from '../src/domain/types';
+import { graphCheckbox, openGraphPanel, searchGraphNodes, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -10,7 +11,7 @@ async function ready(page: Page) {
   const pause = page.getByRole('button', { name: 'Pause animation', exact: true });
   if (await pause.count()) await pause.click();
   await expect(page.locator('.career-graph-scene')).toHaveAttribute('data-animation-state', 'paused');
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
 }
 
 async function seed(page: Page, state: AppState) {
@@ -23,7 +24,7 @@ async function seed(page: Page, state: AppState) {
 }
 
 async function selectNamedNode(page: Page, name: string) {
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill(name);
+  await searchGraphNodes(page, name);
   const button = page.locator('.career-graph-node-list > button').filter({ hasText: name }).first();
   await button.click();
   await expect(button).toHaveAttribute('aria-pressed', 'true');
@@ -49,6 +50,7 @@ test('home is a genuine WebGL2 career network with default orange work, and Over
   await selectNamedNode(page, 'HashMap Fundamentals');
   await expect(page.locator('.career-graph-inspector .graph-status-tag')).toHaveText('Not marked complete');
   await expect(page.locator('.career-graph-node-list .graph-status-incomplete')).not.toHaveCount(0);
+  await openGraphPanel(page, 'view');
   await page.getByRole('link', { name: 'Open Overview', exact: true }).click();
   await expect(page).toHaveURL(/#\/hq$/);
   await expect(page.getByRole('heading', { name: 'Overview', exact: true, level: 1 })).toBeVisible();
@@ -155,14 +157,15 @@ test('mission and reference filters preserve actual progress and keep all visibl
   await ready(page);
   await expect(page.locator('.career-graph-update')).toContainText('Expanded roadmaps are available');
   const originalNodes = Number(await page.locator('.career-graph-scene').getAttribute('data-node-count'));
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
+  await setGraphScope(page, 'pattern');
   await expect.poll(async () => Number(await page.locator('.career-graph-scene').getAttribute('data-node-count'))).toBeLessThan(originalNodes);
   await selectNamedNode(page, 'DFS');
   await expect(page.locator('.career-graph-inspector .graph-status-tag')).toHaveText('Reference');
   await expect(page.locator('.career-graph-inspector .career-graph-node-context')).toContainText('not tracked');
-  await page.getByRole('checkbox', { name: 'References', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'References', false);
+  await openGraphPanel(page, 'work');
   await expect(page.locator('.career-graph-empty')).toBeVisible();
-  await page.getByLabel('Search career graph nodes').fill('');
+  await searchGraphNodes(page, '');
   await expect(page.locator('.career-graph-summary')).toContainText('0 / 5');
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
@@ -189,7 +192,7 @@ test('reduced motion stops automatic orbit while keyboard rotation remains avail
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./');
   await ready(page);
-  await expect(page.getByRole('checkbox', { name: 'Auto-rotate', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Auto-rotate')).not.toBeChecked();
   const canvas = page.locator('.career-graph-stage canvas');
   const before = await canvas.getAttribute('data-view-revision');
   await page.waitForTimeout(350);
@@ -211,6 +214,7 @@ test('leaving the graph releases its WebGL context and reopening preserves works
       return element.getContext('webgl2')!;
     });
     expect(await context.evaluate(gl => gl.isContextLost())).toBe(false);
+    await openGraphPanel(page, 'view');
     await page.getByRole('link', { name: 'Open Overview', exact: true }).click();
     await expect(page).toHaveURL(/#\/hq$/);
     await expect(page.getByRole('heading', { name: 'Overview', level: 1, exact: true })).toBeVisible();
@@ -270,6 +274,7 @@ test('AI briefs require a click, use only the clipboard, and report clipboard de
   }));
   await page.goto('./');
   await expect(page.locator('html')).not.toHaveAttribute('data-graph-copied');
+  await openGraphPanel(page, 'view');
   await page.getByRole('button', { name: 'Copy brief for AI', exact: true }).click();
   expect(await page.locator('html').getAttribute('data-graph-copied')).toContain('Current saved checkpoints: 0/497');
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {

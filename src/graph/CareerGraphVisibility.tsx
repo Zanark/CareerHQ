@@ -22,15 +22,14 @@ function VisibilityGroupCheckbox({ label, checked, mixed, disabled, describedBy,
     onChange={event => onChange(event.target.checked)} />;
 }
 
-export const CareerGraphVisibility = forwardRef<HTMLDetailsElement, {
+export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
   graph: CareerGraph;
   hiddenIds: ReadonlySet<string>;
   visibleNodeIds: ReadonlySet<string>;
   visibleOrbitIds: ReadonlySet<string>;
   kindLabels: Readonly<Record<CareerGraphKind, string>>;
   onChange: (ids: readonly string[], visible: boolean) => void;
-  onOpen?: () => void;
-}>(function CareerGraphVisibility({ graph, hiddenIds, visibleNodeIds, visibleOrbitIds, kindLabels, onChange, onOpen }, ref) {
+}>(function CareerGraphVisibility({ graph, hiddenIds, visibleNodeIds, visibleOrbitIds, kindLabels, onChange }, ref) {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
   const [limit, setLimit] = useState(40);
@@ -60,9 +59,7 @@ export const CareerGraphVisibility = forwardRef<HTMLDetailsElement, {
   const selection = getCareerVisibilitySelection(allIds, hiddenIds);
   const visibleWorkCount = items.filter(item => item.type === 'node' && item.kind !== 'core' && visibleNodeIds.has(item.id)).length;
   const visibleRingCount = items.filter(item => item.type === 'orbit' && visibleOrbitIds.has(item.id)).length;
-  return <details ref={ref} className="career-node-visibility" data-tour="career-graph-visibility"
-    onToggle={event => { if (event.target === event.currentTarget && event.currentTarget.open) onOpen?.(); }}>
-    <summary>Choose visible nodes &amp; rings</summary>
+  return <div ref={ref} className="career-node-visibility">
     <p id={descriptionId}>View only - your saved work is unchanged.</p>
     <p className="career-visibility-counts" role="status">
       <span>{visibleWorkCount} work nodes · {visibleRingCount} rings</span>
@@ -121,8 +118,8 @@ export const CareerGraphVisibility = forwardRef<HTMLDetailsElement, {
     <details className="career-visibility-help">
       <summary>How visibility works</summary>
       <p>Groups select their current nodes and ring together; individual choices can leave a group partly selected. Shared items update across groups.</p>
-      <p>Choices combine with the mission and layer filters above. Counts are choices, not completion. New items start chosen; Sparks are controlled separately above.</p>
+      <p>Choices combine with the mission and layer filters in View options. Counts are choices, not completion. New items start chosen; Sparks are controlled separately in View options.</p>
       <p>These choices last only while this graph page is open. Nothing is deleted from your workspace or backups.</p>
     </details>
-  </details>;
+  </div>;
 });

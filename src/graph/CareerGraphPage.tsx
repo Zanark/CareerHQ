@@ -1,8 +1,8 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Component, forwardRef, lazy, Suspense, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Check, ClipboardCopy, Focus,
-  Expand, Maximize2, Minimize2, Minus, Network, Pause, Play, Plus, Search, X,
+  CircleDot, Expand, ListChecks, Maximize2, Minimize2, Minus, Network, Pause, Play, Plus, Search, Settings2, X,
 } from 'lucide-react';
 import type { AppState, MissionId } from '../domain/types';
 import { getMissions } from '../domain/catalog';
@@ -37,7 +37,7 @@ class GraphSceneBoundary extends Component<{ children: ReactNode; onFailure: () 
     if (!this.state.failed) return this.props.children;
     return <div className="career-graph-unavailable" role="alert">
       <strong>The 3D view could not load.</strong>
-      <p>Your records and ring views are still available in the indexes below. Reload the page to retry; this does not clear saved data.</p>
+      <p>Your records and ring views are still available in Find work and Explore ring views. Reload the page to retry; this does not clear saved data.</p>
       <button className="button secondary" onClick={() => location.reload()}>Reload 3D view</button>
     </div>;
   }
@@ -47,9 +47,19 @@ function matchesScope(node: CareerGraphNode, scope: string) {
   return scope === 'all' || node.kind === 'core' || node.missionId === scope;
 }
 
-export function CareerGraphPage({ state, practice, date, onRecord }: {
+export type CareerGraphPanel = 'view' | 'rings' | 'visibility' | 'work';
+export interface CareerGraphPageHandle {
+  openPanel: (panel: CareerGraphPanel) => void;
+  closePanels: () => void;
+}
+
+const panelNames: Record<CareerGraphPanel, string> = {
+  view: 'View options', rings: 'Explore ring views', visibility: 'Choose visible nodes and rings', work: 'Find work',
+};
+
+export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   state: AppState; practice: boolean; date: string; onRecord: (missionId: MissionId) => void;
-}) {
+}>(function CareerGraphPage({ state, practice, date, onRecord }, ref) {
   const graph = useMemo(() => buildCareerGraph(state), [state, date]);
   const [scope, setScope] = useState('all');
   const [includeRecords, setIncludeRecords] = useState(true);
@@ -74,12 +84,14 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
   const [copyError, setCopyError] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState('');
+  const [activePanel, setActivePanel] = useState<CareerGraphPanel | null>(null);
+  const panelId = useId();
+  const panelOpeners = useRef<Partial<Record<CareerGraphPanel, HTMLButtonElement | null>>>({});
+  const panelElements = useRef<Partial<Record<CareerGraphPanel, HTMLElement | null>>>({});
   const controls = useRef<CareerGraphSceneHandle>(null);
   const stageRef = useRef<HTMLElement>(null);
   const inspectorRef = useRef<HTMLElement>(null);
   const orbitInspectorRef = useRef<HTMLElement>(null);
-  const orbitIndexRef = useRef<HTMLDetailsElement>(null);
-  const visibilityRef = useRef<HTMLDetailsElement>(null);
   const inspectFromList = useRef(false);
   const inspectOrbitFromList = useRef(false);
   const previousFilter = useRef(`${scope}:${includeRecords}:${includeReferences}`);
@@ -119,36 +131,64 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     setSceneMessage(message ?? '');
   }, []);
   const onSceneFailure = useCallback(() => setSceneStatus('unavailable'), []);
-  const selectNode = useCallback((id: string) => { setSelectedId(id); setOrbitSelection(null); }, []);
+  const openPanel = useCallback((panel: CareerGraphPanel) => setActivePanel(panel), []);
+  const closePanels = useCallback(() => {
+    setActivePanel(null);
+    if (activePanel) panelOpeners.current[activePanel]?.focus({ preventScroll: true });
+  }, [activePanel]);
+  useImperativeHandle(ref, () => ({ openPanel, closePanels }), [openPanel, closePanels]);
+  const selectNode = useCallback((id: string) => {
+    setSelectedId(id);
+    setOrbitSelection(null);
+    setActivePanel(null);
+  }, []);
   const selectOrbit = useCallback((selection: CareerOrbitSelection) => {
     setOrbitSelection(selection);
     setSelectedId(null);
+    setActivePanel(null);
   }, []);
   const changeVisibility = useCallback((ids: readonly string[], show: boolean) => {
     setHiddenIds(current => setCareerItemsVisible(current, ids, show));
   }, []);
   useLayoutEffect(() => {
-    if (!selected || !inspectFromList.current) return;
+    if (activePanel || !selected || !inspectFromList.current) return;
     inspectFromList.current = false;
     inspectorRef.current?.focus({ preventScroll: true });
-    inspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }, [selected?.id]);
+  }, [selected?.id, activePanel]);
   useLayoutEffect(() => {
-    if (!selectedOrbit || !inspectOrbitFromList.current) return;
+    if (activePanel || !selectedOrbit || !inspectOrbitFromList.current) return;
     inspectOrbitFromList.current = false;
     orbitInspectorRef.current?.focus({ preventScroll: true });
-    orbitInspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }, [selectedOrbit?.id, selectedSegment?.id]);
+  }, [selectedOrbit?.id, selectedSegment?.id, activePanel]);
+  useLayoutEffect(() => {
+    if (!activePanel) return;
+    const panel = panelElements.current[activePanel];
+    const target = activePanel === 'work'
+      ? panel?.querySelector<HTMLInputElement>('[data-tour="career-graph-search"]')
+      : panel;
+    target?.focus({ preventScroll: true });
+  }, [activePanel]);
+  useEffect(() => {
+    if (!activePanel) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing || !(event.target instanceof Node)
+        || !stageRef.current?.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closePanels();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [activePanel, closePanels]);
   useEffect(() => {
     const update = () => {
       const active = document.fullscreenElement === stageRef.current;
       setFullscreen(active);
-      if (active && orbitIndexRef.current) orbitIndexRef.current.open = false;
-      if (active && visibilityRef.current) visibilityRef.current.open = false;
+      closePanels();
     };
     document.addEventListener('fullscreenchange', update);
     return () => document.removeEventListener('fullscreenchange', update);
-  }, []);
+  }, [closePanels]);
   useEffect(() => {
     const next = `${scope}:${includeRecords}:${includeReferences}`;
     if (previousFilter.current === next) return;
@@ -207,8 +247,7 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     setQuery('');
     setListCount(40);
     inspectFromList.current = true;
-    setSelectedId(node.id);
-    setOrbitSelection(null);
+    selectNode(node.id);
   }
 
   function inspectConnection(node: CareerGraphNode, edge: CareerGraphEdge) {
@@ -218,15 +257,9 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
 
   function inspectOrbitFromIndex(orbitId: string) {
     const orbit = graph.orbits.find(item => item.id === orbitId)!;
-    if (fullscreen && orbitIndexRef.current) orbitIndexRef.current.open = false;
     if (orbit.kind === 'mission' && scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
     inspectOrbitFromList.current = true;
     selectOrbit({ orbitId });
-    if (selectedOrbit?.id === orbitId && !selectedSegment) {
-      inspectOrbitFromList.current = false;
-      orbitInspectorRef.current?.focus({ preventScroll: true });
-      orbitInspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
-    }
   }
 
   function revealOrbit() {
@@ -242,53 +275,58 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
     setListCount(40);
   }
 
-  function openVisibility() {
-    if (!visibilityRef.current) return;
-    visibilityRef.current.open = true;
-    if (orbitIndexRef.current) orbitIndexRef.current.open = false;
-    const summary = visibilityRef.current.querySelector('summary');
-    summary?.focus({ preventScroll: true });
-    if (!fullscreen) summary?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  function panelAttributes(panel: CareerGraphPanel) {
+    return {
+      id: `${panelId}-${panel}`,
+      ref: (element: HTMLElement | null) => { panelElements.current[panel] = element; },
+      hidden: activePanel !== panel,
+      'data-graph-panel': panel,
+      'data-open': activePanel === panel,
+      'aria-labelledby': `${panelId}-${panel}-title`,
+      tabIndex: -1,
+    };
+  }
+
+  function panelHeading(panel: CareerGraphPanel) {
+    return <header className="career-graph-panel-heading">
+      <h2 id={`${panelId}-${panel}-title`}>{panel === 'work' ? 'Find your work' : panelNames[panel]}</h2>
+      <button type="button" className="icon-button" aria-label={`Close ${panelNames[panel].toLowerCase()}`}
+        title="Close panel (Escape)" onClick={closePanels}><X size={18} /></button>
+    </header>;
   }
 
   return <div className="career-graph-page">
-    <header className="career-graph-heading">
-      <div><span className="eyebrow">CAREEROS / CAREER OPERATING SYSTEM</span><h1>Career graph</h1></div>
-      <div className="button-row"><a href="#/hq" className="button secondary">Open Overview<ArrowRight size={16} /></a>
-        <button className="button secondary" onClick={() => void copyBrief()}><ClipboardCopy size={16} />{copied ? 'Copied' : 'Copy brief for AI'}</button></div>
-    </header>
-    {(practice || state.sampleData) && <p className="career-graph-data-notice">{practice ? 'Practice graph: temporary tutorial records only.' : 'This workspace includes sample records. The graph is not entirely personal progress.'}</p>}
-    {graph.updates.length > 0 && <div className="career-graph-update">
-      <span>Expanded roadmaps are available. Untracked curriculum is shown as reference, not assumed progress.</span><a href="#/sources" className="text-link">Review updates<ArrowRight size={14} /></a>
-    </div>}
     <div className="career-graph-workspace">
       <section ref={stageRef} className="career-graph-stage-wrap" aria-label="Career network visualization">
-        <div className="career-graph-commandbar">
+        <header className="career-graph-commandbar">
+          <div className="career-graph-heading"><Network size={18} aria-hidden="true" /><h1>Career graph</h1>
+            {(practice || state.sampleData) && <span className="career-graph-context-badge"
+              title={practice ? 'Temporary tutorial records only.' : 'This workspace includes sample records; not entirely personal progress.'}>
+              {practice ? 'Practice' : 'Sample data'}
+            </span>}
+          </div>
           <div className="career-graph-summary" data-tour="career-graph-summary">
-            <div><strong>{completed}<span> / {checkpoints.length}</span></strong><span>CHECKPOINTS COMPLETE</span></div>
-            <div><strong>{visible.nodes.filter(node => node.kind !== 'core').length}</strong><span>DATA NODES</span></div>
+            <div title="Saved checkpoints marked complete"><strong>{completed}<span> / {checkpoints.length}</span></strong><span><span className="sr-only">checkpoints </span>done</span></div>
+            <div title="Visible work and reference nodes"><strong>{visible.nodes.filter(node => node.kind !== 'core').length}</strong><span>nodes</span></div>
           </div>
-          <div className="career-graph-filters" data-tour="career-graph-filters">
-            <label><span className="sr-only">View</span><select aria-label="Filter career graph by mission" value={scope} onChange={event => { setScope(event.target.value); setListCount(40); }}>
-              <option value="all">Whole career</option>{missionNodes.map(node => <option key={node.id} value={node.missionId}>{node.label}</option>)}
-            </select></label>
-            <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
-            <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
-            <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
-            <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
-            <div className="career-spark-controls">
-              <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
-              <label className="career-spark-density" title={includeSparks ? 'Spark amount: 0% shows none; 100% restores the previous full amount.' : 'Enable Sparks to adjust the amount.'}>
-                <span className="sr-only">Spark amount</span>
-                <input type="range" aria-label="Spark amount" min={0} max={MAX_SPARK_DENSITY} step={5}
-                  value={sparkDensity} aria-valuetext={`${sparkDensity}%`} disabled={!includeSparks}
-                  onChange={event => setSparkDensity(event.currentTarget.valueAsNumber)} />
-                <span aria-hidden="true">{sparkDensity}%</span>
-              </label>
-            </div>
-            <button className="button secondary career-visibility-open" aria-label="Choose visible nodes and rings" onClick={openVisibility}>Choose nodes</button>
-          </div>
-        </div>
+          <nav className="career-graph-panel-openers" aria-label="Graph panels">
+            {([
+              ['view', 'View', Settings2], ['rings', 'Rings', CircleDot],
+              ['visibility', 'Nodes', ListChecks], ['work', 'Work', Search],
+            ] as const).map(([panel, label, Icon]) => <button key={panel} type="button"
+              ref={element => { panelOpeners.current[panel] = element; }}
+              className={`button secondary${panel === 'visibility' ? ' career-visibility-open' : ''}`}
+              aria-label={panelNames[panel]} title={panelNames[panel]} aria-expanded={activePanel === panel}
+              aria-controls={`${panelId}-${panel}`}
+              data-graph-panel-trigger={panel}
+              data-tour={panel === 'rings' ? 'career-graph-orbits' : panel === 'visibility' ? 'career-graph-visibility' : undefined}
+              onClick={() => activePanel === panel ? closePanels() : openPanel(panel)}>
+              <Icon size={16} /><span>{label}</span>
+            </button>)}
+          </nav>
+        </header>
+        {fullscreenError && <p className="career-graph-render-notice" role="alert">{fullscreenError}</p>}
+        {(sceneStatus === 'unavailable' || sceneStatus === 'lost') && <p className="career-graph-render-notice" role="status">{sceneMessage || 'The 3D renderer is unavailable. Find work and Explore ring views still show your saved data.'}</p>}
         <div className="career-graph-stage" data-tour="career-graph-stage">
           <GraphSceneBoundary onFailure={onSceneFailure}>
             <Suspense fallback={<div className="career-graph-loading" role="status">Loading the 3D career network...</div>}>
@@ -298,7 +336,9 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
                 rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} sparkDensity={sparkDensity} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
-          <div className="career-graph-stage-label"><Network size={15} /><span>{practice ? 'PRACTICE NETWORK' : 'CAREER NETWORK'}</span></div>
+          {graph.updates.length > 0 && <a href="#/sources" className="career-graph-update-link"
+            title="Expanded roadmaps are available. Untracked curriculum is reference, not assumed progress.">Source updates available<ArrowUpRight size={13} /></a>}
+          <div className="career-graph-inspectors" hidden={activePanel !== null}>
           <aside ref={inspectorRef} className="career-graph-inspector" hidden={!selected} tabIndex={-1}
             aria-label="Selected career node" data-tour="career-graph-node">
             {selected && <>
@@ -318,80 +358,126 @@ export function CareerGraphPage({ state, practice, date, onRecord }: {
             ringsVisible={includeRings && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
             onClose={() => setOrbitSelection(null)} onSelect={selectOrbit} onReveal={revealOrbit} onInspect={inspectOrbitMember}
             onRecord={recordableOrbitMission ? () => onRecord(recordableOrbitMission) : undefined} />}
+          </div>
+          <div className="career-graph-controls" role="group" aria-label="Graph camera and animation">
+            <button className="button secondary career-graph-frame" title="Frame all" disabled={!sceneReady}
+             onClick={() => controls.current?.resetView()}><Maximize2 size={16} /><span>Frame all</span></button>
+            <button className="icon-button" aria-label="Zoom career graph in" title="Zoom career graph in" disabled={!sceneReady} onClick={() => controls.current?.zoomIn()}><Plus size={17} /></button>
+            <button className="icon-button" aria-label="Zoom career graph out" title="Zoom career graph out" disabled={!sceneReady} onClick={() => controls.current?.zoomOut()}><Minus size={17} /></button>
+            {selected && <button className="button secondary career-graph-compact-control" aria-label="Focus node" title="Focus node" disabled={!sceneReady}
+             onClick={() => controls.current?.focusNode(selected.id)}><Focus size={16} /><span>Focus node</span></button>}
+            {activeOrbitSelection && <button className="button secondary career-graph-compact-control" aria-label="Focus ring" title="Focus ring"
+             disabled={!sceneReady || !includeRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
+             onClick={() => controls.current?.focusOrbit(activeOrbitSelection)}><Focus size={16} /><span>Focus ring</span></button>}
+            <button className="button secondary career-graph-compact-control" disabled={!sceneReady} aria-pressed={animationPaused}
+             aria-label={animationPaused ? 'Resume animation' : 'Pause animation'} title={animationPaused ? 'Resume animation' : 'Pause animation'}
+             onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>
+             {animationPaused ? <Play size={16} /> : <Pause size={16} />}<span>{animationPaused ? 'Resume animation' : 'Pause animation'}</span>
+            </button>
+            <button className="button secondary career-graph-compact-control" disabled={!sceneReady || !document.fullscreenEnabled}
+             aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} title={fullscreen ? 'Exit full screen' : 'Full screen'}
+             onClick={() => void toggleFullscreen()}>
+             {fullscreen ? <Minimize2 size={16} /> : <Expand size={16} />}<span>{fullscreen ? 'Exit full screen' : 'Full screen'}</span>
+            </button>
+          </div>
+          <section {...panelAttributes('view')} className="career-graph-panel career-graph-view">
+            {panelHeading('view')}
+            <div className="career-graph-panel-body">
+             {(practice || state.sampleData) && <p className="career-graph-data-notice">{practice ? 'Practice graph: temporary tutorial records only.' : 'This workspace includes sample records. The graph is not entirely personal progress.'}</p>}
+             <div className="career-graph-filters" data-tour="career-graph-filters">
+               <label className="career-graph-mission-filter">Mission view<select aria-label="Filter career graph by mission" value={scope} onChange={event => { setScope(event.target.value); setListCount(40); }}>
+                 <option value="all">Whole career</option>{missionNodes.map(node => <option key={node.id} value={node.missionId}>{node.label}</option>)}
+               </select></label>
+               <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
+               <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
+               <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
+               <label className="graph-checkbox" title="Show mission and record-view rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
+               <div className="career-spark-controls">
+                 <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
+                 <label className="career-spark-density" title={includeSparks ? 'Spark amount: 0% shows none; 100% restores the previous full amount.' : 'Enable Sparks to adjust the amount.'}>
+                   <span className="sr-only">Spark amount</span>
+                   <input type="range" aria-label="Spark amount" min={0} max={MAX_SPARK_DENSITY} step={5}
+                     value={sparkDensity} aria-valuetext={`${sparkDensity}%`} disabled={!includeSparks}
+                     onChange={event => setSparkDensity(event.currentTarget.valueAsNumber)} />
+                   <span aria-hidden="true">{sparkDensity}%</span>
+                 </label>
+               </div>
+               <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>
+               <label className="graph-checkbox" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds; paused with animation.">
+                 <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
+               </label>
+               <button className="button secondary" disabled={!sceneReady || !includeRings} aria-pressed={rimOnly}
+                 title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
+                 onClick={() => setRimOnly(value => !value)}>Clear center</button>
+             </div>
+             <div className="button-row career-graph-page-actions">
+               <a href="#/hq" className="button secondary">Open Overview<ArrowRight size={16} /></a>
+               <button className="button secondary" onClick={() => void copyBrief()}><ClipboardCopy size={16} />{copied ? 'Copied' : 'Copy brief for AI'}</button>
+             </div>
+             {copied && <p role="status">Career brief copied to your clipboard.</p>}{copyError && <p role="alert" className="form-error">{copyError}</p>}
+             {graph.updates.length > 0 && <div className="career-graph-update">
+               <p>Expanded roadmaps are available. Untracked curriculum is shown as reference, not assumed progress.</p><a href="#/sources" className="text-link">Review updates<ArrowRight size={14} /></a>
+             </div>}
+             <details className="career-graph-keyboard"><summary>Keyboard rotation controls</summary><div className="button-row">
+               {([['left', ArrowLeft], ['right', ArrowRight], ['up', ArrowUp], ['down', ArrowDown]] as const).map(([direction, Icon]) =>
+                 <button key={direction} className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.rotate(direction)}><Icon size={15} />Rotate {direction}</button>)}
+             </div></details>
+             <div className="career-graph-stage-footer">
+               <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
+               <div className="career-graph-legend"><span>Work nodes:</span><span><i className="graph-status-complete" />Done</span><span><i className="graph-status-incomplete" />Unfinished</span><span><i className="graph-status-reference" />Reference</span></div>
+               <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
+               <p className="career-graph-orbit-key">{visible.orbits.length} ring views · active missions: colored outer rings · background/planned: small, gray, stationary inner rings.</p>
+             </div>
+             <footer className="career-graph-footer">
+               <p className="button-row"><a href="#/guide">Help &amp; glossary</a><a href="#/settings">Data &amp; backups</a></p>
+               <p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks, glow and the core heartbeat are visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p>
+               <p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
+             </footer>
+            </div>
+          </section>
+          <section {...panelAttributes('rings')} className="career-graph-panel career-orbit-index">
+            {panelHeading('rings')}
+            <div className="career-graph-panel-body">
+             <p>{graph.orbits.length} ring views: nine saved missions and six record/reference collections. Mission rings follow Bring into focus / Move to background, not just the primary mission. Inspect any ring here, even without 3D.</p>
+             <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
+               data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}
+               aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
+               <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong>
+                 {orbit.missionMode && <small>{orbit.missionMode === 'active' ? 'Active - colored outer ring' : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} - small stationary ring`}</small>}
+                 <small>{orbit.summary}</small></span>
+             </button>)}</div>
+            </div>
+          </section>
+          <section {...panelAttributes('visibility')} className="career-graph-panel">
+            {panelHeading('visibility')}
+            <div className="career-graph-panel-body">
+             <CareerGraphVisibility graph={graph} hiddenIds={hiddenIds}
+               visibleNodeIds={visibleIds} visibleOrbitIds={visibleOrbitIds} kindLabels={kindLabels}
+               onChange={changeVisibility} />
+            </div>
+          </section>
+          <section {...panelAttributes('work')} className="career-graph-panel career-graph-index">
+            {panelHeading('work')}
+            <div className="career-graph-panel-body">
+             <div className="career-graph-index-heading">
+               <label><Search size={16} /><input data-tour="career-graph-search" aria-label="Search career graph nodes" placeholder="Node name or area" value={query} onChange={event => { setQuery(event.target.value); setListCount(40); }} /></label>
+               <span role="status">{filtered.length} matching nodes</span>
+             </div>
+             <div className="career-graph-node-list" data-tour="career-graph-list">
+               {filtered.slice(0, listCount).map(node => <button key={node.id} type="button" aria-pressed={selected?.id === node.id} onClick={() => {
+                 inspectFromList.current = true;
+                 selectNode(node.id);
+               }}>
+                 <i className={`graph-status-${node.status}`} /><span><strong>{node.label}</strong><small>{kindLabels[node.kind]} · {statusLabels[node.status]}{node.archived ? ' · Archived' : ''}</small></span>
+                 {node.status === 'complete' && <Check size={15} />}
+               </button>)}
+             </div>
+             {!filtered.length && <p className="career-graph-empty">No nodes match this view. Change the mission, layers or search text.</p>}
+             {filtered.length > listCount && <button className="button secondary" onClick={() => setListCount(count => count + 80)}>Show more nodes</button>}
+            </div>
+          </section>
         </div>
-        <div className="career-graph-controls">
-          <button className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.resetView()}><Maximize2 size={15} />Frame all</button>
-          <button className="icon-button" aria-label="Zoom career graph in" disabled={!sceneReady} onClick={() => controls.current?.zoomIn()}><Plus size={17} /></button>
-          <button className="icon-button" aria-label="Zoom career graph out" disabled={!sceneReady} onClick={() => controls.current?.zoomOut()}><Minus size={17} /></button>
-          <button className="button secondary" disabled={!sceneReady || !selected} onClick={() => { if (selected) controls.current?.focusNode(selected.id); }}><Focus size={15} />Focus node</button>
-          <button className="button secondary" disabled={!sceneReady || !activeOrbitSelection || !includeRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
-            onClick={() => { if (activeOrbitSelection) controls.current?.focusOrbit(activeOrbitSelection); }}><Focus size={15} />Focus ring</button>
-          <button className="button secondary" disabled={!sceneReady || !document.fullscreenEnabled} onClick={() => void toggleFullscreen()}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}{fullscreen ? 'Exit full screen' : 'Full screen'}</button>
-          <button className="button secondary" disabled={!sceneReady} aria-pressed={animationPaused}
-            onClick={() => { setMotionOptIn(animationPaused); setAnimationPaused(paused => !paused); }}>{animationPaused ? <Play size={15} /> : <Pause size={15} />}{animationPaused ? 'Resume animation' : 'Pause animation'}</button>
-          <label className="graph-checkbox" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds; paused with animation.">
-            <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
-          </label>
-          <button className="button secondary" disabled={!sceneReady || !includeRings} aria-pressed={rimOnly}
-            title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
-            onClick={() => setRimOnly(value => !value)}>Clear center</button>
-          <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>
-        </div>
-        <div className="career-graph-stage-footer">
-          <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
-          <div className="career-graph-legend"><span>Work nodes:</span><span><i className="graph-status-complete" />Done</span><span><i className="graph-status-incomplete" />Unfinished</span><span><i className="graph-status-reference" />Reference</span></div>
-          <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
-          <p className="career-graph-orbit-key">{visible.orbits.length} ring views · active missions: colored outer rings · background/planned: small, gray, stationary inner rings.</p>
-        </div>
-        <details ref={orbitIndexRef} className="career-orbit-index" data-tour="career-graph-orbits"
-          onToggle={event => { if (event.currentTarget.open && visibilityRef.current) visibilityRef.current.open = false; }}>
-          <summary>Explore ring views ({graph.orbits.length})</summary>
-          <p>Nine saved-mission views and six record/reference collections. Mission rings follow Bring into focus / Move to background, not just the primary mission. Inspect any ring here, even without 3D.</p>
-          <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
-            data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}
-            aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
-            <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong>
-              {orbit.missionMode && <small>{orbit.missionMode === 'active' ? 'Active - colored outer ring' : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} - small stationary ring`}</small>}
-              <small>{orbit.summary}</small></span>
-          </button>)}</div>
-        </details>
-        <CareerGraphVisibility ref={visibilityRef} graph={graph} hiddenIds={hiddenIds}
-          visibleNodeIds={visibleIds} visibleOrbitIds={visibleOrbitIds} kindLabels={kindLabels}
-          onChange={changeVisibility} onOpen={() => { if (orbitIndexRef.current) orbitIndexRef.current.open = false; }} />
-        {fullscreenError && <p className="career-graph-render-notice" role="alert">{fullscreenError}</p>}
-        {(sceneStatus === 'unavailable' || sceneStatus === 'lost') && <p className="career-graph-render-notice" role="status">{sceneMessage || 'The 3D renderer is unavailable. The node list and your saved data remain accessible.'}</p>}
-        <details className="career-graph-keyboard"><summary>Keyboard rotation controls</summary><div className="button-row">
-          {([['left', ArrowLeft], ['right', ArrowRight], ['up', ArrowUp], ['down', ArrowDown]] as const).map(([direction, Icon]) =>
-            <button key={direction} className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.rotate(direction)}><Icon size={15} />Rotate {direction}</button>)}
-        </div></details>
       </section>
     </div>
-    <section className="career-graph-index" aria-labelledby="career-node-list-title">
-      <div className="career-graph-index-heading"><h2 id="career-node-list-title">Find your work</h2>
-        <label><Search size={16} /><input data-tour="career-graph-search" aria-label="Search career graph nodes" placeholder="Node name or area" value={query} onChange={event => { setQuery(event.target.value); setListCount(40); }} /></label>
-        <span role="status">{filtered.length} matching nodes</span>
-      </div>
-      <div className="career-graph-node-list" data-tour="career-graph-list">
-        {filtered.slice(0, listCount).map(node => <button key={node.id} type="button" aria-pressed={selected?.id === node.id} onClick={() => {
-          setOrbitSelection(null);
-          if (selectedId === node.id) {
-            inspectFromList.current = false;
-            inspectorRef.current?.focus({ preventScroll: true });
-            inspectorRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
-          } else {
-            inspectFromList.current = true;
-            setSelectedId(node.id);
-          }
-        }}>
-          <i className={`graph-status-${node.status}`} /><span><strong>{node.label}</strong><small>{kindLabels[node.kind]} · {statusLabels[node.status]}{node.archived ? ' · Archived' : ''}</small></span>
-          {node.status === 'complete' && <Check size={15} />}
-        </button>)}
-      </div>
-      {!filtered.length && <p className="career-graph-empty">No nodes match this view. Change the mission, layers or search text.</p>}
-      {filtered.length > listCount && <button className="button secondary" onClick={() => setListCount(count => count + 80)}>Show more nodes</button>}
-    </section>
-    <footer className="career-graph-footer"><p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize your saved missions and record collections. Their stretching tethers show real membership; selecting a ring reveals its members. Ring views add no tasks or completion credit. Clear center hides ring paths, not their data anchors. Sparks, glow and the core heartbeat are visual atmosphere, not live AI activity. Green is recorded completion, not automatic mastery.</p><p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
-      {copied && <p role="status">Career brief copied to your clipboard.</p>}{copyError && <p role="alert" className="form-error">{copyError}</p>}
-    </footer>
   </div>;
-}
+});

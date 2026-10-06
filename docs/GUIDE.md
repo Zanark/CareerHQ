@@ -64,9 +64,17 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 The website now opens **[Career graph](https://zanark.github.io/CareerOS/#/home)**.
 Drag to rotate the network in genuine 3D, scroll or pinch to zoom, and select a
 node for its record. **Frame all** restores the whole view; **Focus node** centers
-the selected item. **Full screen** expands the scene and its controls; Escape returns.
-The named list and keyboard rotation controls provide another
-way to navigate. **Overview** remains the compact tracker at `#/hq`.
+the selected item. The canvas now fills the available app viewport instead of sitting
+below a stack of controls. Frame, zoom, animation and fullscreen controls stay in a
+small camera dock; Focus node / Focus ring appear when an item is selected.
+
+The compact toolbar opens one panel at a time: **View** contains filters, Spark amount,
+motion options, keyboard rotation, the legend and clipboard brief; **Rings** opens
+the ring views; **Nodes** opens visibility choices; **Work** opens the named search/list.
+Panels overlay the canvas without resizing or moving it, and keep their settings
+when closed. Selecting a ring or work item closes its panel and shows the inspector.
+Escape dismisses a panel; native fullscreen retains the browser's escape behavior.
+**Overview** remains the compact tracker at `#/hq`, also linked from View.
 
 Green means recorded completion; orange means not marked complete. Notes, source
 references and untracked expanded curriculum remain distinct reference nodes.
@@ -88,7 +96,7 @@ This follows **Bring into focus / Move to background**, not just the single
 remain intact and inspectable. The six record/reference rings keep their existing behavior.
 
 Each ring has a larger, softly shaded planet-like anchor in its view color;
-background/planned anchors remain gray. Select it or a card under **Explore ring views**
+background/planned anchors remain gray. Select it or a card in **Rings / Explore ring views**
 to highlight the **entire ring** with a thicker, bright glow. Choosing a stage or
 record group keeps the whole ring highlighted while its detailed tethers show only
 that group's members. Inspect a member or open the relevant mission/records.
@@ -104,7 +112,7 @@ The inspector distinguishes global members from those visible through your filte
 
 Full-shell paths remain visible by default. **Clear center** masks projected ring
 paths without hiding data anchors or membership links. Sparks and glow are still
-atmosphere, not extra nodes. **Rings** and **Sparks** are separate, default-on switches:
+atmosphere, not extra nodes. In **View**, **Rings** and **Sparks** are separate, default-on switches:
 hide ring paths, anchors and membership tethers without hiding the floating dots,
 or hide only the dots while keeping the rings. Real work nodes, their connections,
 core glow and your zoom stay unchanged. **Clear center** and **Focus ring** depend
@@ -112,14 +120,14 @@ only on Rings. Re-enabling Rings restores your selected Clear center mode, and
 **Reveal orbit and members** never changes the Sparks setting. Like the other
 graph filters, these are view-only choices, not saved-progress changes.
 
-The **Spark amount** slider beside Sparks ranges from **0%** (none) to **100%**
+The **Spark amount** slider in View, beside Sparks, ranges from **0%** (none) to **100%**
 (the previous full amount). It starts at **50%**, half as many dots as before.
 Arrow keys adjust it; Home/End choose the minimum/maximum. Turning Sparks off
 disables the slider but keeps its amount for re-enabling. Resizing retains the
 percentage while adapting the particle budget. The focus backdrop also starts
 at the new half-density default. No rings, work nodes, progress or timer records change.
 
-**Choose nodes** opens checkboxes for every mission/collection group, individual
+**Nodes / Choose visible nodes and rings** opens checkboxes for every mission/collection group, individual
 work node and ring, including the CareerOS core. Groups are batch choices over
 their current items; a partly checked group has mixed choices. An evidence node
 can belong to both its mission and Saved evidence, so its choice updates both groups.
@@ -139,7 +147,7 @@ the requested hidden items without changing your Sparks choice.
 Connection lines bend away from your cursor but stay attached to their endpoints.
 The push is stronger at the normal view and gradually weakens as you zoom closer.
 Zooming, dragging and inspecting do not pause automatic motion. **Pause animation**
-is a separate control; **Auto-rotate** controls the camera orbit. Reduced motion
+is a separate dock control; **Auto-rotate** in View controls the camera orbit. Reduced motion
 starts paused, and manual navigation remains available.
 
 **Core heartbeat** sends an outward ripple from the actual white CareerOS node

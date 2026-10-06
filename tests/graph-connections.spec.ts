@@ -4,6 +4,7 @@ import { createInitialState, generatePlan, localDate, upgradeRoadmap } from '../
 import type { AppState } from '../src/domain/types';
 import { careerSkillLinks } from '../src/graph/careerSkillLinks';
 import { buildCareerGraph } from '../src/graph/careerGraphModel';
+import { graphCheckbox, searchGraphNodes, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -22,7 +23,7 @@ async function openGraph(page: Page, state = createInitialState(false)) {
 }
 
 async function inspectSource(page: Page) {
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill(source.title);
+  await searchGraphNodes(page, source.title);
   await page.locator('.career-graph-node-list > button').filter({ hasText: source.title }).first().click();
   const inspector = page.getByRole('complementary', { name: 'Selected career node' });
   await expect(inspector.getByRole('heading', { level: 2 })).toHaveText(source.title);
@@ -39,11 +40,11 @@ test('shared links add only edges, have a visibility toggle, and do not recreate
   const nodes = await scene.getAttribute('data-node-count');
   await page.locator('.career-graph-stage canvas').evaluate(canvas => canvas.setAttribute('data-original', 'true'));
   await expect(page.locator('.career-graph-link-key')).toContainText(`${expected} shared skill links`);
-  await page.getByRole('checkbox', { name: 'Shared skill links', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Shared skill links', false);
   await expect(scene).toHaveAttribute('data-edge-count', String(count - expected));
   await expect(scene).toHaveAttribute('data-node-count', nodes!);
   await expect(page.locator('.career-graph-stage canvas')).toHaveAttribute('data-original', 'true');
-  await page.getByRole('checkbox', { name: 'Shared skill links', exact: true }).check();
+  await setGraphCheckbox(page, 'Shared skill links', true);
   await expect(scene).toHaveAttribute('data-edge-count', String(count));
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
@@ -75,17 +76,17 @@ for (const width of [1440, 320]) {
 test('following a hidden peer explicitly reveals its mission, reference layer and disabled shared links', async ({ page }) => {
   const state = upgradeRoadmap(createInitialState(false, '2.0.0'), link.source.missionId);
   const raw = await openGraph(page, state);
-  await page.getByLabel('Filter career graph by mission').selectOption(link.source.missionId);
-  await page.getByRole('checkbox', { name: 'References', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Shared skill links', exact: true }).uncheck();
+  await setGraphScope(page, link.source.missionId);
+  await setGraphCheckbox(page, 'References', false);
+  await setGraphCheckbox(page, 'Shared skill links', false);
   const inspector = await inspectSource(page);
   const entry = inspector.locator('li[data-connection-kind="shared-skill"]').filter({ has: page.getByText(link.reason, { exact: true }) });
   await expect(entry).toContainText('outside the current view');
   await expect(entry).toContainText('Shared skill lines are off');
   await entry.getByRole('button', { name: `Reveal and inspect ${target.title}`, exact: true }).click();
   await expect(page.getByLabel('Filter career graph by mission')).toHaveValue('all');
-  await expect(page.getByRole('checkbox', { name: 'References', exact: true })).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: 'Shared skill links', exact: true })).toBeChecked();
+  await expect(graphCheckbox(page, 'References')).toBeChecked();
+  await expect(graphCheckbox(page, 'Shared skill links')).toBeChecked();
   await expect(inspector.getByRole('heading', { level: 2 })).toHaveText(target.title);
   await expect(inspector.locator('.graph-status-tag')).toHaveText('Reference');
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);

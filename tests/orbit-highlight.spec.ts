@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PNG } from './png';
+import { clickGraphOption, closeGraphPanels, graphCheckbox, openGraphPanel, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -10,12 +11,12 @@ async function open(page: Page) {
   await page.goto('./#/home');
   const scene = page.locator('.career-graph-scene');
   await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
-  await page.locator('.career-orbit-index > summary').click();
+  await setGraphCheckbox(page, 'Sparks', false);
   return scene;
 }
 
 async function select(page: Page, id: string) {
+  await openGraphPanel(page, 'rings');
   await page.locator(`.career-orbit-list > button[data-orbit-id="${id}"]`).click();
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
   await expect(inspector).toHaveAttribute('data-orbit-id', id);
@@ -23,6 +24,7 @@ async function select(page: Page, id: string) {
 }
 
 async function capture(page: Page, scene: Locator) {
+  await closeGraphPanels(page);
   const canvas = scene.locator('canvas');
   await canvas.scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
@@ -98,23 +100,23 @@ test('switching cards, Clear center, ring hiding and node inspection cleanly con
   const inspector = await select(page, inactive);
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', inactive);
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
-  await page.getByLabel('Filter career graph by mission').selectOption('fabric');
+  await setGraphScope(page, 'fabric');
   await expect(scene).toHaveAttribute('data-orbit-count', '7');
   await capture(page, scene);
   const marker = scene.locator(`.career-graph-scene__orbit-diagnostic[data-orbit-id="${inactive}"]`);
   await expect(marker).toHaveAttribute('data-mission-mode', 'background');
   await expect(marker).toHaveAttribute('data-orbit-revolving', 'false');
   const point = await marker.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')]);
-  await page.getByRole('button', { name: 'Clear center', exact: true }).click();
+  await clickGraphOption(page, 'Clear center');
   await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
-  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Rings', false);
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'false');
   await expect(inspector).toContainText('Rings are hidden');
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', inactive);
-  await expect(page.getByRole('checkbox', { name: 'Sparks', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Sparks')).not.toBeChecked();
   await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
-  await page.getByRole('button', { name: 'Clear center', exact: true }).click();
+  await clickGraphOption(page, 'Clear center');
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
   expect(await marker.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')])).toEqual(point);
   await inspector.getByRole('button', { name: /Current checkpoint:/ }).click();

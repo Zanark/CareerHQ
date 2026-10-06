@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { CURSOR_REPULSION_PX, cursorRepulsionOffset, edgeRepulsionShader } from '../src/graph/edgeRepulsion';
+import { clickGraphOption, graphCheckbox, searchGraphNodes } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -14,7 +15,7 @@ async function ready(page: Page) {
 test('inspection and zoom keep ambient animation running until the separate pause button is used', async ({ page }) => {
   const scene = await ready(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
-  await expect(page.getByRole('checkbox', { name: 'Auto-rotate', exact: true })).toBeChecked();
+  await expect(graphCheckbox(page, 'Auto-rotate')).toBeChecked();
   await expect(scene).toHaveAttribute('data-animation-state', 'running');
   const time = async () => Number(await scene.getAttribute('data-animation-time'));
   let previous = await time();
@@ -29,10 +30,10 @@ test('inspection and zoom keep ambient animation running until the separate paus
   await page.mouse.move(box!.x + box!.width * .5, box!.y + box!.height * .45, { steps: 5 });
   await page.mouse.up();
   await expect.poll(time).toBeGreaterThan(previous);
-  await expect(page.getByRole('checkbox', { name: 'Auto-rotate', exact: true })).toBeChecked();
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill('HashMap Fundamentals');
+  await expect(graphCheckbox(page, 'Auto-rotate')).toBeChecked();
+  await searchGraphNodes(page, 'HashMap Fundamentals');
   await page.locator('.career-graph-node-list > button').filter({ hasText: 'HashMap Fundamentals' }).first().click();
-  await expect(page.getByRole('checkbox', { name: 'Auto-rotate', exact: true })).toBeChecked();
+  await expect(graphCheckbox(page, 'Auto-rotate')).toBeChecked();
   previous = await time();
   await expect.poll(time).toBeGreaterThan(previous);
   await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
@@ -55,16 +56,16 @@ test('the full shell is default and Clear center toggles the real mask without d
   const edges = await scene.getAttribute('data-edge-count');
   const canvas = page.locator('.career-graph-stage canvas');
   const full = await canvas.screenshot();
-  const toggle = page.getByRole('button', { name: 'Clear center', exact: true });
+  const toggle = page.getByRole('button', { name: 'Clear center', exact: true, includeHidden: true });
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await toggle.click();
+  await clickGraphOption(page, 'Clear center');
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(scene).toHaveAttribute('data-decoration-mode', 'outer-rim-only');
   const clear = await canvas.screenshot();
   expect(clear.equals(full)).toBe(false);
   await testInfo.attach('full-shell', { body: full, contentType: 'image/png' });
   await testInfo.attach('clear-center', { body: clear, contentType: 'image/png' });
-  await toggle.click();
+  await clickGraphOption(page, 'Clear center');
   await expect(scene).toHaveAttribute('data-decoration-mode', 'full-shell');
   await expect(scene).toHaveAttribute('data-node-count', nodes!);
   await expect(scene).toHaveAttribute('data-edge-count', edges!);
@@ -126,7 +127,7 @@ test('reduced motion starts paused and an explicit resume is usable', async ({ p
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const scene = await ready(page);
   await expect(scene).toHaveAttribute('data-animation-state', 'paused');
-  await expect(page.getByRole('checkbox', { name: 'Auto-rotate', exact: true })).not.toBeChecked();
+  await expect(graphCheckbox(page, 'Auto-rotate')).not.toBeChecked();
   await page.getByRole('button', { name: 'Resume animation', exact: true }).click();
   await expect(scene).toHaveAttribute('data-animation-state', 'running');
   const time = Number(await scene.getAttribute('data-animation-time'));

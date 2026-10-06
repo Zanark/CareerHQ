@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PNG } from './png';
+import { searchGraphNodes, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 
@@ -9,8 +10,8 @@ test('the white core and inner halo remain opaque with every ring and spark visi
   const scene = page.locator('.career-graph-scene');
   await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
   const raw = await page.evaluate(() => localStorage.getItem('careerhq.workspace.v1'));
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill('DSA');
+  await setGraphScope(page, 'pattern');
+  await searchGraphNodes(page, 'DSA');
   await page.locator('.career-graph-node-list > button').filter({ hasText: 'DSA' }).first().click();
   const inspector = page.getByRole('complementary', { name: 'Selected career node', exact: true });
   await inspector.locator('.career-graph-connections > summary').click();
@@ -27,8 +28,8 @@ test('the white core and inner halo remain opaque with every ring and spark visi
   await expect.poll(async () => Number(await marker.getAttribute('data-screen-y'))).toBeCloseTo(box.height / 2, 0);
   await page.getByRole('button', { name: 'Close node details', exact: true }).click();
   for (const [rings, sparks] of [[false, false], [true, false], [false, true], [true, true]]) {
-    await page.getByRole('checkbox', { name: 'Rings', exact: true }).setChecked(rings);
-    await page.getByRole('checkbox', { name: 'Sparks', exact: true }).setChecked(sparks);
+    await setGraphCheckbox(page, 'Rings', rings);
+    await setGraphCheckbox(page, 'Sparks', sparks);
     await expect(scene).toHaveAttribute('data-rings-visible', String(rings));
     await expect(scene).toHaveAttribute('data-sparks-visible', String(sparks));
     await canvas.scrollIntoViewIfNeeded();

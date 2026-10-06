@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { PNG } from './png';
+import { graphCheckbox, searchGraphNodes, setGraphCheckbox } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
@@ -73,13 +74,12 @@ test('the heartbeat completes a ten-second cycle even when animation frames are 
 test('the travelling mesh ripple changes rendered pixels without a separate ring or data changes', async ({ page }, testInfo) => {
   const scene = await frozenMain(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
-  const heartbeat = page.getByRole('checkbox', { name: 'Core heartbeat', exact: true });
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
+  await setGraphCheckbox(page, 'Rings', false);
+  await setGraphCheckbox(page, 'Sparks', false);
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await page.clock.runFor(50);
-  await heartbeat.check();
+  await setGraphCheckbox(page, 'Core heartbeat', true);
   await page.clock.fastForward(2500);
   await page.clock.runFor(50);
   await expect(scene).toHaveAttribute('data-heartbeat-visualization', 'mesh-ripple');
@@ -90,7 +90,7 @@ test('the travelling mesh ripple changes rendered pixels without a separate ring
   await page.clock.runFor(50);
   await expect.poll(async () => Number(await scene.getAttribute('data-cursor-strength'))).toBe(0);
   const wave = await canvas.screenshot();
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await page.clock.runFor(50);
   await expect(scene).toHaveAttribute('data-heartbeat-wave-active', 'false');
   await canvas.scrollIntoViewIfNeeded();
@@ -112,12 +112,11 @@ test('the travelling mesh ripple changes rendered pixels without a separate ring
 
 test('a real node gently moves outward, returns exactly and remains pickable at the displaced position', async ({ page }) => {
   const scene = await frozenMain(page);
-  await page.getByRole('checkbox', { name: 'Auto-rotate', exact: true }).uncheck();
-  const heartbeat = page.getByRole('checkbox', { name: 'Core heartbeat', exact: true });
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Auto-rotate', false);
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await page.clock.runFor(50);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
-  await page.getByLabel('Search career graph nodes', { exact: true }).fill('DSA');
+  await searchGraphNodes(page, 'DSA');
   await page.locator('.career-graph-node-list > button').filter({ has: page.getByText('DSA', { exact: true }) }).click();
   await page.clock.runFor(50);
   const marker = scene.locator('.career-graph-scene__selected-marker');
@@ -130,7 +129,7 @@ test('a real node gently moves outward, returns exactly and remains pickable at 
     x: Number(await scene.getAttribute('data-core-screen-x')),
     y: Number(await scene.getAttribute('data-core-screen-y')),
   };
-  await heartbeat.check();
+  await setGraphCheckbox(page, 'Core heartbeat', true);
   await page.clock.runFor(50);
   const samples: { phase: number; x: number; y: number; displacement: number }[] = [];
   for (let step = 0; step < 13; step++) {
@@ -146,9 +145,9 @@ test('a real node gently moves outward, returns exactly and remains pickable at 
   const settled = await coordinates();
   expect(settled.x).toBeCloseTo(baseline.x, 1);
   expect(settled.y).toBeCloseTo(baseline.y, 1);
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await page.clock.runFor(50);
-  await heartbeat.check();
+  await setGraphCheckbox(page, 'Core heartbeat', true);
   await page.clock.fastForward(Math.round(peak.phase * 1000));
   await page.clock.runFor(50);
   const displaced = await coordinates();
@@ -159,7 +158,7 @@ test('a real node gently moves outward, returns exactly and remains pickable at 
   await canvas.click({ position: displaced });
   await page.clock.runFor(50);
   await expect(canvas).toHaveAttribute('data-selected-node-id', 'mission:pattern');
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await page.clock.runFor(50);
   expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
 });
@@ -169,18 +168,18 @@ test('the core heartbeat toggle leaves orbit motion, connections and stored work
   const scene = await ready(page);
   const raw = await page.evaluate(key => localStorage.getItem(key), key);
   const nodes = await scene.getAttribute('data-node-count'), edges = await scene.getAttribute('data-edge-count');
-  const heartbeat = page.getByRole('checkbox', { name: 'Core heartbeat', exact: true });
+  const heartbeat = graphCheckbox(page, 'Core heartbeat');
   await expect(heartbeat).toBeChecked();
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'true');
-  await heartbeat.uncheck();
+  await setGraphCheckbox(page, 'Core heartbeat', false);
   await expect(scene).toHaveAttribute('data-heartbeat-enabled', 'false');
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'false');
   const time = Number(await scene.getAttribute('data-animation-time'));
   await expect.poll(async () => Number(await scene.getAttribute('data-animation-time'))).toBeGreaterThan(time);
-  await heartbeat.check();
+  await setGraphCheckbox(page, 'Core heartbeat', true);
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'true');
-  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
+  await setGraphCheckbox(page, 'Rings', false);
+  await setGraphCheckbox(page, 'Sparks', false);
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'true');
   await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
   await expect(scene).toHaveAttribute('data-heartbeat-running', 'false');

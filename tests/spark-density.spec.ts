@@ -1,10 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PNG } from './png';
+import { closeGraphPanels, graphCheckbox, openGraphPanel, setGraphCheckbox } from './graph-ui';
 
 test.use({ launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } });
 const key = 'careerhq.workspace.v1';
 
 async function capture(page: Page, canvas: Locator, scene: Locator) {
+  await closeGraphPanels(page);
   await canvas.scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
   await expect.poll(async () => Number(await scene.getAttribute('data-cursor-strength'))).toBe(0);
@@ -18,7 +20,7 @@ for (const width of [1440, 320]) {
     await page.goto('./#/home');
     const scene = page.locator('.career-graph-scene');
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-    const slider = page.getByRole('slider', { name: 'Spark amount', exact: true });
+    const slider = page.getByRole('slider', { name: 'Spark amount', exact: true, includeHidden: true });
     const full = width === 1440 ? 1800 : 900;
     await expect(slider).toHaveAttribute('min', '0');
     await expect(slider).toHaveAttribute('max', '100');
@@ -32,10 +34,12 @@ for (const width of [1440, 320]) {
     await page.getByRole('button', { name: 'Zoom career graph in', exact: true }).click();
     await expect.poll(async () => Number(await scene.getAttribute('data-cursor-offset'))).toBeLessThan(56);
     const zoom = await scene.getAttribute('data-cursor-offset');
+    await openGraphPanel(page, 'view');
     await slider.press('Home');
     await expect(slider).toHaveValue('0');
     await expect(scene).toHaveAttribute('data-spark-count', '0');
     const none = await capture(page, canvas, scene);
+    await openGraphPanel(page, 'view');
     await slider.press('End');
     await expect(slider).toHaveValue('100');
     await expect(scene).toHaveAttribute('data-spark-count', String(full));
@@ -47,20 +51,20 @@ for (const width of [1440, 320]) {
       if (Math.abs(a.data[index] - b.data[index]) + Math.abs(a.data[index + 1] - b.data[index + 1]) + Math.abs(a.data[index + 2] - b.data[index + 2]) > 12) changed++;
     }
     expect(changed, 'The slider must change actual spark pixels, not just its label').toBeGreaterThan(20);
+    await openGraphPanel(page, 'view');
     for (let step = 0; step < 5; step++) await slider.press('ArrowLeft');
     await expect(slider).toHaveValue('75');
     await expect(scene).toHaveAttribute('data-spark-count', String(full * .75));
-    const sparks = page.getByRole('checkbox', { name: 'Sparks', exact: true });
-    await sparks.uncheck();
+    await setGraphCheckbox(page, 'Sparks', false);
     await expect(slider).toBeDisabled();
     await expect(slider).toHaveValue('75');
     await expect(scene).toHaveAttribute('data-sparks-visible', 'false');
-    await sparks.check();
+    await setGraphCheckbox(page, 'Sparks', true);
     await expect(slider).toBeEnabled();
     await expect(scene).toHaveAttribute('data-spark-density', '75');
     await expect(scene).toHaveAttribute('data-spark-count', String(full * .75));
     await expect(scene).toHaveAttribute('data-cursor-offset', zoom!);
-    await expect(page.getByRole('checkbox', { name: 'Rings', exact: true })).toBeChecked();
+    await expect(graphCheckbox(page, 'Rings')).toBeChecked();
     await page.setViewportSize({ width: width === 1440 ? 390 : 1440, height: 1000 });
     await expect(scene).toHaveAttribute('data-spark-count', String((width === 1440 ? 900 : 1800) * .75));
     await expect(slider).toHaveValue('75');
@@ -70,6 +74,7 @@ for (const width of [1440, 320]) {
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
     await testInfo.attach('zero-sparks', { body: none, contentType: 'image/png' });
     await testInfo.attach('full-sparks', { body: maximum, contentType: 'image/png' });
+    await openGraphPanel(page, 'view');
     await page.screenshot({ path: testInfo.outputPath('spark-slider.png') });
   });
 

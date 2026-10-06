@@ -4,6 +4,7 @@ import { getMission } from '../src/domain/catalog';
 import type { AppState } from '../src/domain/types';
 import { buildCareerGraph } from '../src/graph/careerGraphModel';
 import type { CareerOrbit } from '../src/graph/careerOrbitTypes';
+import { graphCheckbox, openGraphPanel, setGraphCheckbox, setGraphScope } from './graph-ui';
 
 const key = 'careerhq.workspace.v1';
 
@@ -22,12 +23,13 @@ async function open(page: Page, state = createInitialState(false)) {
   }, { key, raw });
   await page.goto('./#/home');
   await expect(page.locator('.career-graph-scene')).toHaveAttribute('data-scene-state', 'unavailable');
-  await page.locator('.career-orbit-index > summary').click();
+  await openGraphPanel(page, 'rings');
   await expect(page.locator('.career-orbit-list > button')).toHaveCount(15);
   return { raw, graph: buildCareerGraph(canonical) };
 }
 
 async function inspect(page: Page, orbit: CareerOrbit) {
+  await openGraphPanel(page, 'rings');
   await page.locator('.career-orbit-list > button').filter({ has: page.getByText(orbit.label, { exact: true }) }).click();
   const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
   await expect(inspector).toHaveAttribute('data-orbit-id', orbit.id);
@@ -102,7 +104,7 @@ test('Bring into focus and Move to background update ring presentation without c
     await page.getByRole('link', { name: 'Open mission', exact: true }).click();
     await page.getByRole('button', { name: button, exact: true }).click();
     await page.locator('a[href="#/home"]').first().click();
-    await page.locator('.career-orbit-index > summary').click();
+    await openGraphPanel(page, 'rings');
     const inspector = await inspect(page, fabric);
     await expect(inspector).toHaveAttribute('data-mission-mode', expectedMode);
     const card = page.locator('.career-orbit-list > button[data-orbit-id="orbit:mission:fabric"]');
@@ -122,11 +124,11 @@ test('record orbits use real pipeline groups and explicitly reveal filtered memb
   }));
   const { raw, graph } = await open(page, state);
   const orbit = graph.orbits.find(item => item.kind === 'opportunity')!;
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
-  await page.getByRole('checkbox', { name: 'Work records', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'References', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Rings', exact: true }).uncheck();
-  await page.getByRole('checkbox', { name: 'Sparks', exact: true }).uncheck();
+  await setGraphScope(page, 'pattern');
+  await setGraphCheckbox(page, 'Work records', false);
+  await setGraphCheckbox(page, 'References', false);
+  await setGraphCheckbox(page, 'Rings', false);
+  await setGraphCheckbox(page, 'Sparks', false);
   const inspector = await inspect(page, orbit);
   await expect(inspector.getByRole('progressbar')).toHaveCount(0);
   await expect(inspector).toContainText('0 of 3 members visible');
@@ -136,8 +138,8 @@ test('record orbits use real pipeline groups and explicitly reveal filtered memb
   await expect(inspector).toContainText('0 of 1 members visible');
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(page.getByLabel('Filter career graph by mission')).toHaveValue('all');
-  for (const name of ['Work records', 'References', 'Rings']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: 'Sparks', exact: true })).not.toBeChecked();
+  for (const name of ['Work records', 'References', 'Rings']) await expect(graphCheckbox(page, name)).toBeChecked();
+  await expect(graphCheckbox(page, 'Sparks')).not.toBeChecked();
   await expect(inspector).toContainText('1 of 1 members visible');
   await inspector.locator('.career-orbit-member-details > summary').click();
   await expect(inspector.locator('.graph-status-tag')).toHaveText('Reference');
@@ -171,14 +173,14 @@ test('collection totals distinguish global records from a mission-filtered view'
     });
   }
   const { raw, graph } = await open(page, state);
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
+  await setGraphScope(page, 'pattern');
   const inspector = await inspect(page, graph.orbits.find(orbit => orbit.kind === 'evidence')!);
   await expect(inspector).toContainText('1 of 2 members visible');
   await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
   await expect(inspector).toContainText('2 of 2 members visible');
   await expect(page.getByLabel('Filter career graph by mission')).toHaveValue('all');
   const fabric = graph.orbits.find(orbit => orbit.missionId === 'fabric')!;
-  await page.getByLabel('Filter career graph by mission').selectOption('pattern');
+  await setGraphScope(page, 'pattern');
   const fabricInspector = await inspect(page, fabric);
   await expect(page.getByLabel('Filter career graph by mission')).toHaveValue('fabric');
   await expect(fabricInspector.getByRole('button', { name: 'Record evidence', exact: true })).toBeDisabled();
