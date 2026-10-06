@@ -352,6 +352,7 @@ for (const width of [1440, 390, 320]) {
           break;
         }
         case 'tools-search':
+          await expect(page).toHaveTitle('Overview - CareerOS');
           await page.locator('[data-tour="global-search"]').fill('DSA');
           await expect(page.locator('.search-results')).toBeVisible();
           break;

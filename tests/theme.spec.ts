@@ -97,6 +97,30 @@ async function noOverflow(page: Page) {
 
 async function frozenMotionPage(page: Page, theme: Theme = 'dark') {
   await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), { key: themeKey, theme });
+  await page.addInitScript(() => {
+    // Playwright's JS clock does not stop native CSS transitions. Hold each real
+    // transition in the style-mutation microtask, before a slow caller can miss it.
+    const held = new WeakSet<Animation>();
+    new MutationObserver(records => {
+      const buttons = new Set<Element>();
+      for (const record of records) {
+        if (record.target instanceof Element) {
+          const button = record.target.closest('.theme-toggle[data-motion]');
+          if (button) buttons.add(button);
+        }
+      }
+      for (const button of buttons) {
+        for (const animation of button.getAnimations({ subtree: true })) {
+          if (!(animation instanceof CSSTransition) || held.has(animation)) continue;
+          held.add(animation);
+          animation.pause();
+          animation.currentTime = 0;
+        }
+      }
+    }).observe(document, {
+      subtree: true, attributes: true, attributeFilter: ['data-motion', 'style', 'aria-checked'],
+    });
+  });
   // Freeze before application startup; a busy renderer must not turn pauseAt into a past deadline.
   await page.clock.install({ time: new Date('2026-10-05T12:00:00Z') });
   await page.clock.pauseAt(new Date('2026-10-05T12:01:00Z'));
@@ -221,23 +245,31 @@ async function animationFrame(toggle: Locator, milliseconds: number) {
     return orbit.getAnimations().some(animation =>
       animation instanceof CSSTransition && animation.transitionProperty === 'transform');
   })).toBe(true);
-  return toggle.evaluate((button, time) => {
+  const frame = await toggle.evaluate((button, time) => {
     const orbit = button.querySelector('.theme-orbit')!;
     const sun = button.querySelector('.theme-sun')!;
     const animations = button.getAnimations({ subtree: true });
     for (const animation of animations) {
-      animation.pause();
+      if (animation.playState !== 'paused') throw new Error('Theme transition escaped the creation-time hold');
       animation.currentTime = time;
     }
     const orbitTransition = animations.find(animation =>
       animation.effect instanceof KeyframeEffect && animation.effect.target === orbit);
     const scene = button.querySelector('.theme-scene')!.getBoundingClientRect();
+    const orbitBounds = orbit.getBoundingClientRect();
     const bounds = sun.getBoundingClientRect();
     return {
       milliseconds: time,
       animationCount: animations.length,
       transitionProperty: orbitTransition instanceof CSSTransition ? orbitTransition.transitionProperty : null,
+      duration: orbitTransition?.effect?.getComputedTiming().duration,
+      currentTime: orbitTransition?.currentTime,
+      playState: orbitTransition?.playState,
+      keyframeTransforms: orbitTransition?.effect instanceof KeyframeEffect
+        ? orbitTransition.effect.getKeyframes().map(keyframe => keyframe.transform) : [],
       transform: getComputedStyle(orbit).transform,
+      centerX: orbitBounds.x + orbitBounds.width / 2 - scene.x,
+      centerY: orbitBounds.y + orbitBounds.height / 2 - scene.y,
       x: bounds.x + bounds.width / 2 - scene.x,
       y: bounds.y + bounds.height / 2 - scene.y,
       top: bounds.top - scene.top,
@@ -245,6 +277,29 @@ async function animationFrame(toggle: Locator, milliseconds: number) {
       sceneWidth: scene.width,
     };
   }, milliseconds);
+  expect(frame.duration).toBe(THEME_MOTION_MS);
+  expect(frame.currentTime).toBe(milliseconds);
+  expect(frame.playState).toBe('paused');
+  return frame;
+}
+
+async function assertMotionSettled(page: Page, theme: Theme) {
+  const toggle = themeSwitch(page);
+  await expect(toggle).not.toHaveAttribute('data-motion');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme-transition');
+  await expect(page.locator('.palette-veil')).toHaveCount(0);
+  await expect(page.locator('html')).not.toHaveAttribute('data-palette-transition');
+  await assertTheme(page, theme);
+  await expect.poll(() => toggle.evaluate(button => {
+    const orbit = button.querySelector('.theme-orbit')!;
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(orbit).transform);
+    return {
+      animations: button.getAnimations({ subtree: true }).length,
+      cosine: matrix.a,
+      sine: matrix.b,
+      clouds: Number(getComputedStyle(button.querySelector('.theme-clouds')!).opacity),
+    };
+  })).toEqual({ animations: 0, cosine: theme === 'light' ? 1 : -1, sine: 0, clouds: theme === 'light' ? 1 : 0 });
 }
 
 test('the sun repeatedly rises on the east/right and sets on the west/left', async ({ page }, testInfo) => {
@@ -256,6 +311,9 @@ test('the sun repeatedly rises on the east/right and sets on the west/left', asy
     await toggle.click();
     await expect(toggle).toHaveAttribute('data-motion', motion);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // Deliberately outlive the sun's 1.2s transition with the independent 1.4s
+    // palette fade: the sampled native orbit must still exist on a slow runner.
+    await expect(page.locator('.palette-veil')).toHaveCount(0);
     const frames = [];
     for (const milliseconds of [0, THEME_MOTION_MS / 4, THEME_MOTION_MS * .75, THEME_MOTION_MS]) {
       const frame = await animationFrame(toggle, milliseconds);
@@ -266,8 +324,22 @@ test('the sun repeatedly rises on the east/right and sets on the west/left', asy
       await toggle.screenshot({ path, animations: 'allow' });
       await testInfo.attach(`${motion}-${cycle}-${milliseconds}ms`, { path, contentType: 'image/png' });
     }
+    expect(frames[0].keyframeTransforms).toEqual([
+      `rotate(${-180 * (cycle + 1)}deg)`, `rotate(${-180 * (cycle + 2)}deg)`,
+    ]);
     expect(frames[0].transform).not.toBe(frames[1].transform);
     expect(frames[1].transform).not.toBe(frames[2].transform);
+    let sweptAngle = 0;
+    for (let index = 1; index < frames.length; index++) {
+      const previous = frames[index - 1];
+      const current = frames[index];
+      const [ax, ay] = [previous.x - previous.centerX, previous.y - previous.centerY];
+      const [bx, by] = [current.x - current.centerX, current.y - current.centerY];
+      const delta = Math.atan2(ax * by - ay * bx, ax * bx + ay * by);
+      expect(delta, 'Every sampled segment travels counter-clockwise').toBeLessThan(0);
+      sweptAngle += delta;
+    }
+    expect(sweptAngle, 'Each settled toggle travels exactly half an orbit').toBeCloseTo(-Math.PI, 3);
     if (motion === 'sunrise') {
       expect(frames[0].y).toBeGreaterThan(frames[1].y);
       expect(frames[1].y).toBeGreaterThan(frames[2].y);
@@ -283,7 +355,7 @@ test('the sun repeatedly rises on the east/right and sets on the west/left', asy
     }
     await testInfo.attach(`${motion}-${cycle}-computed-frames`, { body: JSON.stringify(frames), contentType: 'application/json' });
     await page.clock.runFor(THEME_MOTION_MS + 150);
-    await expect.poll(() => toggle.getAttribute('data-motion')).toBeNull();
+    await assertMotionSettled(page, theme);
     cycle++;
   }
   expect(await workspace(page)).toBe(before);
@@ -302,7 +374,7 @@ test('retargeting mid-flight preserves the current sun position instead of resta
   const ended = await animationFrame(toggle, THEME_MOTION_MS);
   expect(ended.top).toBeGreaterThan(ended.sceneHeight);
   await page.clock.runFor(THEME_MOTION_MS + 150);
-  await assertTheme(page, 'dark');
+  await assertMotionSettled(page, 'dark');
 });
 
 test('a late sunrise request continues past the west horizon and returns from the east', async ({ page }) => {
@@ -319,7 +391,7 @@ test('a late sunrise request continues past the west horizon and returns from th
   expect(rising.y).toBeLessThan(21);
   await animationFrame(toggle, THEME_MOTION_MS);
   await page.clock.runFor(THEME_MOTION_MS + 150);
-  await assertTheme(page, 'light');
+  await assertMotionSettled(page, 'light');
 });
 
 test('theme motion uses only the tiny control and one page fade', async ({ page }) => {
@@ -388,6 +460,36 @@ test('reduced motion changes theme immediately without animated transition state
   await assertTheme(page, 'light');
 });
 
+test('enabling reduced motion cancels an in-flight sun and page fade without replay', async ({ page }) => {
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = animate.call(this, keyframes, options);
+      if (this.classList.contains('palette-veil')) animation.pause();
+      return animation;
+    };
+  });
+  await frozenMotionPage(page);
+  const before = await workspace(page);
+  const toggle = themeSwitch(page);
+  await toggle.click();
+  const moving = await animationFrame(toggle, THEME_MOTION_MS / 2);
+  expect(moving.transitionProperty).toBe('transform');
+  await expect(page.locator('.palette-veil')).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => toggle.evaluate(button => button.getAnimations({ subtree: true }).length)).toBe(0);
+  await expect(page.locator('.palette-veil')).toHaveCount(0);
+  await assertTheme(page, 'light');
+  await page.clock.runFor(THEME_MOTION_MS + 150);
+  await assertMotionSettled(page, 'light');
+  await toggle.click();
+  await assertMotionSettled(page, 'dark');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await assertMotionSettled(page, 'dark');
+  expect(await preference(page)).toBe('dark');
+  expect(await workspace(page)).toBe(before);
+});
+
 test('keyboard Tab exposes a visible focus indicator and Space toggles the switch', async ({ page }) => {
   await page.goto('./#/hq');
   await assertTheme(page, 'dark');
@@ -419,10 +521,10 @@ test('rapid theme changes settle on the last choice without workspace changes', 
   for (let index = 0; index < 5; index++) await themeSwitch(page).click();
   await expect(themeSwitch(page)).toHaveAttribute('aria-checked', 'false');
   await expect(themeSwitch(page)).toHaveAttribute('data-motion', 'sunrise');
+  const ended = await animationFrame(themeSwitch(page), THEME_MOTION_MS);
+  expect(ended.y).toBeLessThan(21);
   await page.clock.fastForward(THEME_MOTION_MS + 150);
-  await assertTheme(page, 'light');
-  await expect.poll(() => themeSwitch(page).getAttribute('data-motion')).toBeNull();
-  expect(await page.locator('html').evaluate(root => root.hasAttribute('data-theme-transition'))).toBe(false);
+  await assertMotionSettled(page, 'light');
   expect(await preference(page)).toBe('light');
   expect(await workspace(page)).toBe(before);
 });

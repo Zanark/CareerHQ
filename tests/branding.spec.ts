@@ -10,7 +10,10 @@ for (const theme of ['dark', 'light']) {
       await page.goto('./#/missions');
       await expect(page.getByRole('heading', { name: 'Missions', exact: true, level: 1 })).toBeVisible();
       const before = await page.evaluate(key => localStorage.getItem(key), storageKey);
-      if (width < 761) await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+      if (width < 761) {
+        await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+        await expect(page.locator('.sidebar')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      }
 
       const brand = page.getByRole('link', { name: 'CareerOS - Career operating system', exact: true });
       await expect(brand).toBeVisible();
