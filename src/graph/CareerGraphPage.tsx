@@ -11,7 +11,7 @@ import type { CareerGraphEdge, CareerGraphKind, CareerGraphNode } from './career
 import { CareerGraphConnections } from './CareerGraphConnections';
 import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
-import { setCareerItemsVisible } from './careerVisibility';
+import { getDefaultHiddenCareerRingIds, setCareerItemsVisible } from './careerVisibility';
 import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
 import { DEFAULT_NODE_SPACING, MAX_NODE_SPACING, spaceCareerGraph } from './careerNodeSpacing';
 import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
@@ -74,7 +74,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const [includeRings, setIncludeRings] = useState(true);
   const [includeSparks, setIncludeSparks] = useState(true);
   const [sparkDensity, setSparkDensity] = useState(DEFAULT_SPARK_DENSITY);
-  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => getDefaultHiddenCareerRingIds(sourceGraph));
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
@@ -456,11 +456,12 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
           <section {...panelAttributes('rings')} className="career-graph-panel career-orbit-index">
             {panelHeading('rings')}
             <div className="career-graph-panel-body">
-             <p>{graph.orbits.length} ring views: nine saved missions and six record/reference collections. Mission rings follow Bring into focus / Move to background, not just the primary mission. Inspect any ring here, even without 3D.</p>
+             <p>{graph.orbits.length} available ring views. The nine mission rings start visible; the six collection rings start hidden. Select a hidden ring, then Reveal orbit and members to turn it on, or choose its checkbox in Nodes. These defaults hide only rings, not their records.</p>
              <div className="career-orbit-list">{graph.orbits.map(orbit => <button key={orbit.id} type="button"
                data-orbit-id={orbit.id} data-mission-mode={orbit.missionMode}
                aria-pressed={selectedOrbit?.id === orbit.id} onClick={() => inspectOrbitFromIndex(orbit.id)}>
                <i style={{ backgroundColor: orbit.color }} /><span><strong>{orbit.label}</strong>
+                 {!visibleOrbitIds.has(orbit.id) && <small>Hidden in this view</small>}
                  {orbit.missionMode && <small>{orbit.missionMode === 'active' ? 'Active - colored outer ring' : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} - small stationary ring`}</small>}
                  <small>{orbit.summary}</small></span>
              </button>)}</div>

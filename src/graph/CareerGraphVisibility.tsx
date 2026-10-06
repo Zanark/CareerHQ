@@ -118,7 +118,7 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
     <details className="career-visibility-help">
       <summary>How visibility works</summary>
       <p>Groups select their current nodes and ring together; individual choices can leave a group partly selected. Shared items update across groups.</p>
-      <p>Choices combine with the mission and layer filters in View options. Counts are choices, not completion. New items start chosen; Sparks are controlled separately in View options.</p>
+      <p>Choices combine with the mission and layer filters in View options. Counts are choices, not completion. Nodes and mission rings start chosen; the six collection rings start hidden. Sparks are controlled separately in View options.</p>
       <p>These choices last only while this graph page is open. Nothing is deleted from your workspace or backups.</p>
     </details>
   </div>;

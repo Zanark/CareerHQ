@@ -52,6 +52,10 @@ test('all fifteen ring hues are unique and the nine mission hues match Missions 
   }
   await page.getByRole('complementary', { name: 'Main navigation' }).getByRole('link', { name: 'Career graph', exact: true }).click();
   const scene = await ready(page);
+  await expect(scene).toHaveAttribute('data-orbit-count', '9');
+  await openGraphPanel(page, 'visibility');
+  await page.getByRole('button', { name: 'Select all items', exact: true }).click();
+  await page.clock.runFor(100);
   const identities = await scene.locator('.career-graph-scene__orbit-diagnostic').evaluateAll(elements =>
     elements.map(element => ({ id: element.getAttribute('data-orbit-id')!, color: element.getAttribute('data-orbit-color')! })));
   expect(identities).toHaveLength(15);
@@ -131,6 +135,8 @@ test('Checkpoints hides saved, archived and untracked checkpoint clouds without 
     kind: 'exercise', url: '', advance: true, criteriaConfirmed: true,
   });
   state = upgradeRoadmap(state, 'system');
+  // Keep this layer test independent of the host date versus the frozen browser date.
+  state.plans['2026-10-06'] = [];
   await seed(page, state);
   await page.goto('./#/home');
   const scene = await ready(page);
@@ -144,7 +150,7 @@ test('Checkpoints hides saved, archived and untracked checkpoint clouds without 
   await page.clock.runFor(100);
   await expect(scene).toHaveAttribute('data-node-count', String(nonCheckpoints.length));
   await expect(scene).toHaveAttribute('data-edge-count', String(graph.edges.filter(edge => remaining.has(edge.source) && remaining.has(edge.target)).length));
-  await expect(scene).toHaveAttribute('data-orbit-count', '15');
+  await expect(scene).toHaveAttribute('data-orbit-count', '9');
   await expect(scene).toHaveAttribute('data-orbit-data-radius', radius!);
   await searchGraphNodes(page, 'HashMap Fundamentals');
   await expect(page.locator('.career-graph-node-list > button')).toHaveCount(0);

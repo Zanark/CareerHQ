@@ -63,6 +63,10 @@ with the square root of relative camera distance as you zoom in.
 Nine mission orbits use the saved roadmap's stages and checkpoint statuses;
 six record/reference orbits show the appropriate collection groups and counts.
 All fifteen rings have distinct nongreen identity hues from `src/missionVisuals.ts`.
+Only the nine mission rings start visible. Collection paths, dots and tethers are
+hidden by default, including in the focus backdrop; their underlying work/reference
+nodes are not hidden. Main-graph collection rings can be enabled individually through
+Nodes or the ring inspector's explicit reveal action.
 The nine mission hues match the Missions interface. Ring checkpoint ticks vary in intensity,
 not by repainting the ring green. Background/planned missions retain those hues on their
 rings, dots, ticks and tethers, but use smaller near-core radii and no independent animation.

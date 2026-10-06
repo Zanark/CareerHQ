@@ -94,6 +94,12 @@ Per-item visibility is an in-memory set of existing node/orbit IDs, outside work
 data. Tri-state groups derive from the same set, including overlapping mission and
 collection membership. The full source catalog stays searchable; only the rendered
 node/orbit arrays and edges with two visible endpoints are filtered.
+`getDefaultHiddenCareerRingIds` initializes the main page's hidden-ID set with only
+non-mission orbit IDs. All nine mission rings and all real nodes remain chosen.
+Explicit per-ring selection/reveal changes this local set; workspace saves do not
+reapply defaults. Select all items deliberately restores all fifteen rings.
+The focus room applies the same ring defaults once when taking its snapshot, retaining
+the full node/edge data and its existing independent presentation settings.
 `framingNodes` supplies bounds before the individual-item and Checkpoints filters so those choices do not shift
 remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
 visible core, not a framing-only node. One non-animated initial render may occur

@@ -101,7 +101,7 @@ test('switching cards, Clear center, ring hiding and node inspection cleanly con
   await expect(scene).toHaveAttribute('data-highlighted-orbit-id', inactive);
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'true');
   await setGraphScope(page, 'fabric');
-  await expect(scene).toHaveAttribute('data-orbit-count', '7');
+  await expect(scene).toHaveAttribute('data-orbit-count', '1');
   await capture(page, scene);
   const marker = scene.locator(`.career-graph-scene__orbit-diagnostic[data-orbit-id="${inactive}"]`);
   await expect(marker).toHaveAttribute('data-mission-mode', 'background');

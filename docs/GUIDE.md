@@ -96,6 +96,14 @@ complete their associated checkpoints. Mission and layer filters only affect the
 Fine, glowing orange links represent actual graph connections. The rings
 are **15 data views**: nine saved missions, plus Daily work, Saved evidence,
 Applications, Freelance leads, Past accomplishments and Untracked curriculum.
+Only the **nine mission rings are visible by default**, in both the main graph and
+focus-room backdrop. The six collection rings start hidden, whether empty or populated.
+Their actual records and checkpoint nodes remain visible under the existing node filters.
+To enable a collection ring, open **Rings**, select it, then **Reveal orbit and members**;
+or use **Nodes → Individual nodes and rings → Ring views** and check that ring.
+The ring index keeps all fifteen available and labels hidden ones. **Select all items**
+explicitly enables all fifteen. Choices last for the current graph page; reopening it
+returns to mission-only rings. The focus backdrop independently uses that same default.
 Mission rings summarize the stages, recorded completion and current checkpoint of
 your **saved roadmap edition**. Archived completions and unadopted curriculum do
 not inflate that progress. Record rings show their real groups/counts, not invented
@@ -107,7 +115,7 @@ but keep their mission color. Each of the nine missions and six collections has
 a distinct nongreen hue; mission hues match the **Missions** interface.
 This follows **Bring into focus / Move to background**, not just the single
 **Make primary mission** choice. Their saved checkpoints, completion and evidence
-remain intact and inspectable. The six record/reference rings keep their existing behavior.
+remain intact and inspectable. The six record/reference rings retain their motion when explicitly enabled.
 
 Each ring has a **flat glowing dot**, not a shaded sphere, in its own ring color.
 The thicker border around a **mission dot** is bright when evidence/progress or any

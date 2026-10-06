@@ -7,6 +7,7 @@ import { CircleDot, Maximize2, Minimize2, Pause, Play, RotateCcw, X } from 'luci
 import type { AppState } from '../domain/types';
 import { buildCareerGraph } from '../graph/careerGraphModel';
 import type { CareerGraph } from '../graph/careerGraphModel';
+import { getDefaultHiddenCareerRingIds } from '../graph/careerVisibility';
 import type { FocusRoomHandle, FocusSessionController } from './focusTypes';
 import './focus-room.css';
 
@@ -142,7 +143,9 @@ const FocusRoom = forwardRef<FocusRoomHandle, {
     if (!dialog || dialog.open) return;
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     routeRef.current = location.hash;
-    setSnapshot(buildCareerGraph(latest.current.state));
+    const graph = buildCareerGraph(latest.current.state);
+    const hiddenRings = getDefaultHiddenCareerRingIds(graph);
+    setSnapshot({ ...graph, orbits: graph.orbits.filter(orbit => !hiddenRings.has(orbit.id)) });
     setGraphics('loading');
     setAcknowledgment('');
     setActionError('');

@@ -11,6 +11,10 @@ export function getCareerVisibilityItemIds(graph: CareerGraph): string[] {
   return [...new Set([...graph.nodes.map(node => node.id), ...graph.orbits.map(orbit => orbit.id)])];
 }
 
+export function getDefaultHiddenCareerRingIds(graph: Pick<CareerGraph, 'orbits'>): ReadonlySet<string> {
+  return new Set(graph.orbits.filter(orbit => orbit.kind !== 'mission').map(orbit => orbit.id));
+}
+
 export function setCareerItemsVisible(
   hiddenIds: ReadonlySet<string>, ids: readonly string[], visible: boolean,
 ): ReadonlySet<string> {

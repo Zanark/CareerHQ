@@ -84,7 +84,7 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-orbits'],
     title: 'Read the mission rings',
-    body: 'Rings has nine missions and six collections with distinct nongreen hues; mission colors match Missions. Select a card for its ring/stages. Flat glowing mission dots have thick same-color borders: bright after saved evidence/progress or any recall today, dim otherwise. Active missions revolve outside; background/planned stay smaller and still, but colored. Selection highlights the ring path; group tethers mean membership, not prerequisites. Collection borders claim no mission activity.',
+    body: 'Nine mission rings start visible; six optional collection rings start hidden. Rings still lists all fifteen: inspect a hidden collection, then Reveal orbit and members to enable it. Mission hues match Missions. Flat dot borders brighten after saved evidence/progress or recall today. Active missions revolve outside; background/planned stay smaller and still. Tethers mean membership, not prerequisites. Collection borders claim no mission activity.',
   },
   {
     id: 'career-graph-checkpoints-hide', chapter: 'career-graph', kind: 'action', route: 'home',

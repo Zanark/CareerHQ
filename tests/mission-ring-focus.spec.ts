@@ -43,12 +43,21 @@ for (const profile of ['main', 'focus'] as const) {
     const background = diagnostic(scene, orbitId('fabric'));
     const planned = diagnostic(scene, orbitId('algorithm'));
     const collection = diagnostic(scene, 'orbit:action');
+    await expect(collection).toHaveCount(0);
+    if (profile === 'main') {
+      await openGraphPanel(page, 'rings');
+      await page.locator('.career-orbit-list > button[data-orbit-id="orbit:action"]').click();
+      const inspector = page.getByRole('complementary', { name: 'Selected career orbit', exact: true });
+      await inspector.getByRole('button', { name: 'Reveal orbit and members', exact: true }).click();
+      await inspector.getByRole('button', { name: 'Close orbit details', exact: true }).click();
+      await page.clock.runFor(100);
+      await expect(collection).toHaveAttribute('data-mission-mode', 'collection');
+      await expect(collection).toHaveAttribute('data-orbit-revolving', 'true');
+    }
     await expect(active).toHaveAttribute('data-mission-mode', 'active');
     await expect(active).toHaveAttribute('data-orbit-revolving', 'true');
     await expect(background).toHaveAttribute('data-mission-mode', 'background');
     await expect(planned).toHaveAttribute('data-mission-mode', 'planned');
-    await expect(collection).toHaveAttribute('data-mission-mode', 'collection');
-    await expect(collection).toHaveAttribute('data-orbit-revolving', 'true');
     const activeRadius = Number(await active.getAttribute('data-orbit-radius'));
     expect(activeRadius).toBeGreaterThan(1);
     for (const quiet of [background, planned]) {
@@ -57,7 +66,8 @@ for (const profile of ['main', 'focus'] as const) {
       expect(radius).toBeGreaterThan(.3);
       expect(radius).toBeLessThan(activeRadius * .7);
     }
-    const initial = { active: await point(active), background: await point(background), planned: await point(planned), collection: await point(collection) };
+    const initial = { active: await point(active), background: await point(background), planned: await point(planned),
+      collection: profile === 'main' ? await point(collection) : [] };
     expect(Object.values(initial).flat().every(Number.isFinite)).toBe(true);
     let waveObserved = false;
     for (const elapsed of [1500, 1500, 2000, 4000, 2000]) {
@@ -69,7 +79,8 @@ for (const profile of ['main', 'focus'] as const) {
     }
     expect(waveObserved).toBe(true);
     expect(await point(active)).not.toEqual(initial.active);
-    expect(await point(collection)).not.toEqual(initial.collection);
+    if (profile === 'main') expect(await point(collection)).not.toEqual(initial.collection);
+    else await expect(collection).toHaveCount(0);
     await expect(scene).toHaveAttribute('data-orbit-pulse-count', '0');
     expect(await scene.evaluate(element => [element.getAttribute('data-node-count'), element.getAttribute('data-edge-count')])).toEqual(counts);
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);

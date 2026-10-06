@@ -5,7 +5,7 @@ import type { AppState, DailyAction, RoadmapVersion } from '../domain/types';
 import { buildCareerGraph } from './careerGraphModel';
 import type { CareerGraph } from './careerGraphModel';
 import {
-  createCareerVisibilityGroups, getCareerVisibilityItemIds, getCareerVisibilitySelection, setCareerItemsVisible,
+  createCareerVisibilityGroups, getCareerVisibilityItemIds, getCareerVisibilitySelection, getDefaultHiddenCareerRingIds, setCareerItemsVisible,
 } from './careerVisibility';
 
 const versions: RoadmapVersion[] = ['1.0.0', '2.0.0', '3.0.0'];
@@ -65,6 +65,32 @@ function group(graph: CareerGraph, id: string) {
   expect(found, `Expected visibility group ${id}`).toBeDefined();
   return found!;
 }
+
+describe('mission-only ring defaults', () => {
+  it.each(versions)('hides exactly the six collection rings in v%s without hiding their records', version => {
+    const graph = freeze(buildCareerGraph(fixture(version)));
+    const before = JSON.stringify(graph);
+    const hidden = getDefaultHiddenCareerRingIds(graph);
+    expect([...hidden]).toEqual([
+      'orbit:action', 'orbit:evidence', 'orbit:opportunity', 'orbit:freelance', 'orbit:history', 'orbit:curriculum',
+    ]);
+    expect(graph.orbits.filter(orbit => !hidden.has(orbit.id)).map(orbit => orbit.missionId)).toEqual(missionIds);
+    expect(graph.nodes.every(node => !hidden.has(node.id))).toBe(true);
+    expect(JSON.stringify(graph)).toBe(before);
+    expect(getDefaultHiddenCareerRingIds(graph)).not.toBe(hidden);
+  });
+
+  it('reveals one optional ring without enabling the other five or changing future defaults', () => {
+    const graph = buildCareerGraph(fixture());
+    const defaults = getDefaultHiddenCareerRingIds(graph);
+    const shown = setCareerItemsVisible(defaults, ['orbit:evidence'], true);
+    expect(shown.size).toBe(5);
+    expect(shown.has('orbit:evidence')).toBe(false);
+    expect(defaults.size).toBe(6);
+    expect(getDefaultHiddenCareerRingIds(graph)).toEqual(defaults);
+    expect(setCareerItemsVisible(shown, getCareerVisibilityItemIds(graph), true).size).toBe(0);
+  });
+});
 
 describe('Career visibility: complete source membership', () => {
   it.each(versions)('covers every real v%s node and ring, with unique universe IDs and deduplicated groups', version => {

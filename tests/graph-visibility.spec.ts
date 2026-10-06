@@ -112,7 +112,7 @@ test('item hiding preserves remaining geometry and zoom, removes incident edges,
   const hidden = new Set(graph.nodes.filter(node => node.missionId === 'pattern').map(node => node.id));
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length - hidden.size));
   await expect(scene).toHaveAttribute('data-edge-count', String(graph.edges.filter(edge => !hidden.has(edge.source) && !hidden.has(edge.target)).length));
-  await expect(scene).toHaveAttribute('data-orbit-count', '14');
+  await expect(scene).toHaveAttribute('data-orbit-count', '8');
   await expect(scene).toHaveAttribute('data-orbit-data-radius', radius!);
   await expect(scene).toHaveAttribute('data-cursor-offset', zoom!);
   await expect.poll(() => quiet.evaluate(element => [element.getAttribute('data-world-x'), element.getAttribute('data-world-y'), element.getAttribute('data-world-z')])).toEqual(position);
@@ -149,7 +149,7 @@ test('a hidden ring loses its glow and can be explicitly revealed without showin
   await (await individual(panel, 'orbit:mission:pattern', 'DSA', 'orbit')).uncheck();
   await expect(scene).toHaveAttribute('data-node-count', String(graph.nodes.length));
   await expect(scene).toHaveAttribute('data-orbit-highlight-visible', 'false');
-  await expect(scene).toHaveAttribute('data-orbit-count', '14');
+  await expect(scene).toHaveAttribute('data-orbit-count', '8');
   const unrelated = graph.nodes.find(node => node.kind === 'checkpoint' && node.missionId === 'system')!;
   await (await individual(panel, unrelated.id, unrelated.label, 'node')).uncheck();
   await closeGraphPanels(page);
