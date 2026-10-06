@@ -13,6 +13,7 @@ import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
 import { setCareerItemsVisible } from './careerVisibility';
 import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
+import { DEFAULT_NODE_SPACING, MAX_NODE_SPACING, spaceCareerGraph } from './careerNodeSpacing';
 import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
 import type { CareerGraphSceneHandle } from './CareerGraphScene';
@@ -62,7 +63,9 @@ const panelNames: Record<CareerGraphPanel, string> = {
 export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   state: AppState; practice: boolean; date: string; onRecord: (missionId: MissionId) => void;
 }>(function CareerGraphPage({ state, practice, date, onRecord }, ref) {
-  const graph = useMemo(() => buildCareerGraph(state), [state, date]);
+  const sourceGraph = useMemo(() => buildCareerGraph(state), [state, date]);
+  const [nodeSpacing, setNodeSpacing] = useState(DEFAULT_NODE_SPACING);
+  const graph = useMemo(() => spaceCareerGraph(sourceGraph, nodeSpacing), [sourceGraph, nodeSpacing]);
   const [scope, setScope] = useState('all');
   const [includeRecords, setIncludeRecords] = useState(true);
   const [includeReferences, setIncludeReferences] = useState(true);
@@ -301,7 +304,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     </header>;
   }
 
-  return <div className="career-graph-page">
+  return <div className="career-graph-page" data-node-spacing={nodeSpacing}>
     <div className="career-graph-workspace">
       <section ref={stageRef} className="career-graph-stage-wrap" aria-label="Career network visualization">
         <header className="career-graph-commandbar">
@@ -394,6 +397,14 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                <label className="career-graph-mission-filter">Mission view<select aria-label="Filter career graph by mission" value={scope} onChange={event => { setScope(event.target.value); setListCount(40); }}>
                  <option value="all">Whole career</option>{missionNodes.map(node => <option key={node.id} value={node.missionId}>{node.label}</option>)}
                </select></label>
+               <div className="career-node-spacing" data-tour="career-graph-spacing">
+                 <label htmlFor={`${panelId}-spacing`}>Node spacing <output htmlFor={`${panelId}-spacing`}>{(nodeSpacing / 100).toFixed(1)}x</output></label>
+                 <input id={`${panelId}-spacing`} type="range" aria-label="Node spacing"
+                   aria-describedby={`${panelId}-spacing-hint`} aria-valuetext={`${(nodeSpacing / 100).toFixed(1)} times original distance`}
+                   min={DEFAULT_NODE_SPACING} max={MAX_NODE_SPACING} step={10} value={nodeSpacing}
+                   onChange={event => setNodeSpacing(event.currentTarget.valueAsNumber)} />
+                 <small id={`${panelId}-spacing-hint`}>Spread nodes farther apart without changing zoom. Use Frame all if they leave the view. 1.0x restores the original spacing.</small>
+               </div>
                <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
                <label className="graph-checkbox" title="Show tracked, archived and untracked checkpoint nodes. Mission hubs, records and rings stay available."><input type="checkbox" checked={includeCheckpoints} onChange={event => setIncludeCheckpoints(event.target.checked)} />Checkpoints</label>
                <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>

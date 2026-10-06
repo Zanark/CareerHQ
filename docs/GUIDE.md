@@ -78,6 +78,14 @@ when closed. Selecting a ring or work item closes its panel and shows the inspec
 Escape dismisses a panel; native fullscreen retains the browser's escape behavior.
 **Overview** remains the compact tracker at `#/hq`, also linked from View.
 
+**View → Node spacing** increases distances between nodes from **1.0x to 3.0x**.
+It expands their 3D positions around the fixed core, not the camera zoom; connections
+and ring membership tethers follow the nodes. Increase it to separate a crowded area,
+then pan or use **Frame all** if the wider graph extends beyond the view. **1.0x**
+restores the original layout. Arrow keys adjust by 0.1x; Home/End select the limits.
+The setting stays while this graph page is open, including fullscreen and filter changes,
+but is not saved in your workspace or copied to the separate focus-room snapshot.
+
 Green is reserved for **completed checkpoints**, including archived completions;
 orange marks unfinished checkpoints. Mission hubs and the six record/reference
 collections keep their own identity colors, even when a record describes a completed action

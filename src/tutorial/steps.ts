@@ -104,7 +104,7 @@ export const steps: TutorialStep[] = [
     id: 'career-graph-visibility', chapter: 'career-graph', kind: 'explain', route: 'home',
     targets: ['career-graph-visibility'],
     title: 'Choose exactly what appears',
-    body: 'Nodes opens visibility checkboxes. Groups choose their nodes and ring together; Individual nodes and rings lets you search and toggle anything, including the core. A partly checked group has mixed choices. Select all items restores choices, but View filters still apply. Panels keep these choices when closed. Nothing is deleted or completed.',
+    body: 'Nodes opens group and individual visibility checkboxes, including the core. A partly checked group has mixed choices. For more room, View has Node spacing: 1.0x to 3.0x the original distances, without changing zoom. Use Frame all if nodes leave the view; 1.0x restores their layout. These choices last on this page only. Nothing is deleted or completed.',
   },
   {
     id: 'career-graph-search', chapter: 'career-graph', kind: 'action', route: 'home', command: 'open-graph-search',

@@ -98,6 +98,12 @@ node/orbit arrays and edges with two visible endpoints are filtered.
 remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
 visible core, not a framing-only node. One non-animated initial render may occur
 below the fold to finish initialization; subsequent offscreen frames stay suspended.
+`careerNodeSpacing.ts` expands presentation coordinates 1-3x around the actual core,
+before scope/item filtering. Each slider value derives from the immutable source graph,
+never a previously expanded result. IDs, status, relationships and activity stay unchanged;
+the existing renderer rebuilds connected geometry and ring bounds without replacing the
+canvas, reframing the camera or changing orbit phase. Frame all explicitly fits the
+expanded bounds. The slider is main-page view state, not saved data or focus-room state.
 Cursor repulsion bends real edge interiors, not their endpoint identities or stored positions.
 The optional periodic core heartbeat is separate from saved-status completion pulses.
 Its source is the real core node and its ten-second cadence uses active elapsed time.
