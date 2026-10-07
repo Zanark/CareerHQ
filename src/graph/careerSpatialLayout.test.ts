@@ -23,6 +23,16 @@ function measure(graph: CareerGraph, legacy = false) {
   const projectedCore = point.fromArray(core.position).project(camera);
   const worldPoints = graph.nodes.filter(node => node.kind !== 'core').map(node => new Vector3().fromArray(node.position));
   const nearestWorld = worldPoints.map((a, index) => Math.min(...worldPoints.filter((_, other) => index !== other).map(b => a.distanceTo(b)))).sort((a, b) => a - b);
+  const nonCore = graph.nodes.filter(node => node.kind !== 'core');
+  const peers = nonCore.map((node, index) => points.map((point, other) => ({
+    distance: Math.hypot(point.x - points[index].x, point.y - points[index].y), mission: nonCore[other].missionId, other,
+  })).filter(item => item.other !== index).sort((a, b) => a.distance - b.distance).slice(0, 3)
+    .filter(item => item.mission === node.missionId).length / 3);
+  const lookup = new Map(graph.nodes.map(node => [node.id, new Vector3().fromArray(node.position).project(camera)]));
+  const paths = graph.edges.filter(edge => edge.kind === 'prerequisite').map(edge => {
+    const from = lookup.get(edge.source)!, to = lookup.get(edge.target)!;
+    return Math.hypot((from.x - to.x) * 520, (from.y - to.y) * 400);
+  }).sort((a, b) => a - b);
   return {
     p10: nearest[Math.floor(nearest.length * 0.1)], median: nearest[Math.floor(nearest.length * 0.5)],
     crowded: nearest.filter(value => value < 6).length / nearest.length,
@@ -31,11 +41,13 @@ function measure(graph: CareerGraph, legacy = false) {
     projectedCoreClearance: Math.min(...points.map(node => Math.hypot((node.x - projectedCore.x) * 520, (node.y - projectedCore.y) * 400))),
     worldMedian: nearestWorld[Math.floor(nearestWorld.length * 0.5)],
     coreClearance: Math.min(...graph.nodes.filter(node => node.kind !== 'core').map(node => Math.hypot(...node.position.map((value, axis) => value - core.position[axis])))),
+    neighborhoodPurity: peers.reduce((sum, value) => sum + value, 0) / peers.length,
+    prerequisiteP75: paths[Math.floor(paths.length * 0.75)],
   };
 }
 
 describe('fitted spatial decluttering, not uniform enlargement', () => {
-  it.each(['3.0.0', '2.0.0'] as const)('improves real nearest-neighbor gaps for saved v%s, including its curriculum nodes', version => {
+  it.each(['3.0.0', '2.0.0'] as const)('unmixes mission neighborhoods and untangles real paths for saved v%s after fitting', version => {
     const state = createInitialState(false, version);
     state.plans = {};
     const graph = buildCareerGraph(state);
@@ -49,11 +61,14 @@ describe('fitted spatial decluttering, not uniform enlargement', () => {
     expect(readings[0].minimumRingGap).toBeGreaterThan(legacy.minimumRingGap * 5);
     expect(readings[0].projectedCoreClearance).toBeGreaterThan(legacy.projectedCoreClearance * 2);
     for (let index = 1; index < readings.length; index++) {
-      expect(readings[index].p10).toBeGreaterThan(readings[index - 1].p10 * 1.05);
-      expect(readings[index].median).toBeGreaterThan(readings[index - 1].median * 1.05);
+      expect(readings[index].p10).toBeGreaterThan(readings[0].p10 * 1.05);
+      expect(readings[index].median).toBeGreaterThan(readings[0].median * 1.15);
       expect(readings[index].crowded).toBeLessThanOrEqual(readings[0].crowded);
+      expect(readings[index].neighborhoodPurity).toBeGreaterThan(0.98);
+      expect(readings[index].neighborhoodPurity - readings[0].neighborhoodPurity).toBeGreaterThan(0.25);
+      expect(readings[index].prerequisiteP75).toBeLessThan(readings[0].prerequisiteP75 * 0.25);
       expect(readings[index].extent / readings[0].extent).toBeGreaterThan(0.9);
-      expect(readings[index].extent / readings[0].extent).toBeLessThan(1.1);
+      expect(readings[index].extent / readings[0].extent).toBeLessThan(1.4);
     }
     const maximum = spaceCareerGraph(graph, 300);
     const depths = maximum.nodes.map(node => new Vector3().fromArray(node.position).dot(new Vector3(0.58, 0.32, 1).normalize()));

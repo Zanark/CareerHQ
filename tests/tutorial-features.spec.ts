@@ -64,10 +64,12 @@ test(`checkpoint visibility lessons remain reachable at ${width}px without chang
   await page.setViewportSize({ width, height: 844 });
   const before = await begin(page, 'career-graph');
   await next(page, 'career-graph-orbits');
+  await next(page, 'graph-pause');
+  await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
   await next(page, 'career-graph-checkpoints-hide');
   const nextButton = page.locator('.tutorial-panel').getByRole('button', { name: 'Next', exact: true });
   await expect(nextButton).toBeDisabled();
-  await page.locator('[data-graph-panel-trigger="view"]').click();
+  await expect(page.locator('[data-graph-panel-trigger="view"]')).toHaveAttribute('aria-expanded', 'true');
   if (width === 320) expect((await page.locator('.career-graph-stage').boundingBox())!.height).toBeGreaterThan(320);
   const checkpoints = page.getByRole('checkbox', { name: 'Checkpoints', exact: true });
   await expect(checkpoints).toBeChecked();
@@ -75,7 +77,7 @@ test(`checkpoint visibility lessons remain reachable at ${width}px without chang
   await next(page, 'career-graph-checkpoints-show');
   await expect(nextButton).toBeDisabled();
   await checkpoints.check();
-  await next(page, 'career-graph-visibility');
+  await next(page, 'graph-labels-hide');
   await finish(page, before);
 });
 }

@@ -1,9 +1,38 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import { createInitialState, generatePlan, localDate } from '../src/domain/engine';
 import { steps } from '../src/tutorial/steps';
+import { graphSkillCheckpointTitle } from '../src/tutorial/graphControls';
 
 const key = 'careerhq.workspace.v1';
 const themeKey = 'careerhq.theme.v1';
+const graphCheckboxLessons: Record<string, [string, boolean]> = {
+  'career-graph-checkpoints-hide': ['Checkpoints', false],
+  'career-graph-checkpoints-show': ['Checkpoints', true],
+  'graph-labels-hide': ['Node labels', false], 'graph-labels-show': ['Node labels', true],
+  'graph-everything-on': ['Show everything', true], 'graph-everything-off': ['Show everything', false],
+  'graph-shared-hide': ['Shared skill links', false], 'graph-shared-show': ['Shared skill links', true],
+  'graph-rings-hide': ['Rings', false], 'graph-rings-show': ['Rings', true],
+  'graph-sparks-hide': ['Sparks', false], 'graph-sparks-show': ['Sparks', true],
+  'graph-autorotate-off': ['Auto-rotate', false],
+  'graph-heartbeat-off': ['Core heartbeat', false],
+};
+
+async function setGraphRange(page: Page, label: string, value: number) {
+  const input = page.getByRole('slider', { name: label, exact: true });
+  const range = await input.evaluate(element => {
+    const control = element as HTMLInputElement;
+    return { current: control.valueAsNumber, min: Number(control.min), max: Number(control.max), step: Number(control.step) };
+  });
+  await input.focus();
+  if (value === range.min || value === range.max) {
+    await input.press(value === range.min ? 'Home' : 'End');
+  } else {
+    for (let remaining = Math.abs(value - range.current); remaining > 0; remaining -= range.step) {
+      await input.press(value > range.current ? 'ArrowRight' : 'ArrowLeft');
+    }
+  }
+  await expect(input).toHaveValue(String(value));
+}
 const test = base.extend<{ healthy: void }>({
   healthy: [async ({ context }, use) => {
     const errors: string[] = [];
@@ -104,19 +133,163 @@ for (const width of [1440, 390, 320]) {
       const coach = page.locator('.tutorial-panel');
       await expect(coach).toHaveAttribute('data-step', step.id);
       visited.push(step.id);
+      const checkboxLesson = graphCheckboxLessons[step.id];
+      if (checkboxLesson) {
+        await page.getByRole('checkbox', { name: checkboxLesson[0], exact: true }).setChecked(checkboxLesson[1]);
+        if (step.id === 'graph-everything-on') {
+          await expect(page.getByRole('checkbox', { name: 'Node labels', exact: true })).toBeDisabled();
+          await expect(page.getByRole('checkbox', { name: 'Node labels', exact: true })).toBeChecked();
+        }
+        if (step.id === 'graph-everything-off') {
+          await expect(page.getByRole('checkbox', { name: 'Node labels', exact: true })).not.toBeChecked();
+        }
+        if (step.id === 'graph-sparks-hide' || step.id === 'graph-sparks-show') {
+          for (const name of ['Spark dots', 'Spark lines']) {
+            const slider = page.getByRole('slider', { name, exact: true });
+            await expect(slider).toHaveValue('10');
+            if (step.id === 'graph-sparks-hide') await expect(slider).toBeDisabled();
+            else await expect(slider).toBeEnabled();
+          }
+        }
+      }
       switch (step.id) {
-        case 'career-graph-checkpoints-hide':
-          await page.locator('[data-graph-panel-trigger="view"]').click();
-          await page.getByRole('checkbox', { name: 'Checkpoints', exact: true }).uncheck();
+        case 'graph-spacing-spread':
+          await setGraphRange(page, 'Node spacing', 300);
           break;
-        case 'career-graph-checkpoints-show':
-          await page.getByRole('checkbox', { name: 'Checkpoints', exact: true }).check();
+        case 'graph-spacing-reset':
+          await setGraphRange(page, 'Node spacing', 100);
+          break;
+        case 'graph-records-references-hide':
+        case 'graph-records-references-show':
+          for (const name of ['Work records', 'References']) {
+            await page.getByRole('checkbox', { name, exact: true }).setChecked(step.id.endsWith('-show'));
+          }
+          break;
+        case 'graph-spark-amount':
+          await setGraphRange(page, 'Spark dots', 35);
+          await expect(page.getByRole('slider', { name: 'Spark lines', exact: true })).toHaveValue('10');
+          break;
+        case 'graph-spark-lines':
+          await setGraphRange(page, 'Spark lines', 35);
+          await expect(page.getByRole('slider', { name: 'Spark dots', exact: true })).toHaveValue('35');
+          break;
+        case 'graph-spark-reset':
+          await setGraphRange(page, 'Spark dots', 10);
+          await setGraphRange(page, 'Spark lines', 10);
+          break;
+        case 'graph-pause':
+          await page.getByRole('button', { name: 'Pause animation', exact: true }).click();
+          break;
+        case 'graph-clear-center':
+          await page.getByRole('checkbox', { name: 'Core heartbeat', exact: true }).check();
+          await page.getByRole('button', { name: 'Clear center', exact: true }).click();
+          break;
+        case 'graph-ring-select':
+          await page.locator('.career-orbit-list [data-orbit-id="orbit:mission:pattern"]').click();
+          break;
+        case 'graph-ring-speed':
+          await setGraphRange(page, 'Rotation speed', 200);
+          break;
+        case 'graph-ring-speed-reset':
+          await setGraphRange(page, 'Rotation speed', 100);
+          break;
+        case 'graph-ring-stage':
+          await page.getByRole('combobox', { name: 'Orbit stage or record group', exact: true }).selectOption({ index: 1 });
+          break;
+        case 'graph-ring-basis':
+          await page.locator('.career-orbit-basis > summary').click();
+          break;
+        case 'graph-ring-members':
+          await page.locator('.career-orbit-member-details > summary').click();
+          await page.getByLabel('Search orbit members', { exact: true }).fill('HashMap');
+          break;
+        case 'graph-focus-ring':
+          await page.getByRole('button', { name: 'Focus ring', exact: true }).click();
+          break;
+        case 'graph-ring-current':
+          await page.locator('.career-orbit-current').click();
+          break;
+        case 'graph-connections':
+          await page.getByLabel('Search career graph nodes', { exact: true }).fill('HashMap');
+          await page.locator('[data-tour="career-graph-list"] button').filter({
+            has: page.locator('strong', { hasText: graphSkillCheckpointTitle }),
+          }).click();
+          await page.locator('.career-graph-connections > summary').click();
+          break;
+        case 'graph-connection-sources':
+          await page.locator('.career-graph-connection-reason details > summary').first().click();
+          break;
+        case 'graph-hidden-inspect':
+          await page.locator('.career-graph-connections li:has(.career-graph-connection-hidden) button').first().click();
+          await expect(page.locator('[data-tour="career-graph-node"]')).toContainText('Details only:');
+          break;
+        case 'graph-group-hide':
+          await page.locator('[data-visibility-group="mission:pattern"] input').uncheck();
+          break;
+        case 'graph-individual-search':
+          await page.locator('.career-visibility-items > summary').click();
+          await page.getByLabel('Search visibility items', { exact: true }).fill('HashMap');
+          break;
+        case 'graph-individual-mixed':
+          await page.locator('[data-visibility-item^="checkpoint:pattern:"] input').first().check();
+          await expect(page.locator('[data-visibility-group="mission:pattern"] input')).toHaveAttribute('aria-checked', 'mixed');
+          break;
+        case 'graph-select-all':
+          await page.getByRole('button', { name: 'Select all items', exact: true }).click();
           break;
         case 'career-graph-search':
           await page.getByLabel('Search career graph nodes', { exact: true }).fill('HashMap');
           break;
         case 'career-graph-select':
           await page.locator('[data-tour="career-graph-list"] button').first().click();
+          break;
+        case 'graph-focus-node':
+          await page.getByRole('button', { name: 'Focus node', exact: true }).click();
+          break;
+        case 'graph-zoom':
+          await page.getByRole('button', { name: 'Zoom career graph in', exact: true }).click();
+          break;
+        case 'graph-rotate':
+          await page.locator('.career-graph-keyboard > summary').click();
+          await page.getByRole('button', { name: 'Rotate left', exact: true }).click();
+          break;
+        case 'graph-drag': {
+          await page.getByRole('button', { name: 'Close node details', exact: true }).click();
+          const canvas = page.locator('.career-graph-page canvas');
+          await canvas.scrollIntoViewIfNeeded();
+          const point = await canvas.evaluate(element => {
+            const box = element.getBoundingClientRect();
+            for (let y = Math.max(12, box.top + 24); y < Math.min(innerHeight - 30, box.bottom - 30); y += 24) {
+              for (let x = Math.min(innerWidth - 12, box.right - 24); x > Math.max(72, box.left + 72); x -= 24) {
+                if ([0, 0.5, 1].every(t => document.elementFromPoint(x - 55 * t, y + 15 * t) === element)) return { x, y };
+              }
+            }
+            return null;
+          });
+          expect(point, 'The actual canvas must have an unobstructed drag path beside the coach and inspector').not.toBeNull();
+          const { x, y } = point!;
+          await page.mouse.click(x, y);
+          await expect(coach.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.move(x - 55, y + 15, { steps: 5 });
+          await page.mouse.up();
+          break;
+        }
+        case 'graph-frame':
+          await page.getByRole('button', { name: 'Frame all', exact: true }).click();
+          break;
+        case 'graph-fullscreen':
+          await page.getByRole('button', { name: 'Full screen', exact: true }).click();
+          await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+          await expect(page.locator('.career-graph-stage-wrap > .tutorial-panel')).toBeVisible();
+          break;
+        case 'graph-fullscreen-exit':
+          await page.getByRole('button', { name: 'Exit full screen', exact: true }).click();
+          await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
+          break;
+        case 'dsa-notebook-companion':
+          await page.locator('[data-tour="dsa-notebook-companion"] > summary').click();
           break;
         case 'system-concepts-search':
           await page.getByLabel('Search System Design concepts', { exact: true }).fill('Circuit Breaker');
@@ -202,6 +375,24 @@ for (const width of [1440, 390, 320]) {
         case 'control-blocker-clear':
           await page.locator('[data-tour="blocker-input"]').fill('');
           await page.locator('[data-tour="blocker-submit"]').click();
+          break;
+        case 'control-background-evidence':
+        case 'control-background-complete':
+          await page.locator('[data-tour="record-evidence"]').click();
+          await page.locator('[data-tour="evidence-example"]').click();
+          if (step.id === 'control-background-complete') {
+            await page.locator('[data-tour="checkpoint-complete"]').check();
+            for (const checkbox of await page.locator('[data-tour="evidence-criteria"] input').all()) await checkbox.check();
+          } else {
+            await expect(page.locator('[data-tour="checkpoint-complete"]')).not.toBeChecked();
+          }
+          await page.locator('[data-tour="evidence-submit"]').click();
+          await expect(page.locator('dialog[open]')).toHaveCount(0);
+          break;
+        case 'control-background-graph':
+          await page.locator('.career-orbit-list [data-orbit-id="orbit:mission:fabric"]').click();
+          await expect(page.locator('.career-orbit-inspector')).toContainText('Revealed for today after checkpoint completion');
+          await expect(page.locator('.career-orbit-inspector')).toHaveAttribute('data-mission-mode', 'background');
           break;
         case 'source-bulk-preview':
           await page.getByRole('button', { name: 'Adopt all documented roadmaps', exact: true }).click();
@@ -347,7 +538,8 @@ for (const width of [1440, 390, 320]) {
           exported = Buffer.concat(chunks);
           const sample = JSON.parse(exported.toString());
           expect(sample.missions.pattern.completedCheckpointIds).toHaveLength(1);
-          expect(sample.evidence).toHaveLength(2);
+          expect(sample.evidence).toHaveLength(4);
+          expect(sample.evidence.filter((item: { missionId: string }) => item.missionId === 'fabric')).toHaveLength(2);
           expect(sample.opportunities[0].stage).toBe('Recruiter');
           expect(sample.opportunities[0]).toMatchObject({ lane: 'ats', resumeVariant: 'Tutorial variant', effortMinutes: 5, frictionScore: 2 });
           expect(sample.freelanceOpportunities).toHaveLength(10);
@@ -356,6 +548,7 @@ for (const width of [1440, 390, 320]) {
             .filter((event: { kind: string }) => event.kind === 'distraction')).toHaveLength(1);
           expect(sample.archives).toHaveLength(1);
           expect(sample.archives[0].missionId).toBe('fabric');
+          expect(sample.archives[0].progress.completedCheckpointIds).toHaveLength(1);
           expect(sample.missions.fabric.roadmapVersion).toBe('3.0.0');
           expect(sample.missions.fabric.completedCheckpointIds).toEqual([]);
           expect(sample.objective).toBe('Temporary tutorial goal only.');
@@ -380,8 +573,12 @@ for (const width of [1440, 390, 320]) {
           await page.getByRole('switch', { name: 'Dark theme' }).click();
           break;
       }
-      expect(await snapshot(page), `Real storage must not change during ${step.id}`).toEqual(before);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+      const observed = await page.evaluate(() => ({
+        storage: Object.fromEntries(Object.keys(localStorage).sort().map(name => [name, localStorage.getItem(name)])),
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      }));
+      expect(observed.storage, `Real storage must not change during ${step.id}`).toEqual(before);
+      expect(observed.overflow).toBeLessThanOrEqual(0);
       const next = coach.getByRole('button', { name: step.id === 'finish' ? 'Finish tutorial' : 'Next', exact: true });
       await expect(next).toBeEnabled();
       if (['evidence-save', 'settings-export', 'tools-help'].includes(step.id)) {

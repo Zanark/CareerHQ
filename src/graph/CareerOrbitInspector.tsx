@@ -1,8 +1,9 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import { ArrowUpRight, Focus, X } from 'lucide-react';
 import type { CareerGraphNode } from './careerGraphModel';
 import type { CareerOrbit, CareerOrbitSegment, CareerOrbitSelection } from './careerOrbitTypes';
 import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
+import { DEFAULT_ROTATION_SPEED, MAX_ROTATION_SPEED, ROTATION_SPEED_STEP } from './careerOrbitSpeeds';
 
 const statusLabels = { complete: 'Recorded done', incomplete: 'Not marked complete', reference: 'Reference' };
 
@@ -43,8 +44,11 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
   onInspect: (node: CareerGraphNode) => void;
   detailsAvailable?: boolean;
   completedToday?: boolean;
+  rotationSpeed?: number;
+  onRotationSpeed?: (value: number) => void;
   onRecord?: () => void;
-}>(function CareerOrbitInspector({ orbit, segment, nodes, visibleIds, ringsVisible, onClose, onSelect, onReveal, onInspect, onRecord, detailsAvailable = true, completedToday = false }, ref) {
+}>(function CareerOrbitInspector({ orbit, segment, nodes, visibleIds, ringsVisible, onClose, onSelect, onReveal, onInspect, onRecord, detailsAvailable = true, completedToday = false, rotationSpeed = DEFAULT_ROTATION_SPEED, onRotationSpeed }, ref) {
+  const speedId = useId();
   const ids = segment ? segment.members.map(member => member.nodeId) : orbit.memberIds;
   const visibleCount = ids.filter(id => visibleIds.has(id)).length;
   const current = orbit.currentNodeId ? nodes.get(orbit.currentNodeId) : undefined;
@@ -56,6 +60,15 @@ export const CareerOrbitInspector = forwardRef<HTMLElement, {
     {orbit.missionMode && <p className="career-orbit-view-note">{orbit.missionMode === 'active'
       ? 'Active mission - colored outer ring; revolves when animation is on.'
       : `${orbit.missionMode === 'background' ? 'Background' : 'Planned'} mission - smaller stationary ring in its mission color near the core.`}</p>}
+    {onRotationSpeed && <div className="career-ring-speed" data-tour="career-ring-speed">
+      <label htmlFor={speedId}>Rotation speed <output htmlFor={speedId}>{rotationSpeed}%</output></label>
+      <input id={speedId} type="range" aria-label="Rotation speed" aria-describedby={`${speedId}-hint`}
+      min={0} max={MAX_ROTATION_SPEED} step={ROTATION_SPEED_STEP} value={rotationSpeed} aria-valuetext={`${rotationSpeed}% of this ring's normal speed`}
+      disabled={orbit.missionMode !== 'active'} onChange={event => onRotationSpeed(event.currentTarget.valueAsNumber)} />
+      <small id={`${speedId}-hint`}>{orbit.missionMode === 'active'
+      ? 'Only this ring: 0% stops it, 100% is normal, 300% is triple speed. Global pause and reduced motion still apply.'
+      : 'Background and planned mission rings stay still. Bring the mission into focus to animate it.'}</small>
+    </div>}
     {!detailsAvailable && <p className="career-orbit-view-note">Outside focus: the mission node stays visible without checkpoints or connections. You can read checkpoint details here; completing one today reveals this mission's full graph for today.</p>}
     {completedToday && orbit.missionMode !== 'active' && <p className="career-orbit-view-note">Revealed for today after checkpoint completion. This mission is still outside focus; its graph collapses again tomorrow unless brought into focus.</p>}
     {orbit.activity && <p className="career-orbit-view-note" data-worked-today={orbit.activity.workedToday}>

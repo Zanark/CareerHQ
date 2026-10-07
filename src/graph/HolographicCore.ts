@@ -6,7 +6,7 @@ import {
 import { heartbeatCoreScale, heartbeatGlow } from './coreHeartbeatTiming';
 import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import type { CareerRippleUniforms } from './careerRipple';
-import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY, sparkParticleCount } from './careerSparkDensity';
+import { DEFAULT_SPARK_DENSITY, DEFAULT_SPARK_LINE_DENSITY, MAX_SPARK_DENSITY, sparkParticleCount, sparkLineCount } from './careerSparkDensity';
 
 const TAU = Math.PI * 2;
 const GOLD = new Color('#EDAE29');
@@ -79,6 +79,7 @@ export class HolographicCore {
   private readonly materials: (ShaderMaterial | MeshBasicMaterial)[] = [];
   private readonly filaments: ShaderMaterial[] = [];
   private readonly particles: Points<BufferGeometry, ShaderMaterial>;
+  private readonly streaks: LineSegments<BufferGeometry, ShaderMaterial>;
   private readonly rim = new Group();
   private readonly heart = new Group();
   private readonly heartMaterial: MeshBasicMaterial;
@@ -89,6 +90,7 @@ export class HolographicCore {
   private radius = 80;
   private heartbeatStrength = 0;
   private density = DEFAULT_SPARK_DENSITY;
+  private lineDensity = DEFAULT_SPARK_LINE_DENSITY;
   private compact = false;
 
   constructor(private readonly calm = false, decorativeRings = true) {
@@ -150,7 +152,11 @@ export class HolographicCore {
         }
       }
     }
-    if (decorativeRings) this.rim.add(this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7));
+    if (decorativeRings) {
+      const belts = this.lineObject(beltPositions, beltColors, beltAxes, beltSpeeds, 0.7);
+      belts.name = 'Legacy decorative rim arcs';
+      this.rim.add(belts);
+    }
 
     const sparkCapacity = sparkParticleCount(MAX_SPARK_DENSITY, calm, false);
     while (sparks.length / 3 < sparkCapacity) {
@@ -206,8 +212,74 @@ export class HolographicCore {
     });
     this.materials.push(sparkMaterial);
     this.particles = new Points(sparkGeometry, sparkMaterial);
+    this.particles.name = 'Decorative spark dots - not work nodes';
     this.setSparkDensity(this.density);
     this.rim.add(this.particles);
+
+    // An independent seed leaves all existing dots and belt speeds byte-identical.
+    const streakRandom = seededRandom(0x5354524b);
+    const streakPositions: number[] = [], streakColors: number[] = [], streakEnds: number[] = [];
+    const tangent = new Vector3(), normal = new Vector3();
+    for (let index = 0; index < sparkLineCount(MAX_SPARK_DENSITY, calm, false); index++) {
+      const z = streakRandom() * 2 - 1, angle = streakRandom() * TAU;
+      const radial = Math.sqrt(1 - z * z), radius = 1.07 + streakRandom() * 0.14;
+      normal.set(radial * Math.cos(angle), z, radial * Math.sin(angle));
+      tangent.set(-Math.sin(angle), 0, Math.cos(angle)).applyAxisAngle(normal, streakRandom() * TAU);
+      const halfAngle = (0.035 + streakRandom() * 0.045) / radius / 2;
+      const color = streakRandom() > 0.2 ? GOLD : YELLOW;
+      const brightness = calm ? 0.5 + streakRandom() : 0.65 + streakRandom() * 1.5;
+      for (const end of [-1, 1]) {
+        point.copy(normal).multiplyScalar(Math.cos(halfAngle) * radius)
+          .addScaledVector(tangent, Math.sin(halfAngle) * radius * end);
+        streakPositions.push(point.x, point.y, point.z);
+        streakColors.push(color.r * brightness, color.g * brightness, color.b * brightness);
+        streakEnds.push((end + 1) / 2);
+      }
+    }
+    const streakGeometry = new BufferGeometry();
+    streakGeometry.setAttribute('position', new Float32BufferAttribute(streakPositions, 3));
+    streakGeometry.setAttribute('color', new Float32BufferAttribute(streakColors, 3));
+    streakGeometry.setAttribute('aStreakEnd', new Float32BufferAttribute(streakEnds, 1));
+    const streakMaterial = new ShaderMaterial({
+      uniforms: { ...createRippleUniforms(), uDistance: { value: 300 }, uRadius: { value: 80 }, uRimOnly: { value: 1 }, uCenterView: { value: this.centerView }, uBrightness: { value: calm ? 0.45 : 1 } },
+      vertexShader: `
+        ${careerRippleVertexShader}
+        attribute float aStreakEnd;
+        varying float vStreakEnd;
+        varying vec3 vColor;
+        varying float vDepth;
+        varying vec3 vViewPosition;
+        void main() {
+          vec4 p = rippleView(modelViewMatrix * vec4(position, 1.0));
+          vStreakEnd = aStreakEnd;
+          vColor = color;
+          vDepth = -p.z;
+          vViewPosition = p.xyz;
+          gl_Position = projectionMatrix * p;
+        }
+      `,
+      fragmentShader: `
+        uniform float uDistance;
+        uniform float uBrightness;
+        varying float vStreakEnd;
+        varying vec3 vColor;
+        varying float vDepth;
+        ${rimMask}
+        void main() {
+          float glow = smoothstep(0.0, 0.65, vStreakEnd) * (1.0 - smoothstep(0.8, 1.0, vStreakEnd));
+          float depth = mix(1.0, 0.12, smoothstep(uDistance - uRadius, uDistance + uRadius, vDepth));
+          gl_FragColor = vec4(vColor, glow * depth * uBrightness * rimVisibility());
+          #include <colorspace_fragment>
+        }
+      `,
+      vertexColors: true, blending: AdditiveBlending, transparent: true, depthWrite: false,
+    });
+    this.geometries.push(streakGeometry);
+    this.materials.push(streakMaterial);
+    this.streaks = new LineSegments(streakGeometry, streakMaterial);
+    this.streaks.name = 'Decorative spark streaks - not graph connections';
+    this.setSparkLineDensity(this.lineDensity);
+    this.rim.add(this.streaks);
 
     const heartGeometry = new SphereGeometry(0.032, 24, 16);
     const heartMaterial = new MeshBasicMaterial({ color: PALE.clone().multiplyScalar(calm ? 1.35 : 2.8) });
@@ -251,7 +323,7 @@ export class HolographicCore {
   }
 
   setRimOnly(value: boolean): void {
-    for (const material of [...this.filaments, this.particles.material]) {
+    for (const material of [...this.filaments, this.particles.material, this.streaks.material]) {
       material.uniforms.uRimOnly.value = value ? 1 : 0;
     }
   }
@@ -262,15 +334,24 @@ export class HolographicCore {
 
   setSparksVisible(value: boolean): void {
     this.particles.visible = value;
+    this.streaks.visible = value;
   }
 
   get sparkDensity(): number { return this.density; }
   get sparkCount(): number { return this.particles.geometry.drawRange.count; }
+  get sparkLineDensity(): number { return this.lineDensity; }
+  get sparkLineCount(): number { return this.streaks.geometry.drawRange.count / 2; }
 
   setSparkDensity(density: number): void {
     const count = sparkParticleCount(density, this.calm, this.compact);
     this.density = density;
     this.particles.geometry.setDrawRange(0, count);
+  }
+
+  setSparkLineDensity(density: number): void {
+    const count = sparkLineCount(density, this.calm, this.compact);
+    this.lineDensity = density;
+    this.streaks.geometry.setDrawRange(0, count * 2);
   }
 
   setHeartbeatStrength(value: number): void {
@@ -280,7 +361,7 @@ export class HolographicCore {
   }
 
   setRippleField(uniforms: CareerRippleUniforms): void {
-    for (const material of [...this.filaments, this.particles.material]) Object.assign(material.uniforms, uniforms);
+    for (const material of [...this.filaments, this.particles.material, this.streaks.material]) Object.assign(material.uniforms, uniforms);
   }
 
   get animationTime(): number { return this.phase; }
@@ -290,20 +371,22 @@ export class HolographicCore {
     this.particles.material.uniforms.uScale.value = height * pixelRatio;
     this.particles.material.uniforms.uRatio.value = pixelRatio;
     this.setSparkDensity(this.density);
+    this.setSparkLineDensity(this.lineDensity);
   }
 
   update(camera: PerspectiveCamera, delta: number): void {
-    if (delta > 0) {
+    if (delta > 0 && Number.isFinite(delta)) {
       this.phase += delta;
       const motionScale = this.calm ? 0.22 : 1;
       for (const material of this.filaments) material.uniforms.uPhase.value = this.phase * (this.calm ? 0.4 : 1);
       this.particles.rotation.y = this.phase * 0.012 * motionScale;
       this.particles.rotation.z = this.phase * 0.004 * motionScale;
+      this.streaks.rotation.copy(this.particles.rotation);
     }
     camera.updateMatrixWorld();
     this.centerView.copy(this.center).applyMatrix4(camera.matrixWorldInverse);
     const distance = this.centerView.length();
-    for (const material of [...this.filaments, this.particles.material]) {
+    for (const material of [...this.filaments, this.particles.material, this.streaks.material]) {
       material.uniforms.uDistance.value = distance;
       material.uniforms.uRadius.value = this.radius;
     }

@@ -14,6 +14,7 @@ import type { SavedStatusPulse } from './careerOrbitSavedPulses';
 import type { CareerOrbitScreenHit } from './careerSceneInteraction';
 import { careerRippleVertexShader, createRippleUniforms } from './careerRipple';
 import type { CareerRippleField } from './careerRipple';
+import { DEFAULT_ROTATION_SPEED, validateCareerOrbitSpeeds, type CareerOrbitSpeeds } from './careerOrbitSpeeds';
 
 const TAU = Math.PI * 2;
 const STATUS_INTENSITY = { complete: 1, incomplete: 0.35, reference: 0.55 };
@@ -243,6 +244,9 @@ export class CareerOrbitVisuals {
   private readonly projectedB = new Vector3();
   private radius = 60;
   private phase = 0;
+  private rotationSpeeds: CareerOrbitSpeeds = {};
+  private readonly rotationTimes = new Map<string, number>();
+  private motionAllowed = true;
   private dirty = true;
   private disposed = false;
   private ripple: CareerRippleField | null = null;
@@ -302,6 +306,24 @@ export class CareerOrbitVisuals {
   get anchorInfo(): OrbitAnchorInfo[] { return this.entries.map(({ orbit, motion, visibleMemberCount }) => ({ orbit, motion, visibleMemberCount })); }
 
   getMotion(orbitId: string): CareerOrbitMotion | undefined { return this.byId.get(orbitId)?.motion; }
+
+  setRotationSpeeds(speeds: CareerOrbitSpeeds): void {
+    this.rotationSpeeds = validateCareerOrbitSpeeds(speeds);
+  }
+
+  getRotationSpeed(orbitId: string): number {
+    return Object.hasOwn(this.rotationSpeeds, orbitId) ? this.rotationSpeeds[orbitId] : DEFAULT_ROTATION_SPEED;
+  }
+
+  /** Signed radians; quiet mission rings keep their existing stationary orientation. */
+  getRotationPhase(orbitId: string): number | undefined {
+    const entry = this.byId.get(orbitId);
+    return entry ? orbitRotation(entry.orbit.index, this.rotationTime(entry), this.calm, entry.motion.revolving) : undefined;
+  }
+
+  private rotationTime(entry: OrbitEntry): number {
+    return this.rotationTimes.get(entry.orbit.id) ?? 0;
+  }
 
   getActivity(orbitId: string): OrbitActivityPresentation | undefined {
     const entry = this.byId.get(orbitId);
@@ -365,6 +387,8 @@ export class CareerOrbitVisuals {
       };
       this.byId.set(orbit.id, entry);
       this.entries.push(entry);
+      // Hidden rings retain their integrated time; filtering must not restart an identity.
+      if (!this.rotationTimes.has(orbit.id)) this.rotationTimes.set(orbit.id, this.phase);
       const color = new Color(orbit.color);
       color.toArray(anchorColors, anchorColors.length);
       if (!orbit.memberIds.length) color.multiplyScalar(0.32);
@@ -487,7 +511,7 @@ export class CareerOrbitVisuals {
     if (!entry) return false;
     const angle = selection.segmentId ? entry.segmentAngles.get(selection.segmentId) : undefined;
     orbitPoint(entry.orbit.index, angle ?? CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle,
-      this.phase, this.center, this.radius, target, angle === undefined ? 0 : 0.012, this.calm, entry.motion);
+      this.rotationTime(entry), this.center, this.radius, target, angle === undefined ? 0 : 0.012, this.calm, entry.motion);
     return true;
   }
 
@@ -518,6 +542,7 @@ export class CareerOrbitVisuals {
 
   setMotionAllowed(value: boolean): void {
     if (this.disposed) return;
+    this.motionAllowed = value;
     const wasActive = this.savedPulses.active.length > 0;
     this.savedPulses.setEnabled(value);
     if (!value && wasActive) {
@@ -530,8 +555,11 @@ export class CareerOrbitVisuals {
 
   update(camera: PerspectiveCamera, delta: number): void {
     if (this.disposed) return;
-    if (delta > 0 && Number.isFinite(delta)) {
+    if (this.motionAllowed && delta > 0 && Number.isFinite(delta)) {
       this.phase += delta;
+      for (const entry of this.entries) {
+        this.rotationTimes.set(entry.orbit.id, this.rotationTime(entry) + delta * this.getRotationSpeed(entry.orbit.id) / 100);
+      }
       this.dirty = true;
     }
     if (this.savedPulses.active.length) {
@@ -555,7 +583,7 @@ export class CareerOrbitVisuals {
     const values = positions.array;
     this.entries.forEach((entry, anchorIndex) => {
       const plane = CAREER_ORBIT_PLANES[entry.orbit.index];
-      const angle = orbitRotation(entry.orbit.index, this.phase, this.calm, entry.motion.revolving);
+      const angle = orbitRotation(entry.orbit.index, this.rotationTime(entry), this.calm, entry.motion.revolving);
       const cos = Math.cos(angle), sin = Math.sin(angle);
       for (let vertex = entry.start; vertex < entry.end; vertex++) {
         const index = vertex * 3;
@@ -565,7 +593,7 @@ export class CareerOrbitVisuals {
         values[index + 1] = this.center.y + plane.x.y * x + plane.y.y * y;
         values[index + 2] = this.center.z + plane.x.z * x + plane.y.z * y;
       }
-      orbitPoint(entry.orbit.index, plane.anchorAngle, this.phase, this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
+      orbitPoint(entry.orbit.index, plane.anchorAngle, this.rotationTime(entry), this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
       anchors.setXYZ(anchorIndex, this.scratch.x, this.scratch.y, this.scratch.z);
     });
     positions.needsUpdate = true;
@@ -587,7 +615,7 @@ export class CareerOrbitVisuals {
     const angle = CAREER_ORBIT_PLANES[entry.orbit.index].anchorAngle;
     for (let segment = 0; segment < ORBIT_HIGHLIGHT_SEGMENTS; segment++) {
       orbitPoint(entry.orbit.index, angle + segment / ORBIT_HIGHLIGHT_SEGMENTS * TAU,
-        this.phase, this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
+        this.rotationTime(entry), this.center, this.radius, this.scratch, 0, this.calm, entry.motion);
       this.scratch.toArray(this.highlightPositions, segment * 6);
       if (segment > 0) this.scratch.toArray(this.highlightPositions, (segment - 1) * 6 + 3);
     }
@@ -664,7 +692,7 @@ export class CareerOrbitVisuals {
 
   private writeTether(values: ArrayLike<number> & { [index: number]: number }, tether: Tether, index: number, segments: number): void {
     const entry = tether.entry;
-    orbitPoint(entry.orbit.index, tether.angle, this.phase, this.center, this.radius, this.scratch, tether.offset, this.calm, entry.motion);
+    orbitPoint(entry.orbit.index, tether.angle, this.rotationTime(entry), this.center, this.radius, this.scratch, tether.offset, this.calm, entry.motion);
     this.end.fromArray(tether.target);
     this.middle.copy(this.scratch).add(this.end).multiplyScalar(0.5);
     // A shallow curve, not a fabricated intermediate node. Both ends remain exact.
@@ -775,6 +803,8 @@ export class CareerOrbitVisuals {
     this.object.clear();
     this.entries = [];
     this.byId.clear();
+    this.rotationTimes.clear();
+    this.rotationSpeeds = {};
     this.nodes = new Map();
     this.primary = [];
     this.details = [];

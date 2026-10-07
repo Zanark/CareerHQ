@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { LineSegments, Mesh, PerspectiveCamera, Points, ShaderMaterial, Vector3 } from 'three';
 import { HolographicCore } from './HolographicCore';
 import { CareerRippleField } from './careerRipple';
-import { sparkParticleCount } from './careerSparkDensity';
+import { sparkParticleCount, sparkLineCount } from './careerSparkDensity';
 
 function rimLines(core: HolographicCore): LineSegments {
-  let lines: LineSegments | undefined;
-  core.object.traverse(object => { if (object instanceof LineSegments) lines = object; });
-  if (!lines) throw new Error('Expected batched rim arcs.');
+  const lines = core.object.getObjectByName('Legacy decorative rim arcs');
+  if (!(lines instanceof LineSegments)) throw new Error('Expected batched legacy rim arcs.');
+  return lines;
+}
+
+function sparkLines(core: HolographicCore): LineSegments {
+  const lines = core.object.getObjectByName('Decorative spark streaks - not graph connections');
+  if (!(lines instanceof LineSegments)) throw new Error('Expected independently batched short spark streaks.');
   return lines;
 }
 
@@ -42,15 +47,16 @@ describe('outer-rim-only decoration', () => {
   it('allocates no decorative belt geometry in semantic orbit scenes, preserving sparks and the opaque core', () => {
     const core = new HolographicCore(false, false);
     const legacy = new HolographicCore();
-    let lines = 0;
+    const lines: LineSegments[] = [];
     let sparks: Points | undefined;
     let legacySparks: Points | undefined;
     core.object.traverse(object => {
-      if (object instanceof LineSegments) lines++;
+      if (object instanceof LineSegments) lines.push(object);
       if (object instanceof Points) sparks = object;
     });
     legacy.object.traverse(object => { if (object instanceof Points) legacySparks = object; });
-    expect(lines).toBe(0);
+    expect(core.object.getObjectByName('Legacy decorative rim arcs')).toBeUndefined();
+    expect(lines).toEqual([sparkLines(core)]);
     expect(sparks?.geometry.getAttribute('position').array).toEqual(legacySparks?.geometry.getAttribute('position').array);
     core.setBounds(new Vector3(), 60, new Vector3());
     core.setDecorationVisible(false);
@@ -78,7 +84,9 @@ describe('outer-rim-only decoration', () => {
       expect(object.material.fragmentShader).toContain('rimVisibility()');
       expect(object.material.fragmentShader).toContain('if (clearance < 1.035) discard');
     });
-    expect(lineObjects).toBe(1);
+    expect(lineObjects).toBe(2);
+    expect(rimLines(core).geometry.getAttribute('aOrbitSpeed')).toBeDefined();
+    expect(sparkLines(core).geometry.getAttribute('aOrbitSpeed')).toBeUndefined();
     core.dispose();
   });
 
@@ -180,6 +188,7 @@ describe('outer-rim-only decoration', () => {
     for (const visible of [false, true, false, true]) {
       core.setSparksVisible(visible);
       expect(particles.visible).toBe(visible);
+      expect(sparkLines(core).visible).toBe(visible);
       expect(particles.geometry).toBe(geometry);
       expect(rim.visible).toBe(true);
       expect(rings.visible).toBe(true);
@@ -206,6 +215,112 @@ describe('outer-rim-only decoration', () => {
         expect(object.material.uniforms.uRadius.value).toBe(60);
       });
     }
+    core.dispose();
+  });
+});
+
+describe('independently budgeted decorative spark streaks', () => {
+  it.each([false, true])('adds deterministic short warm lines without changing the existing dots (calm=%s)', calm => {
+    const core = new HolographicCore(calm, false), repeat = new HolographicCore(calm, false);
+    const legacy = new HolographicCore(calm);
+    const lines = sparkLines(core), positions = lines.geometry.getAttribute('position');
+    const colors = lines.geometry.getAttribute('color');
+    expect(positions.count).toBe(sparkLineCount(100, calm, false) * 2);
+    expect(positions.array).toEqual(sparkLines(repeat).geometry.getAttribute('position').array);
+    expect(positions.array).toEqual(sparkLines(legacy).geometry.getAttribute('position').array);
+    expect(core.sparkLineDensity).toBe(10);
+    expect(core.sparkLineCount).toBe(calm ? 12 : 60);
+    expect(lines.geometry.getAttribute('aStreakEnd').count).toBe(positions.count);
+    for (let index = 0; index < positions.count; index += 2) {
+      const a = new Vector3().fromBufferAttribute(positions, index);
+      const b = new Vector3().fromBufferAttribute(positions, index + 1);
+      expect(a.length()).toBeGreaterThanOrEqual(1.069);
+      expect(a.length()).toBeLessThan(1.211);
+      expect(b.length()).toBeCloseTo(a.length(), 6);
+      expect(a.distanceTo(b)).toBeGreaterThan(0.034);
+      expect(a.distanceTo(b)).toBeLessThan(0.081);
+      expect(colors.getX(index)).toBeGreaterThan(colors.getZ(index));
+      expect(colors.getY(index)).toBeGreaterThan(colors.getZ(index));
+    }
+    expect(lines.material).toMatchObject({ transparent: true, depthWrite: false });
+    const dotPositions = (item: HolographicCore) => {
+      const dots = item.object.getObjectByName('Decorative spark dots - not work nodes') as Points;
+      return dots.geometry.getAttribute('position').array;
+    };
+    expect(dotPositions(core)).toEqual(dotPositions(legacy));
+    core.dispose(); repeat.dispose(); legacy.dispose();
+  });
+
+  it.each([false, true])('changes only independent draw ranges, preserving buffers, phase and hidden choices (calm=%s)', calm => {
+    const core = new HolographicCore(calm, false), view = new PerspectiveCamera();
+    const lines = sparkLines(core), dots = core.object.getObjectByName('Decorative spark dots - not work nodes') as Points;
+    const objects = [lines, dots];
+    const attributes = objects.map(object => ({ ...object.geometry.attributes }));
+    const arrays = objects.map(object => Object.values(object.geometry.attributes).map(attribute => attribute.array.slice()));
+    const disposals = objects.map(object => vi.spyOn(object.geometry, 'dispose'));
+    core.setBounds(new Vector3(4, 8, 12), 70, new Vector3(2, 3, 4));
+    core.update(view, 2);
+    const rotation = lines.rotation.clone(), cameraMatrix = view.matrixWorld.clone();
+    core.setSparksVisible(false);
+    core.setSparkDensity(25);
+    for (const density of [0, 100, 25, 75, 10]) {
+      core.setSparkLineDensity(density);
+      for (const compact of [true, false]) {
+        core.resize(600, 2, compact);
+        expect(core.sparkLineDensity).toBe(density);
+        expect(core.sparkLineCount).toBe(sparkLineCount(density, calm, compact));
+        expect(lines.geometry.drawRange.count).toBe(core.sparkLineCount * 2);
+        expect(core.sparkDensity).toBe(25);
+        expect(core.sparkCount).toBe(sparkParticleCount(25, calm, compact));
+        expect(lines.visible).toBe(false);
+        expect(dots.visible).toBe(false);
+        expect(core.animationTime).toBe(2);
+        expect(lines.rotation.toArray()).toEqual(rotation.toArray());
+        expect(view.matrixWorld).toEqual(cameraMatrix);
+        objects.forEach((object, index) => {
+          Object.entries(attributes[index]).forEach(([name, attribute]) => expect(object.geometry.attributes[name]).toBe(attribute));
+          Object.values(object.geometry.attributes).forEach((attribute, attributeIndex) => expect(attribute.array).toEqual(arrays[index][attributeIndex]));
+        });
+      }
+    }
+    for (const value of [-1, 101, Infinity, NaN]) expect(() => core.setSparkLineDensity(value)).toThrow(RangeError);
+    expect(core.sparkLineDensity).toBe(10);
+    core.setSparkDensity(0); core.setSparkLineDensity(0); core.setSparksVisible(true);
+    expect(core.sparkCount).toBe(0);
+    expect(core.sparkLineCount).toBe(0);
+    expect(core.object.getObjectByName('Existing core node aura')?.visible).toBe(true);
+    disposals.forEach(dispose => expect(dispose).not.toHaveBeenCalled());
+    core.dispose();
+    disposals.forEach(dispose => expect(dispose).toHaveBeenCalledOnce());
+  });
+
+  it.each([false, true])('shares dot rotation and ripple coordinates with an offset source, pausing without phase reset (calm=%s)', calm => {
+    const core = new HolographicCore(calm, false), field = new CareerRippleField(), view = new PerspectiveCamera();
+    const lines = sparkLines(core), dots = core.object.getObjectByName('Decorative spark dots - not work nodes') as Points;
+    const center = new Vector3(30, -4, 20);
+    field.source.set(7, 8, -9);
+    field.setWave(80, 40, 3);
+    core.setRippleField(field.uniforms);
+    core.setBounds(center, 80, field.source);
+    core.setRimOnly(false);
+    core.update(view, 4);
+    core.object.updateMatrixWorld(true);
+    expect(lines.rotation.toArray()).toEqual(dots.rotation.toArray());
+    expect(lines.rotation.y).toBeCloseTo(4 * 0.012 * (calm ? 0.22 : 1));
+    if (!(lines.material instanceof ShaderMaterial)) throw new Error('Expected streak shader.');
+    expect(lines.material.uniforms.uRippleAmplitude).toBe(field.uniforms.uRippleAmplitude);
+    expect(lines.material.uniforms.uRippleSourceView).toBe(field.uniforms.uRippleSourceView);
+    expect(lines.material.vertexShader).toContain('rippleView(modelViewMatrix * vec4(position, 1.0))');
+    expect(lines.material.uniforms.uCenterView.value).toEqual(center.clone().applyMatrix4(view.matrixWorldInverse));
+    expect(lines.material.uniforms.uRimOnly.value).toBe(0);
+    const before = lines.matrixWorld.clone();
+    for (const delta of [0, 0, -1, NaN, Infinity]) core.update(view, delta);
+    core.object.updateMatrixWorld(true);
+    expect(lines.matrixWorld).toEqual(before);
+    expect(core.animationTime).toBe(4);
+    core.update(view, 1);
+    expect(core.animationTime).toBe(5);
+    expect(lines.rotation.toArray()).toEqual(dots.rotation.toArray());
     core.dispose();
   });
 });

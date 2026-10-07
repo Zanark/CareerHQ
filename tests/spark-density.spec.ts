@@ -20,7 +20,7 @@ for (const width of [1440, 320]) {
     await page.goto('./#/home');
     const scene = page.locator('.career-graph-scene');
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
-    const slider = page.getByRole('slider', { name: 'Spark amount', exact: true, includeHidden: true });
+    const slider = page.getByRole('slider', { name: 'Spark dots', exact: true, includeHidden: true });
     const full = width === 1440 ? 1800 : 900;
     await expect(slider).toHaveAttribute('min', '0');
     await expect(slider).toHaveAttribute('max', '100');
@@ -88,6 +88,8 @@ for (const width of [1440, 320]) {
     await expect(scene).toHaveAttribute('data-scene-state', 'ready', { timeout: 20_000 });
     await expect(scene).toHaveAttribute('data-spark-density', '10');
     await expect(scene).toHaveAttribute('data-spark-count', width === 1440 ? '30' : '18');
+    await expect(scene).toHaveAttribute('data-spark-line-density', '10');
+    await expect(scene).toHaveAttribute('data-spark-line-count', width === 1440 ? '12' : '7');
     expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe(raw);
   });
 }

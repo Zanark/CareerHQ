@@ -1,0 +1,15 @@
+.help-shortcuts { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.help-search { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 12px; }
+.help-search label { display: grid; flex: 1; min-width: 0; gap: 6px; font-size: .6875rem; color: var(--dsf-heading); }
+.help-search input { width: 100%; font-size: .75rem; }
+.guide-glossary { align-items: start; }
+.help-topic summary { cursor: pointer; color: var(--dsf-heading); }
+.help-topic summary h3 { display: inline; }
+.help-topic summary:focus-visible { outline: 2px solid var(--dsf-accent); outline-offset: 5px; }
+.help-topic[open] summary { margin-bottom: 12px; }
+.help-topic p { line-height: 1.7; }
+.help-topic .text-link { margin-top: 16px; font-size: .6875rem; }
+@media (max-width: 480px) {
+  .help-search { align-items: stretch; flex-direction: column; }
+  .help-shortcuts .button { width: 100%; justify-content: space-between; }
+}

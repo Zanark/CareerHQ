@@ -12,8 +12,9 @@ import { CareerGraphConnections } from './CareerGraphConnections';
 import { CareerOrbitInspector } from './CareerOrbitInspector';
 import { CareerGraphVisibility } from './CareerGraphVisibility';
 import { getDefaultHiddenCareerRingIds } from './careerVisibility';
-import { DEFAULT_SPARK_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
+import { DEFAULT_SPARK_DENSITY, DEFAULT_SPARK_LINE_DENSITY, MAX_SPARK_DENSITY } from './careerSparkDensity';
 import { DEFAULT_NODE_SPACING, MAX_NODE_SPACING, spaceCareerGraph } from './careerNodeSpacing';
+import { DEFAULT_ROTATION_SPEED, type CareerOrbitSpeeds } from './careerOrbitSpeeds';
 import { focusCareerGraph, getCareerFocusVisibility } from './careerFocusVisibility';
 import { careerNodeColor, careerNodeStatusClass } from './careerGraphColors';
 import type { CareerOrbitSelection } from './careerOrbitTypes';
@@ -64,11 +65,12 @@ const panelNames: Record<CareerGraphPanel, string> = {
 export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   state: AppState; practice: boolean; date: string; onRecord: (missionId: MissionId) => void;
 }>(function CareerGraphPage({ state, practice, date, onRecord }, ref) {
-  const sourceGraph = useMemo(() => buildCareerGraph(state), [state, date]);
+  const [showEverything, setShowEverything] = useState(false);
+  const sourceGraph = useMemo(() => buildCareerGraph(state, { includeAllRecords: showEverything }), [state, date, showEverything]);
   const [nodeSpacing, setNodeSpacing] = useState(DEFAULT_NODE_SPACING);
   const graph = useMemo(() => spaceCareerGraph(sourceGraph, nodeSpacing), [sourceGraph, nodeSpacing]);
   const focusVisibility = useMemo(() => getCareerFocusVisibility(state, date), [state, date]);
-  const focusedGraph = useMemo(() => focusCareerGraph(graph, focusVisibility.detailedMissionIds), [graph, focusVisibility]);
+  const focusedGraph = useMemo(() => showEverything ? graph : focusCareerGraph(graph, focusVisibility.detailedMissionIds), [graph, focusVisibility, showEverything]);
   const focusVisibleIds = useMemo(() => new Set(focusedGraph.nodes.map(node => node.id)), [focusedGraph]);
   const missionOrbits = useMemo(() => graph.orbits.filter(orbit => orbit.kind === 'mission'), [graph]);
   const [scope, setScope] = useState('all');
@@ -80,15 +82,25 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const [includeSparks, setIncludeSparks] = useState(true);
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [sparkDensity, setSparkDensity] = useState(DEFAULT_SPARK_DENSITY);
+  const [sparkLineDensity, setSparkLineDensity] = useState(DEFAULT_SPARK_LINE_DENSITY);
+  const [orbitSpeeds, setOrbitSpeeds] = useState<CareerOrbitSpeeds>(() => ({}));
+  const viewScope = showEverything ? 'all' : scope;
+  const viewRecords = showEverything || includeRecords;
+  const viewReferences = showEverything || includeReferences;
+  const viewCheckpoints = showEverything || includeCheckpoints;
+  const viewSharedSkills = showEverything || includeSharedSkills;
+  const viewRings = showEverything || includeRings;
+  const viewSparks = showEverything || includeSparks;
   const [visibilityChoices, setVisibilityChoices] = useState<ReadonlyMap<string, boolean>>(() => new Map());
   const hiddenIds = useMemo(() => {
+    if (showEverything) return new Set<string>();
     const hidden = new Set(getDefaultHiddenCareerRingIds(sourceGraph, focusVisibility.completedTodayMissionIds));
     for (const [id, shown] of visibilityChoices) {
       if (shown) hidden.delete(id);
       else hidden.add(id);
     }
     return hidden;
-  }, [sourceGraph, focusVisibility, visibilityChoices]);
+  }, [sourceGraph, focusVisibility, visibilityChoices, showEverything]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [orbitSelection, setOrbitSelection] = useState<CareerOrbitSelection | null>(null);
@@ -114,24 +126,24 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   const orbitInspectorRef = useRef<HTMLElement>(null);
   const inspectFromList = useRef(false);
   const inspectOrbitFromList = useRef(false);
-  const previousFilter = useRef(`${scope}:${includeRecords}:${includeReferences}`);
+  const previousFilter = useRef(`${viewScope}:${viewRecords}:${viewReferences}`);
   const missionNodes = graph.nodes.filter(node => node.kind === 'mission');
   const nodeMap = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph]);
-  const framingNodes = useMemo(() => graph.nodes.filter(node => matchesScope(node, scope) &&
-      (includeRecords || !recordKinds.has(node.kind)) &&
-      (includeReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference')),
-    [graph, scope, includeRecords, includeReferences]);
+  const framingNodes = useMemo(() => graph.nodes.filter(node => matchesScope(node, viewScope) &&
+      (viewRecords || !recordKinds.has(node.kind)) &&
+      (viewReferences || node.kind === 'core' || node.kind === 'mission' || node.status !== 'reference')),
+    [graph, viewScope, viewRecords, viewReferences]);
   const visible = useMemo(() => {
     const nodes = framingNodes.filter(node => focusVisibleIds.has(node.id) && !hiddenIds.has(node.id) &&
-      (includeCheckpoints || !checkpointKinds.has(node.kind)));
+      (viewCheckpoints || !checkpointKinds.has(node.kind)));
     const ids = new Set(nodes.map(node => node.id));
     const orbits = missionOrbits.filter(orbit => !hiddenIds.has(orbit.id) &&
-      (scope === 'all' || orbit.missionId === scope));
+      (viewScope === 'all' || orbit.missionId === viewScope));
     return { ...focusedGraph, nodes, orbits, edges: focusedGraph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) &&
-      (includeSharedSkills || edge.kind !== 'shared-skill')) };
-  }, [focusedGraph, focusVisibleIds, missionOrbits, framingNodes, hiddenIds, scope, includeSharedSkills, includeCheckpoints]);
+      (viewSharedSkills || edge.kind !== 'shared-skill')) };
+  }, [focusedGraph, focusVisibleIds, missionOrbits, framingNodes, hiddenIds, viewScope, viewSharedSkills, viewCheckpoints]);
   const visibleIds = useMemo(() => new Set(visible.nodes.map(node => node.id)), [visible.nodes]);
-  const visibleOrbitIds = useMemo(() => new Set(includeRings ? visible.orbits.map(orbit => orbit.id) : []), [visible.orbits, includeRings]);
+  const visibleOrbitIds = useMemo(() => new Set(viewRings ? visible.orbits.map(orbit => orbit.id) : []), [visible.orbits, viewRings]);
   const selected = graph.nodes.find(node => node.id === selectedId && !hiddenIds.has(node.id)
     && (visibleIds.has(node.id) || !focusVisibleIds.has(node.id)));
   const selectedOrbit = missionOrbits.find(orbit => orbit.id === orbitSelection?.orbitId);
@@ -143,7 +155,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     state.missions[selectedOrbit.missionId].mode !== 'planned' &&
     state.missions[selectedOrbit.missionId].status !== 'completed' && !state.missions[selectedOrbit.missionId].blocker
     ? selectedOrbit.missionId : undefined;
-  const checkpoints = graph.nodes.filter(node => node.kind === 'checkpoint' && !node.archived && matchesScope(node, scope));
+  const checkpoints = graph.nodes.filter(node => node.kind === 'checkpoint' && !node.archived && matchesScope(node, viewScope));
   const completed = checkpoints.filter(node => node.status === 'complete').length;
   const filtered = visible.nodes.filter(node => node.kind !== 'core' &&
     `${node.label} ${node.context} ${kindLabels[node.kind]}`.toLowerCase().includes(query.trim().toLowerCase()));
@@ -217,12 +229,12 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     return () => document.removeEventListener('fullscreenchange', update);
   }, [closePanels]);
   useEffect(() => {
-    const next = `${scope}:${includeRecords}:${includeReferences}`;
+    const next = `${viewScope}:${viewRecords}:${viewReferences}`;
     if (previousFilter.current === next) return;
     previousFilter.current = next;
     const frame = requestAnimationFrame(() => controls.current?.resetView());
     return () => cancelAnimationFrame(frame);
-  }, [scope, includeRecords, includeReferences]);
+  }, [viewScope, viewRecords, viewReferences]);
   useEffect(() => {
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => { if (motion.matches) { setAutoRotate(false); setAnimationPaused(true); setMotionOptIn(false); } };
@@ -233,7 +245,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   async function copyBrief() {
     setCopied(false);
     setCopyError('');
-    const missions = getMissions(state).filter(mission => scope === 'all' || mission.id === scope);
+    const missions = getMissions(state).filter(mission => viewScope === 'all' || mission.id === viewScope);
     const lines = [
       `CareerOS ${practice ? 'TUTORIAL PRACTICE' : state.sampleData ? 'SAMPLE-CONTAINING WORKSPACE' : 'saved-work'} snapshot`,
       `Current saved checkpoints: ${completed}/${checkpoints.length} marked complete.`,
@@ -267,6 +279,12 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   }
 
   function inspectOrbitMember(node: CareerGraphNode) {
+    if (showEverything) {
+      setQuery('');
+      inspectFromList.current = true;
+      selectNode(node.id);
+      return;
+    }
     changeVisibility([node.id], true);
     if (checkpointKinds.has(node.kind)) setIncludeCheckpoints(true);
     if (!matchesScope(node, scope)) setScope('all');
@@ -279,20 +297,20 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
   }
 
   function inspectConnection(node: CareerGraphNode, edge: CareerGraphEdge) {
-    if (edge.kind === 'shared-skill') setIncludeSharedSkills(true);
+    if (!showEverything && edge.kind === 'shared-skill') setIncludeSharedSkills(true);
     inspectOrbitMember(node);
   }
 
   function inspectOrbitFromIndex(orbitId: string) {
     const orbit = missionOrbits.find(item => item.id === orbitId);
     if (!orbit) return;
-    if (scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
+    if (!showEverything && scope !== 'all' && orbit.missionId !== scope) setScope(orbit.missionId!);
     inspectOrbitFromList.current = true;
     selectOrbit({ orbitId });
   }
 
   function revealOrbit() {
-    if (!selectedOrbit) return;
+    if (!selectedOrbit || showEverything) return;
     setScope(selectedOrbit.missionId!);
     const ids = selectedSegment ? selectedSegment.members.map(member => member.nodeId) : selectedOrbit.memberIds;
     changeVisibility([selectedOrbit.id, selectedOrbit.hubNodeId, ...ids], true);
@@ -325,7 +343,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
     </header>;
   }
 
-  return <div className="career-graph-page" data-node-spacing={nodeSpacing} data-node-labels={showNodeLabels}>
+  return <div className="career-graph-page" data-show-everything={showEverything} data-node-spacing={nodeSpacing} data-node-labels={showEverything || showNodeLabels}>
     <div className="career-graph-workspace">
       <section ref={stageRef} className="career-graph-stage-wrap" aria-label="Career network visualization">
         <header className="career-graph-commandbar">
@@ -340,7 +358,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             <div title="Visible work and reference nodes"><strong>{visible.nodes.filter(node => node.kind !== 'core').length}</strong><span>nodes</span></div>
           </div>
           <label className="graph-checkbox career-graph-label-toggle" title="Show or hide text tags on nodes and ring dots. Work, inspection and picking stay available.">
-            <input type="checkbox" aria-label="Node labels" checked={showNodeLabels}
+            <input type="checkbox" aria-label="Node labels" checked={showEverything || showNodeLabels} disabled={showEverything}
               onChange={event => setShowNodeLabels(event.currentTarget.checked)} />Labels
           </label>
           <nav className="career-graph-panel-openers" aria-label="Graph panels">
@@ -350,12 +368,13 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             ] as const).map(([panel, label, Icon]) => <button key={panel} type="button"
               ref={element => { panelOpeners.current[panel] = element; }}
               className={`button secondary${panel === 'visibility' ? ' career-visibility-open' : ''}`}
+              data-full-view={panel === 'view' && showEverything}
               aria-label={panelNames[panel]} title={panelNames[panel]} aria-expanded={activePanel === panel}
               aria-controls={`${panelId}-${panel}`}
               data-graph-panel-trigger={panel}
               data-tour={panel === 'rings' ? 'career-graph-orbits' : panel === 'visibility' ? 'career-graph-visibility' : undefined}
               onClick={() => activePanel === panel ? closePanels() : openPanel(panel)}>
-              <Icon size={16} /><span>{label}</span>
+              <Icon size={16} /><span>{panel === 'view' && showEverything ? 'View all' : label}</span>
             </button>)}
           </nav>
         </header>
@@ -367,7 +386,8 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
               <CareerGraphScene ref={controls} graph={visible} framingNodes={framingNodes} activityDate={date} selectedId={selected?.id ?? null} onSelect={selectNode}
                 selectedOrbit={activeOrbitSelection} onOrbitSelect={selectOrbit}
                 autoRotate={autoRotate && !animationPaused} animate={!animationPaused} allowReducedMotion={motionOptIn}
-                rimOnly={rimOnly} showRings={includeRings} showSparks={includeSparks} sparkDensity={sparkDensity} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
+                rimOnly={!showEverything && rimOnly} showRings={viewRings} showSparks={viewSparks} sparkDensity={sparkDensity}
+                sparkLineDensity={sparkLineDensity} orbitSpeeds={orbitSpeeds} heartbeat={heartbeat} onStatusChange={onSceneStatus} />
             </Suspense>
           </GraphSceneBoundary>
           {graph.updates.length > 0 && <a href="#/sources" className="career-graph-update-link"
@@ -385,15 +405,17 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
               {selected.current && <p className="career-graph-current"><Focus size={15} />Saved current checkpoint</p>}
               <a className="button primary" href={selected.href}>Open related page<ArrowUpRight size={16} /></a>
               <CareerGraphConnections key={selected.id} selectedId={selected.id} edges={graph.edges} nodes={nodeMap}
-                visibleIds={visibleIds} includeSharedSkills={includeSharedSkills} onInspect={inspectConnection} />
+                visibleIds={visibleIds} includeSharedSkills={viewSharedSkills} onInspect={inspectConnection} />
             </>}
           </aside>
           {selectedOrbit && <CareerOrbitInspector ref={orbitInspectorRef} key={selectedOrbit.id}
             orbit={selectedOrbit} segment={selectedSegment} nodes={nodeMap} visibleIds={visibleIds}
-            ringsVisible={includeRings && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
+            ringsVisible={viewRings && visible.orbits.some(orbit => orbit.id === selectedOrbit.id)}
             onClose={() => setOrbitSelection(null)} onSelect={selectOrbit} onReveal={revealOrbit} onInspect={inspectOrbitMember}
-            detailsAvailable={selectedOrbit.missionId !== undefined && focusVisibility.detailedMissionIds.has(selectedOrbit.missionId)}
-            completedToday={selectedOrbit.missionId !== undefined && focusVisibility.completedTodayMissionIds.has(selectedOrbit.missionId)}
+            detailsAvailable={showEverything || (selectedOrbit.missionId !== undefined && focusVisibility.detailedMissionIds.has(selectedOrbit.missionId))}
+            completedToday={!showEverything && selectedOrbit.missionId !== undefined && focusVisibility.completedTodayMissionIds.has(selectedOrbit.missionId)}
+            rotationSpeed={orbitSpeeds[selectedOrbit.id] ?? DEFAULT_ROTATION_SPEED}
+            onRotationSpeed={value => setOrbitSpeeds(current => ({ ...current, [selectedOrbit.id]: value }))}
             onRecord={recordableOrbitMission ? () => onRecord(recordableOrbitMission) : undefined} />}
           </div>
           <div className="career-graph-controls" role="group" aria-label="Graph camera and animation">
@@ -404,7 +426,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             {selected && <button className="button secondary career-graph-compact-control" aria-label="Focus node" title="Focus node" disabled={!sceneReady || !visibleIds.has(selected.id)}
              onClick={() => controls.current?.focusNode(selected.id)}><Focus size={16} /><span>Focus node</span></button>}
             {activeOrbitSelection && <button className="button secondary career-graph-compact-control" aria-label="Focus ring" title="Focus ring"
-             disabled={!sceneReady || !includeRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
+             disabled={!sceneReady || !viewRings || !visible.orbits.some(orbit => orbit.id === activeOrbitSelection.orbitId)}
              onClick={() => controls.current?.focusOrbit(activeOrbitSelection)}><Focus size={16} /><span>Focus ring</span></button>}
             <button className="button secondary career-graph-compact-control" disabled={!sceneReady} aria-pressed={animationPaused}
              aria-label={animationPaused ? 'Resume animation' : 'Pause animation'} title={animationPaused ? 'Resume animation' : 'Pause animation'}
@@ -422,7 +444,12 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             <div className="career-graph-panel-body">
              {(practice || state.sampleData) && <p className="career-graph-data-notice">{practice ? 'Practice graph: temporary tutorial records only.' : 'This workspace includes sample records. The graph is not entirely personal progress.'}</p>}
              <div className="career-graph-filters" data-tour="career-graph-filters">
-               <label className="career-graph-mission-filter">Mission view<select aria-label="Filter career graph by mission" value={scope} onChange={event => { setScope(event.target.value); setListCount(40); }}>
+               <div className="career-everything-control">
+                 <label className="graph-checkbox"><input type="checkbox" aria-label="Show everything" data-tour="career-graph-everything"
+                   checked={showEverything} onChange={event => { setShowEverything(event.currentTarget.checked); setQuery(''); setListCount(40); }} />Show everything</label>
+                 <small>All mission rings, checkpoints, connections and records, regardless of focus or completion. Turn off to restore your previous view. No progress changes.</small>
+               </div>
+               <label className="career-graph-mission-filter">Mission view<select aria-label="Filter career graph by mission" value={viewScope} disabled={showEverything} onChange={event => { setScope(event.target.value); setListCount(40); }}>
                  <option value="all">Whole career</option>{missionNodes.map(node => <option key={node.id} value={node.missionId}>{node.label}</option>)}
                </select></label>
                <div className="career-node-spacing" data-tour="career-graph-spacing">
@@ -433,26 +460,33 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                    onChange={event => setNodeSpacing(event.currentTarget.valueAsNumber)} />
                  <small id={`${panelId}-spacing-hint`}>Spread crowded nodes within the layout, rather than enlarging the graph. Frame all restores the clearest starting view. 1.0x resets the spread.</small>
                </div>
-               <label className="graph-checkbox"><input type="checkbox" checked={includeRecords} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
-               <label className="graph-checkbox" title="Show tracked, archived and untracked checkpoint nodes. Mission hubs, records and rings stay available."><input type="checkbox" checked={includeCheckpoints} onChange={event => setIncludeCheckpoints(event.target.checked)} />Checkpoints</label>
-               <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={includeReferences} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
-               <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={includeSharedSkills} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
-               <label className="graph-checkbox" title="Show mission rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={includeRings} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
+               <label className="graph-checkbox"><input type="checkbox" checked={viewRecords} disabled={showEverything} onChange={event => setIncludeRecords(event.target.checked)} />Work records</label>
+               <label className="graph-checkbox" title="Show tracked, archived and untracked checkpoint nodes. Mission hubs, records and rings stay available."><input type="checkbox" checked={viewCheckpoints} disabled={showEverything} onChange={event => setIncludeCheckpoints(event.target.checked)} />Checkpoints</label>
+               <label className="graph-checkbox" title="Notes and untracked curriculum are reference nodes. Mission hubs stay visible."><input type="checkbox" checked={viewReferences} disabled={showEverything} onChange={event => setIncludeReferences(event.target.checked)} />References</label>
+               <label className="graph-checkbox" title="Curated curriculum connections, not additional prerequisites or tasks."><input type="checkbox" checked={viewSharedSkills} disabled={showEverything} onChange={event => setIncludeSharedSkills(event.target.checked)} />Shared skill links</label>
+               <label className="graph-checkbox" title="Show mission rings, their anchors and membership tethers. Work nodes and their connections stay visible."><input type="checkbox" checked={viewRings} disabled={showEverything} onChange={event => setIncludeRings(event.target.checked)} />Rings</label>
                <div className="career-spark-controls">
-                 <label className="graph-checkbox" title="Show decorative floating dots. Rings, work nodes and the core glow are unchanged."><input type="checkbox" checked={includeSparks} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
-                 <label className="career-spark-density" title={includeSparks ? 'Spark amount: 0% shows none; 100% restores the previous full amount.' : 'Enable Sparks to adjust the amount.'}>
-                   <span className="sr-only">Spark amount</span>
-                   <input type="range" aria-label="Spark amount" min={0} max={MAX_SPARK_DENSITY} step={5}
-                     value={sparkDensity} aria-valuetext={`${sparkDensity}%`} disabled={!includeSparks}
+                 <label className="graph-checkbox" title="Show decorative dots and short spark lines. They are not work connections."><input type="checkbox" checked={viewSparks} disabled={showEverything} onChange={event => setIncludeSparks(event.target.checked)} />Sparks</label>
+                 <label className="career-spark-density">
+                   <span>Spark dots</span>
+                   <input type="range" aria-label="Spark dots" min={0} max={MAX_SPARK_DENSITY} step={5}
+                     value={sparkDensity} aria-valuetext={`${sparkDensity}%`} disabled={!viewSparks}
                      onChange={event => setSparkDensity(event.currentTarget.valueAsNumber)} />
                    <span aria-hidden="true">{sparkDensity}%</span>
+                 </label>
+                 <label className="career-spark-density">
+                   <span>Spark lines</span>
+                   <input type="range" aria-label="Spark lines" min={0} max={MAX_SPARK_DENSITY} step={5}
+                     value={sparkLineDensity} aria-valuetext={`${sparkLineDensity}%`} disabled={!viewSparks}
+                     onChange={event => setSparkLineDensity(event.currentTarget.valueAsNumber)} />
+                   <span aria-hidden="true">{sparkLineDensity}%</span>
                  </label>
                </div>
                <label className="graph-checkbox"><input type="checkbox" checked={autoRotate} disabled={!sceneReady} onChange={event => setAutoRotate(event.target.checked)} />Auto-rotate</label>
                <label className="graph-checkbox" title="A gentle outward-and-back mesh ripple from the white core every 10 seconds; paused with animation.">
                  <input type="checkbox" checked={heartbeat} onChange={event => setHeartbeat(event.target.checked)} />Core heartbeat
                </label>
-               <button className="button secondary" disabled={!sceneReady || !includeRings} aria-pressed={rimOnly}
+               <button className="button secondary" disabled={!sceneReady || !viewRings || showEverything} aria-pressed={!showEverything && rimOnly}
                  title="Hide ring paths where they cross the center of the camera view. Data anchors and membership links stay visible."
                  onClick={() => setRimOnly(value => !value)}>Clear center</button>
              </div>
@@ -469,7 +503,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
                  <button key={direction} className="button secondary" disabled={!sceneReady} onClick={() => controls.current?.rotate(direction)}><Icon size={15} />Rotate {direction}</button>)}
              </div></details>
              <div className="career-graph-stage-footer">
-               <p className="career-graph-focus-note">In-focus missions show checkpoints and connections. Other missions stay as isolated nodes. Completing a checkpoint outside focus reveals its full graph for today without changing its focus setting.</p>
+               <p className="career-graph-focus-note">{showEverything ? 'Show everything is on: focus and visibility filters are temporarily bypassed. Mission modes and completion remain unchanged. Motion preferences and your chosen spark amounts are retained.' : 'In-focus missions show checkpoints and connections. Other missions stay as isolated nodes. Completing a checkpoint outside focus reveals its full graph for today without changing its focus setting.'}</p>
                <p className="career-graph-hint">Drag to rotate · scroll or pinch to zoom · select a work node or ring anchor.</p>
                <div className="career-graph-legend"><span>Checkpoint nodes:</span><span><i className="graph-status-complete" />Completed</span><span><i className="graph-status-incomplete" />Unfinished</span><span>Other nodes use mission / collection colors.</span></div>
                <p className="career-graph-link-key"><i />{visible.edges.filter(edge => edge.kind === 'shared-skill').length} shared skill links · select a node, then Connections for the reason.</p>
@@ -477,7 +511,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
              </div>
              <footer className="career-graph-footer">
                <p className="button-row"><a href="#/guide">Help &amp; glossary</a><a href="#/settings">Data &amp; backups</a></p>
-               <p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize saved missions and record collections. Mission ring colors match Missions; a bright dot border means work was recorded today. Green is reserved for checkpoints marked complete, not automatic mastery. Tethers show real membership, not extra tasks. Clear center hides ring paths, not their data anchors. Sparks and the core heartbeat are visual atmosphere, not live AI activity.</p>
+               <p>Orange links connect actual nodes; their reasons are in Connections. Rings summarize saved missions. Mission ring colors match Missions; a bright dot border means work was recorded today. Green is reserved for checkpoints marked complete, not automatic mastery. Tethers show real membership, not extra tasks. Clear center hides ring paths, not their data anchors. Sparks and the core heartbeat are visual atmosphere, not live AI activity.</p>
                <p>Copying a brief uses your local clipboard. Nothing is sent to an AI service; review it before sharing.</p>
              </footer>
             </div>
@@ -501,7 +535,7 @@ export const CareerGraphPage = forwardRef<CareerGraphPageHandle, {
             <div className="career-graph-panel-body">
              <CareerGraphVisibility graph={graph} hiddenIds={hiddenIds}
                visibleNodeIds={visibleIds} visibleOrbitIds={visibleOrbitIds} kindLabels={kindLabels}
-               onChange={changeVisibility} />
+               locked={showEverything} onChange={changeVisibility} />
             </div>
           </section>
           <section {...panelAttributes('work')} className="career-graph-panel career-graph-index">

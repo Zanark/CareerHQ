@@ -91,9 +91,12 @@ than their data anchors. **Rings** hides the orbit paths, anchors and tethers;
 **Checkpoints**, also on by default, hides tracked, archived and untracked curriculum
 checkpoint nodes without hiding mission hubs, records or rings. It preserves framing
 and is view-only; explicit reveal can restore this layer without enabling Sparks.
-Spark amount defaults to 10% of the full budget: 180 desktop / 90 compact dots
-in the main view and 30 / 18 in focus (10% of the 175-point compact budget rounds to 18).
-The main-view slider spans 0-100%; 100% restores the previous full budget.
+Spark dots and spark lines have independent 0-100% sliders, both defaulting to 10%.
+Dot defaults are 180 desktop / 90 compact in the main view and 30 / 18 in focus.
+Short decorative line defaults are 60 / 30 in the main view and 12 / 7 in focus.
+The original dot maximum is unchanged; line maxima are 600 / 300 and 120 / 70.
+Both percentages survive the shared Sparks visibility toggle and responsive resizing.
+Spark lines are warm, soft-ended streaks, never connections between work nodes.
 Neither removes real work nodes, connection glow or the actual core-node aura.
 The white CareerOS center and its inner halo are opaque, so underlying connection
 lines cannot show through; only the outer glow has a soft falloff.
@@ -111,6 +114,10 @@ without rebuilding the focus snapshot. The timer card uses 8px backdrop frost so
 remaining mission-only motion is visible without relying on removed collection dots.
 The spacing control redistributes local node neighborhoods within a bounded composition,
 with more central clearance and wider outer-ring separation. It is not a global zoom.
+Each active mission ring also has a 0-300% rotation-speed control. Independent integrated
+ring phases preserve position during speed changes and keep selected arcs, highlights and
+membership tethers together. 100% retains its seeded rate and direction; 0% stops only
+that ring. Inactive rings and globally paused/reduced-motion scenes remain still.
 Streaks describe recorded local-calendar work
 days, not attention, checkpoint completion or live telemetry.
 Glow and sparks remain decorative; orbit motion is not evidence of a connected AI

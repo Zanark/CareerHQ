@@ -22,7 +22,7 @@ describe('view-only node spacing', () => {
     const spaced = spaceCareerGraph(graph, spacing);
     const radii = spaced.nodes.filter(node => node.kind !== 'core').map(node => Math.hypot(...node.position));
     expect(Math.min(...radii)).toBeGreaterThan(50);
-    expect(Math.max(...radii)).toBeLessThan(137);
+    expect(Math.max(...radii)).toBeLessThan(spacing === 100 ? 137 : 184);
     const ratios = spaced.nodes.filter(node => node.kind !== 'core').map(node =>
       Math.hypot(...node.position) / Math.hypot(...graph.nodes.find(source => source.id === node.id)!.position));
     expect(Math.max(...ratios) - Math.min(...ratios)).toBeGreaterThan(0.5);
@@ -55,6 +55,26 @@ describe('view-only node spacing', () => {
     }
     expect(spaceCareerGraph(graph, 290).nodes.map(node => node.position))
       .not.toEqual(spaceCareerGraph(graph, 300).nodes.map(node => node.position));
+  });
+
+  it('opens real mission neighborhoods without passing through the core at intermediate settings', () => {
+    const graph = buildCareerGraph(createInitialState(false));
+    const core = graph.nodes.find(node => node.kind === 'core')!;
+    for (let spacing = 100; spacing <= 300; spacing += 10) {
+      const projected = spaceCareerGraph(graph, spacing);
+      expect(projected.nodes.find(node => node.kind === 'core')).toBe(core);
+      expect(Math.min(...projected.nodes.filter(node => node.kind !== 'core')
+        .map(node => Math.hypot(...node.position)))).toBeGreaterThan(50);
+    }
+    const first = spaceCareerGraph(graph, 100), last = spaceCareerGraph(graph, 300);
+    const directionChanges = last.nodes.filter((node, index) => {
+      if (node.kind === 'core') return false;
+      const original = first.nodes[index].position;
+      const cosine = node.position.reduce((sum, value, axis) => sum + value * original[axis], 0)
+        / (Math.hypot(...node.position) * Math.hypot(...original));
+      return cosine < 0.9;
+    });
+    expect(directionChanges.length).toBeGreaterThan(graph.nodes.length * 0.6);
   });
 
   it('pins a non-origin core and preserves identities across reordering, filtering and new records', () => {

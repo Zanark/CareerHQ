@@ -138,6 +138,9 @@ function Workspace({ state, workspace, appearance, practice, focusSession, onSta
   const commandTutorial = useCallback((command: TutorialCommand) => {
     focusRoom.current?.close();
     if (command === 'open-graph-search') careerGraph.current?.openPanel('work');
+    else if (command === 'open-graph-view') careerGraph.current?.openPanel('view');
+    else if (command === 'open-graph-rings') careerGraph.current?.openPanel('rings');
+    else if (command === 'open-graph-visibility') careerGraph.current?.openPanel('visibility');
     else careerGraph.current?.closePanels();
     setFullRoadmapOpen(command === 'open-roadmap');
     if (command === 'open-evidence') { setOpportunityDialog(false); setEvidenceDialog({ missionId: 'pattern' }); }

@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, GripHorizontal, LogOut, RotateCcw, SkipForward, X } from 'lucide-react';
 import type { TutorialCommand, TutorialProps } from './types';
 import { chapters, graphCheckpointToggle, steps } from './steps';
-import type { TutorialStep } from './steps';
+import type { TutorialStep, TutorialUiObservation } from './steps';
+import { graphTarget, graphToggle } from './graphControls';
 import { CUE_VIEWPORT_MARGIN, SECTION_PADDING, TutorialCue } from './TutorialCue';
 import { useTutorialPosition } from './useTutorialPosition';
 
@@ -12,11 +13,41 @@ const PANEL_MARGIN = 24;
 
 function findOpenDialog(): HTMLElement | null {
   const dialog = document.querySelector<HTMLElement>('dialog[open]');
-  return dialog?.querySelector<HTMLElement>('[data-focus-room-stage]') ?? dialog;
+  return dialog?.querySelector<HTMLElement>('[data-focus-room-stage]') ?? dialog ??
+    (document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : null);
 }
 
 function findTarget(targets: string[] | undefined, dialog: HTMLElement | null): HTMLElement | null {
   if (!targets || targets.length === 0) return null;
+  for (const name of targets) {
+    const target = graphTarget(document, name);
+    if (!target || target.closest('[hidden]')) continue;
+    if ('disabled' in target && target.disabled && graphToggle(document, 'Show everything')?.checked) {
+      return graphToggle(document, 'Show everything');
+    }
+    if (name === 'graph-ring-members' && target.parentElement?.hasAttribute('open')) {
+      return graphTarget(document, 'graph-ring-search');
+    }
+    if (name === 'graph-individuals' && target.parentElement?.hasAttribute('open')) {
+      return graphTarget(document, 'graph-visibility-search');
+    }
+    if (name === 'graph-keyboard' && target.parentElement?.hasAttribute('open')) {
+      return graphTarget(document, 'graph-rotate');
+    }
+    if (name === 'graph-clear-center' && !graphToggle(document, 'Core heartbeat')?.checked) {
+      return graphToggle(document, 'Core heartbeat');
+    }
+    if (name === 'graph-spark-amount' && targets.includes('graph-spark-lines') &&
+        document.querySelector<HTMLInputElement>('input[aria-label="Spark dots"]')?.value === '10') {
+      return graphTarget(document, 'graph-spark-lines');
+    }
+    if (name === 'graph-toggle:Work records' && targets.includes('graph-toggle:References')) {
+      const records = graphToggle(document, 'Work records');
+      const references = graphToggle(document, 'References');
+      if (records?.checked !== references?.checked) return references;
+    }
+    return target;
+  }
   if (targets.includes('career-graph-list')) return document.querySelector('[data-tour="career-graph-list"] button');
   if (targets.includes('career-graph-checkpoints') && !dialog) {
     const trigger = document.querySelector<HTMLElement>('[data-graph-panel-trigger="view"]');
@@ -170,6 +201,8 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const rafRef = useRef(0);
   const pendingRef = useRef(false);
   const pendingCommand = useRef<{ route: string; stepId: string; command: TutorialCommand } | null>(null);
+  const uiObservation = useRef<TutorialUiObservation & { stepId: string }>({ stepId: '', interacted: false, viewRevision: null });
+  const dragStart = useRef<{ x: number; y: number; revision: number | null } | null>(null);
   const moveHelpId = useId();
 
   const step: TutorialStep = steps[stepIndex];
@@ -181,6 +214,8 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   // Navigate / invoke command exactly once when the step changes.
   useEffect(() => {
     enterThemeRef.current = signals.theme;
+    uiObservation.current = { stepId: step.id, interacted: false, viewRevision: null };
+    dragStart.current = null;
     pendingCommand.current = null;
     if (stepRoute !== route) {
       if (step.command) pendingCommand.current = { route: stepRoute, stepId: step.id, command: step.command };
@@ -203,7 +238,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const checkStep = useCallback(() => {
     if (step.kind !== 'action' || (!step.check && !step.checkUi) || achieved.has(step.id)) return;
     const ok = (!step.check || step.check({ state, signals, route, enterTheme: enterThemeRef.current })) &&
-      (!step.checkUi || step.checkUi(document));
+      (!step.checkUi || step.checkUi(document, uiObservation.current.stepId === step.id ? uiObservation.current : undefined));
     if (ok) setAchieved((prev) => (prev.has(step.id) ? prev : new Set(prev).add(step.id)));
   }, [step, state, signals, route, achieved]);
   useEffect(checkStep, [checkStep]);
@@ -241,13 +276,40 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   // Re-scan on step change, DOM mutation (dialogs opening/closing), resize, and scroll.
   useEffect(() => {
     schedule();
+    const observeAction = (event: Event) => {
+      const action = step.uiAction;
+      if (action?.event === 'pointerup' && event.type === 'pointerdown' && event instanceof PointerEvent &&
+          event.target instanceof Element && event.target.matches(action.selector)) {
+        const revision = document.querySelector<HTMLElement>('.career-graph-page .career-graph-scene')?.dataset.viewRevision;
+        dragStart.current = { x: event.clientX, y: event.clientY, revision: revision === undefined ? null : Number(revision) };
+        return;
+      }
+      if (!action || event.type !== action.event || !(event.target instanceof Element) ||
+          !event.target.closest(action.selector) || (action.key && (!(event instanceof KeyboardEvent) || event.key !== action.key))) return;
+      const revision = document.querySelector<HTMLElement>('.career-graph-page .career-graph-scene')?.dataset.viewRevision;
+      if (action.event === 'pointerup') {
+        const start = dragStart.current;
+        dragStart.current = null;
+        if (!(event instanceof PointerEvent) || !start || Math.hypot(event.clientX - start.x, event.clientY - start.y) < 8) return;
+        uiObservation.current = { stepId: step.id, interacted: true, viewRevision: start.revision };
+      } else {
+        uiObservation.current = { stepId: step.id, interacted: true, viewRevision: revision === undefined ? null : Number(revision) };
+      }
+      schedule();
+    };
     const mutation = new MutationObserver(() => schedule());
-    mutation.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'class'] });
+    mutation.observe(document.body, { childList: true, subtree: true, attributes: true,
+      attributeFilter: ['open', 'class', 'hidden', 'aria-pressed', ...(step.uiAction ? ['data-view-revision', 'data-scene-state'] : [])] });
     window.addEventListener('resize', schedule);
     window.addEventListener('scroll', schedule, true);
     document.addEventListener('input', schedule, true);
     document.addEventListener('change', schedule, true);
     document.addEventListener('click', schedule, true);
+    document.addEventListener('click', observeAction, true);
+    document.addEventListener('keydown', observeAction, true);
+    document.addEventListener('pointerup', observeAction, true);
+    document.addEventListener('pointerdown', observeAction, true);
+    document.addEventListener('fullscreenchange', schedule);
     return () => {
       mutation.disconnect();
       window.removeEventListener('resize', schedule);
@@ -255,6 +317,11 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
       document.removeEventListener('input', schedule, true);
       document.removeEventListener('change', schedule, true);
       document.removeEventListener('click', schedule, true);
+      document.removeEventListener('click', observeAction, true);
+      document.removeEventListener('keydown', observeAction, true);
+      document.removeEventListener('pointerup', observeAction, true);
+      document.removeEventListener('pointerdown', observeAction, true);
+      document.removeEventListener('fullscreenchange', schedule);
       window.cancelAnimationFrame(rafRef.current);
       pendingRef.current = false;
     };
@@ -364,6 +431,9 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
   const host = dialogHost ?? document.body;
   const progressPct = Math.round(((stepIndex + 1) / total) * 100);
   const focusRoomHost = !!dialogHost?.matches('[data-focus-room-stage]');
+  const mobileAboveTarget = mobile && !!dialogHost?.matches('.career-graph-stage-wrap') &&
+    targetRect !== null && targetRect.top >= panelSize.height + 20 &&
+    targetRect.bottom > window.innerHeight - panelSize.height - 20;
 
   if ((dialogHost?.classList.contains('full-roadmap-modal') && step.chapter === 'full-map') ||
       (focusRoomHost && step.chapter === 'focus-room')) return createPortal(
@@ -399,7 +469,7 @@ export function Tutorial({ state, route, signals, onNavigate, onCommand, onExit,
       style={movable.position
         ? { ...movable.position, bottom: 'auto', right: 'auto', width: mobile ? window.innerWidth - 20 : placement.width, maxHeight: placement.maxHeight }
         : mobile
-        ? { maxHeight: collapsed ? undefined : placement.maxHeight }
+        ? { ...(mobileAboveTarget ? { top: 10, bottom: 'auto' } : {}), maxHeight: collapsed ? undefined : placement.maxHeight }
         : { top: placement.top, left: placement.left, width: placement.width, maxHeight: placement.maxHeight }}
       role="region"
       aria-label={`Tutorial step ${stepIndex + 1} of ${total}: ${step.title}`}

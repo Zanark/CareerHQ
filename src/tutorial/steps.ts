@@ -1,6 +1,7 @@
 import type { AppState } from '../domain/types';
 import type { TutorialCommand, TutorialSignals } from './types';
 import { fullMapSteps, packPracticeSteps, sourceSteps } from './featureSteps';
+import { graphSteps } from './graphSteps';
 import type { Theme } from '../useTheme';
 
 export interface CheckContext {
@@ -11,6 +12,17 @@ export interface CheckContext {
 }
 
 export type StepKind = 'explain' | 'action';
+
+export interface TutorialUiAction {
+  selector: string;
+  event: 'click' | 'keydown' | 'pointerup';
+  key?: string;
+}
+
+export interface TutorialUiObservation {
+  interacted: boolean;
+  viewRevision: number | null;
+}
 
 export interface TutorialStep {
   id: string;
@@ -27,7 +39,9 @@ export interface TutorialStep {
   /** For action steps: condition that marks the step as demonstrated. Ignored for explain steps. */
   check?: (ctx: CheckContext) => boolean;
   /** Read actual control state for actions that do not modify workspace records. */
-  checkUi?: (root: Document) => boolean;
+  checkUi?: (root: Document, observation?: TutorialUiObservation) => boolean;
+  /** Camera lessons require a real input on this control and a rendered view change. */
+  uiAction?: TutorialUiAction;
 }
 
 export interface TutorialChapter {
@@ -44,6 +58,11 @@ export function graphCheckpointToggle(root: Document): HTMLInputElement | null {
 export const chapters: TutorialChapter[] = [
   { id: 'welcome', title: 'Welcome' },
   { id: 'career-graph', title: '3D career graph' },
+  { id: 'graph-view', title: 'Graph layers & Show everything' },
+  { id: 'graph-motion', title: 'Graph sparks & motion' },
+  { id: 'graph-rings', title: 'Inspect rings & connections' },
+  { id: 'graph-nodes', title: 'Choose individual nodes' },
+  { id: 'graph-camera', title: 'Graph camera & fullscreen' },
   { id: 'perspective', title: 'Keep going' },
   { id: 'overview', title: 'Overview' },
   { id: 'plan', title: 'Plan & focus' },
@@ -74,52 +93,7 @@ export const steps: TutorialStep[] = [
     title: 'Welcome to the practice tutorial',
     body: 'Follow the glow and hand. Try the action, then click Next. If this window blocks your view, use Drag to move at the top; Reset position restores automatic placement. Use Chapter to jump between features. Practice is temporary; your real progress stays untouched.',
   },
-  {
-    id: 'career-graph-intro', chapter: 'career-graph', kind: 'explain', route: 'home',
-    targets: ['career-graph-summary'],
-    title: 'Your career in a 3D view',
-    body: 'The graph fills the workspace. Green marks completed checkpoints, including archived ones; orange marks unfinished checkpoints. Hubs and records keep their identity colors, not completion green. Drag to rotate or scroll to zoom. View, Rings, Nodes and Work open panels without moving the graph. The ten-second heartbeat is visual atmosphere, not AI activity.',
-  },
-  {
-    id: 'career-graph-orbits', chapter: 'career-graph', kind: 'explain', route: 'home',
-    targets: ['career-graph-orbits'],
-    title: 'Read the mission rings',
-    body: 'Rings represent missions only. In-focus missions show checkpoints and connections; other missions stay isolated nodes. Complete a checkpoint outside focus to reveal that mission’s full graph for today, without changing its mode. It collapses again tomorrow unless in focus. Rings lists all nine missions; an optional inactive ring does not reveal its hidden checkpoints. Other data stays on existing pages and in relevant details.',
-  },
-  {
-    id: 'career-graph-checkpoints-hide', chapter: 'career-graph', kind: 'action', route: 'home',
-    targets: ['career-graph-checkpoints'],
-    title: 'Hide the checkpoint layer',
-    body: 'Open View, then uncheck Checkpoints (on by default). This hides tracked, archived and untracked curriculum checkpoint nodes, not mission hubs, rings or work records. The framing stays stable and no work is deleted. Labels beside the graph counts hides only text tags. Rings and Sparks have separate switches; Spark amount starts at 10%.',
-    checkUi: root => graphCheckpointToggle(root)?.checked === false,
-  },
-  {
-    id: 'career-graph-checkpoints-show', chapter: 'career-graph', kind: 'action', route: 'home',
-    targets: ['career-graph-checkpoints'],
-    title: 'Restore checkpoints for inspection',
-    body: 'Check Checkpoints again. Other mission, reference and individual visibility choices still apply. These settings last only while the graph page is open and never change your backup. Reveal and inspect or Reveal orbit and members may explicitly turn this layer on; neither turns Sparks on.',
-    checkUi: root => graphCheckpointToggle(root)?.checked === true,
-  },
-  {
-    id: 'career-graph-visibility', chapter: 'career-graph', kind: 'explain', route: 'home',
-    targets: ['career-graph-visibility'],
-    title: 'Choose exactly what appears',
-    body: 'Nodes opens group and individual visibility checkboxes, including the core. A partly checked group has mixed choices. View has Node spacing: 1.0x to 3.0x relative spread redistributes crowded nodes rather than enlarging the whole graph. Frame all restores the clearest starting angle; 1.0x resets spread. These choices last on this page only. Nothing is deleted or completed.',
-  },
-  {
-    id: 'career-graph-search', chapter: 'career-graph', kind: 'action', route: 'home', command: 'open-graph-search',
-    targets: ['career-graph-search'],
-    title: 'Find a real checkpoint',
-    body: 'Find work opens a compact search panel. Type HashMap in Find your work. The named node list is also available without WebGL. Searching and inspecting a node never completes it.',
-    checkUi: root => root.querySelector<HTMLInputElement>('[aria-label="Search career graph nodes"]')?.value.trim().toLowerCase() === 'hashmap',
-  },
-  {
-    id: 'career-graph-select', chapter: 'career-graph', kind: 'action', route: 'home', command: 'open-graph-search',
-    targets: ['career-graph-list'],
-    title: 'Inspect the work behind a node',
-    body: 'Choose a named HashMap node in the list. Its saved status and related page appear beside the graph. Record actual work through the normal mission controls; a graph click does not turn a checkpoint green.',
-    checkUi: root => !!root.querySelector('[data-tour="career-graph-list"] button[aria-pressed="true"]'),
-  },
+  ...graphSteps,
   {
     id: 'perspective-intro', chapter: 'perspective', kind: 'explain', route: 'perspective',
     targets: ['perspective-intro'],
@@ -306,10 +280,11 @@ export const steps: TutorialStep[] = [
     check: ({ state }) => state.missions.fabric.blocker.trim().length > 0,
   },
   {
-    id: 'control-blocker-clear', chapter: 'control', kind: 'explain',
+    id: 'control-blocker-clear', chapter: 'control', kind: 'action',
     targets: ['blocker-form'],
     title: 'Clearing a blocker',
-    body: 'Clearing the blocker field and saving lets this mission appear in daily plans again. Try it now, or move on; it is optional.',
+    body: 'Clear the blocker field and save. This makes the mission eligible again and lets us practice background recording next. No checkpoint or earlier evidence is removed.',
+    check: ({ state }) => state.missions.fabric.blocker === '',
   },
   {
     id: 'control-background', chapter: 'control', kind: 'action',
@@ -317,6 +292,29 @@ export const steps: TutorialStep[] = [
     title: 'Keep a mission in the background',
     body: 'Click Move to background. Its work stays intact but it no longer gets a daily action. You can still record practice or complete its current checkpoint from its mission page. Only an actual checkpoint completion reveals its full graph for today; unfinished practice and recall do not.',
     check: ({ state }) => state.missions.fabric.mode === 'background',
+  },
+  {
+    id: 'control-background-evidence', chapter: 'control', kind: 'action', route: 'mission/fabric', command: 'close-dialogs',
+    targets: ['record-evidence', 'evidence-example', 'evidence-submit'],
+    title: 'Save work without bringing it into focus',
+    body: 'On background Fabric, click Record evidence, Fill example, then Save evidence with completion unchecked. Its recorded-work day and dot border count this note; its full graph stays hidden. Background work uses the normal current-checkpoint guards, not a daily-plan action.',
+    check: ({ state }) => state.missions.fabric.mode === 'background' &&
+      state.evidence.some(item => item.missionId === 'fabric' && !item.completedCheckpoint),
+  },
+  {
+    id: 'control-background-complete', chapter: 'control', kind: 'action', route: 'mission/fabric',
+    targets: ['record-evidence', 'checkpoint-complete', 'evidence-example', 'evidence-submit'],
+    title: 'Trigger today’s reveal with actual completion',
+    body: 'Open Record evidence again. Fill example, check This checkpoint is complete, confirm every criterion, then Complete & unlock next. This is fictional practice only. Planned, blocked, wrong-edition or non-current work cannot bypass the normal guards.',
+    check: ({ state }) => state.missions.fabric.mode === 'background' &&
+      state.evidence.some(item => item.missionId === 'fabric' && item.completedCheckpoint),
+  },
+  {
+    id: 'control-background-graph', chapter: 'control', kind: 'action', route: 'home', command: 'open-graph-rings',
+    targets: ['graph-background-ring'], title: 'See the full mission for today, not forever',
+    body: 'Choose Service Fabric in Rings. Its saved mode is still Background, but all its checkpoint detail is available today. Tomorrow’s local date collapses it again unless brought into focus; evidence and completion remain saved. Later adoption archives this v1 work, without crediting unrelated v3 checkpoints.',
+    checkUi: root => !!root.querySelector('.career-orbit-inspector[data-orbit-id="orbit:mission:fabric"][data-mission-mode="background"]') &&
+      [...root.querySelectorAll('.career-orbit-inspector .career-orbit-view-note')].some(item => item.textContent?.startsWith('Revealed for today')),
   },
   {
     id: 'focus-room-open', chapter: 'focus-room', kind: 'action', route: 'plan', command: 'close-dialogs',
@@ -374,6 +372,12 @@ export const steps: TutorialStep[] = [
     title: 'Inspect a manageable problem set',
     body: 'Choose Easy in Row difficulty. Open a problem on LeetCode when ready to practice. No solve is recorded by opening a link; genuine work is saved from the current mission checkpoint.',
     checkUi: root => root.querySelector<HTMLSelectElement>('[aria-label="Filter DSA problems by difficulty"]')?.value === 'Easy',
+  },
+  {
+    id: 'dsa-notebook-companion', chapter: 'dsa-practice', kind: 'action', route: 'dsa/9',
+    targets: ['dsa-notebook-companion'], title: 'Use a companion without creating another tracker',
+    body: 'Expand NotebookLM companion. Coaching day numbers, R0 and its seven-day retention guidance are not synced CareerOS statuses. Put an actual session handoff in existing evidence and use Recall for closed-source attempts. The optional prompt is manual; this lesson makes no clipboard or AI request.',
+    checkUi: root => !!root.querySelector('[data-tour="dsa-notebook-companion"][open]'),
   },
   {
     id: 'system-concepts-intro', chapter: 'system-concepts', kind: 'explain', route: 'system-concepts', command: 'close-dialogs',
@@ -566,7 +570,7 @@ export const steps: TutorialStep[] = [
     id: 'tools-help', chapter: 'tools', kind: 'explain', route: 'guide',
     targets: ['help-guide'],
     title: 'Help and glossary',
-    body: 'The guide page explains terms like mission, checkpoint, and readiness in one place, any time you need a refresher.',
+    body: 'Search Help & glossary for a term such as mission, checkpoint, or work streak. Expand a topic to read its definition, then use its page link to open the relevant tool. You can return here for a refresher or restart this practice tutorial.',
   },
   // Finish
   {

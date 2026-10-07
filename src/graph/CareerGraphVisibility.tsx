@@ -28,8 +28,9 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
   visibleNodeIds: ReadonlySet<string>;
   visibleOrbitIds: ReadonlySet<string>;
   kindLabels: Readonly<Record<CareerGraphKind, string>>;
+  locked?: boolean;
   onChange: (ids: readonly string[], visible: boolean) => void;
-}>(function CareerGraphVisibility({ graph, hiddenIds, visibleNodeIds, visibleOrbitIds, kindLabels, onChange }, ref) {
+}>(function CareerGraphVisibility({ graph, hiddenIds, visibleNodeIds, visibleOrbitIds, kindLabels, onChange, locked = false }, ref) {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
   const [limit, setLimit] = useState(40);
@@ -59,13 +60,14 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
   const visibleRingCount = items.filter(item => item.type === 'orbit' && visibleOrbitIds.has(item.id)).length;
   return <div ref={ref} className="career-node-visibility">
     <p id={descriptionId}>View only - your saved work is unchanged.</p>
+    {locked && <p role="status">Show everything is on. Turn it off in View to edit individual visibility choices; your previous choices are retained.</p>}
     <p className="career-visibility-counts" role="status">
       <span>{visibleWorkCount} work nodes · {visibleRingCount} rings</span>
       <span>{selection.chosen}/{selection.total} chosen</span>
     </p>
     <div className="career-visibility-actions">
-      <button type="button" className="button secondary" onClick={() => onChange(allIds, true)}>Select all items</button>
-      <button type="button" className="button secondary" onClick={() => onChange(allIds, false)}>Clear all items</button>
+      <button type="button" className="button secondary" disabled={locked} onClick={() => onChange(allIds, true)}>Select all items</button>
+      <button type="button" className="button secondary" disabled={locked} onClick={() => onChange(allIds, false)}>Clear all items</button>
     </div>
     <fieldset className="career-visibility-groups" aria-describedby={descriptionId}>
       <legend>Groups</legend>
@@ -74,7 +76,7 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
         const countId = `${groupCountPrefix}-${index}`;
         return <label key={group.id} className="career-visibility-group" data-visibility-group={group.id}>
           <VisibilityGroupCheckbox label={`Show ${group.label} group`} checked={groupSelection.checked}
-            mixed={groupSelection.mixed} disabled={!groupSelection.total} describedBy={countId}
+            mixed={groupSelection.mixed} disabled={locked || !groupSelection.total} describedBy={countId}
             onChange={visible => onChange(group.itemIds, visible)} />
           <i aria-hidden="true" style={{ backgroundColor: group.color }} />
           <span><strong>{group.label}</strong>
@@ -100,7 +102,7 @@ export const CareerGraphVisibility = forwardRef<HTMLDivElement, {
         const shown = (item.type === 'node' ? visibleNodeIds : visibleOrbitIds).has(item.id);
         return <li key={item.id} data-visibility-item={item.id}>
           <label className="career-visibility-item">
-            <input type="checkbox" checked={chosen} aria-label={item.accessibleName}
+            <input type="checkbox" checked={chosen} disabled={locked} aria-label={item.accessibleName}
               onChange={event => onChange([item.id], event.target.checked)} />
             <span><small className="career-visibility-kind">{item.kindLabel}</small>
               <strong>{item.label}</strong><small>{item.context}</small>

@@ -28,6 +28,7 @@
 .career-graph-panel-openers { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .career-graph-panel-openers .button { min-height: 34px; padding: 6px 9px; gap: 6px; font-size: .625rem; white-space: nowrap; }
 .career-graph-panel-openers .button[aria-expanded="true"] { outline: 1px solid #268BD2; outline-offset: -1px; }
+.career-graph-panel-openers .button[data-full-view="true"] { border-color: #268BD2; color: #EEE8D5; }
 .career-graph-stage { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; background: #000F13; }
 .career-graph-stage .career-graph-scene__space-note { display: none; }
 .career-graph-update-link { position: absolute; z-index: 1; left: 12px; top: 10px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 4px; background: #000F13E8; color: #93A1A1; font-size: .5rem; }
@@ -65,12 +66,18 @@
 .career-node-spacing small { font-size: .5625rem; color: var(--dsf-text); line-height: 1.6; }
 .graph-checkbox { display: inline-flex; align-items: center; gap: 7px; font-size: .625rem; line-height: 1.6; }
 .graph-checkbox input[type="checkbox"] { flex: none; width: 16px; height: 16px; margin: 0; accent-color: #268BD2; }
-.career-spark-controls { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; min-width: 0; }
+.career-spark-controls { grid-column: 1 / -1; display: grid; gap: 10px; min-width: 0; }
 .career-spark-density { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; font-size: .625rem; color: var(--dsf-heading); }
 .career-spark-density input[type="range"] { flex: 1; width: 100px; min-width: 0; height: 22px; padding: 0; margin: 0; border: 0; background: transparent; accent-color: var(--dsf-accent); }
 .career-spark-density input:focus-visible { outline: 2px solid var(--dsf-accent); outline-offset: 3px; }
 .career-spark-density input:disabled { opacity: .45; cursor: not-allowed; }
 .career-spark-density > span:last-child { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+.career-everything-control { display: grid; grid-column: 1 / -1; gap: 6px; border-bottom: 1px solid var(--dsf-separator); padding-bottom: 12px; }
+.career-everything-control small, .career-ring-speed small { font-size: .5625rem; color: var(--dsf-text); line-height: 1.6; }
+.career-ring-speed { display: grid; gap: 6px; margin-top: 12px; }
+.career-ring-speed label { display: flex; justify-content: space-between; font-size: .625rem; color: var(--dsf-heading); }
+.career-ring-speed input { width: 100%; height: 24px; margin: 0; padding: 0; accent-color: var(--dsf-accent); }
+.career-ring-speed input:disabled { opacity: .5; }
 .career-graph-page-actions { margin: 18px 0 12px; gap: 8px; }
 .career-graph-stage-footer { display: grid; gap: 12px; padding-top: 18px; }
 .career-graph-hint { font-size: .5625rem; color: #93A1A1; }

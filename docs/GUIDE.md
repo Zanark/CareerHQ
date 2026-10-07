@@ -61,6 +61,15 @@ The AI-engineering mission is a learning roadmap, not a connected AI service.
 
 ## Start using it
 
+### Find an answer without running the tutorial
+
+**Help & glossary** is a searchable reference, separate from the guided tutorial.
+Search terms such as rings, streaks, references or backups; select a topic heading to
+expand its explanation, then follow its link to the relevant page. Quick shortcuts
+open the graph, Missions, roadmap updates or Settings. Searching, expanding and
+navigating do not modify progress. **Start tutorial** opens isolated practice when
+you want a hands-on walkthrough instead.
+
 ### Your 3D career view
 
 The website now opens **[Career graph](https://zanark.github.io/CareerOS/#/home)**.
@@ -70,7 +79,7 @@ the selected item. The canvas now fills the available app viewport instead of si
 below a stack of controls. Frame, zoom, animation and fullscreen controls stay in a
 small camera dock; Focus node / Focus ring appear when an item is selected.
 
-The compact toolbar opens one panel at a time: **View** contains filters, Spark amount,
+The compact toolbar opens one panel at a time: **View** contains filters, both spark amounts,
 motion options, keyboard rotation, the legend and clipboard brief; **Rings** opens
 the ring views; **Nodes** opens visibility choices; **Work** opens the named search/list.
 Panels overlay the canvas without resizing or moving it, and keep their settings
@@ -82,10 +91,25 @@ The **Labels** checkbox beside the checkpoint/node counts hides the floating tex
 tags on mission hubs, ring dots and hovered/selected nodes. It does not hide nodes,
 change picking or close the inspector. The named **Work** list remains available.
 
+**View → Show everything** temporarily includes every available graph node and connection:
+all nine mission rings, unfinished and completed checkpoints, untracked curriculum,
+archived completions, evidence, applications at every stage, freelance leads and past work.
+It also includes all saved daily actions, even unfinished older actions and future saved
+plans. It bypasses focus, mission scope, layer filters and individual hiding without
+changing any saved mode, status or progress. Rings still represent missions only.
+
+While enabled, conflicting filters and item checkboxes are disabled; Labels, Rings
+and Sparks are shown and Clear center is off. Your previous choices return when you
+uncheck it. Camera, spacing, pause/reduced-motion preferences and chosen spark percentages
+remain independent. “Everything” means data visibility, **not** 100% completion or
+automatically turning either spark amount to 100%. It resets on leaving the graph page;
+the focus room keeps its own focused snapshot.
+
 **View → Node spacing** adjusts relative spread from **1.0x to 3.0x**.
-It redistributes crowded nodes within a bounded layout rather than scaling the entire
-graph. The default places inner nodes farther from the core, with more separation
-between work and the outer mission rings. Higher spread increases local gaps;
+It unfolds tangled clouds into separate mission/stage groups rather than scaling the
+entire graph. The default preserves the compact view with central clearance and
+separation between work and outer mission rings. Higher spread organizes related nodes
+into clearer fan-shaped neighborhoods;
 connections and membership tethers remain attached. **Frame all** returns to the
 clearest starting angle. Other rotated views can still overlap, and real links remain.
 **1.0x** resets the spread. Arrow keys adjust by 0.1x; Home/End select the limits.
@@ -147,6 +171,12 @@ to highlight the **entire ring** with a thicker, bright glow. Choosing a stage
 keeps the whole ring highlighted while its detailed tethers show only
 that stage's members. Inspect a member or open its mission.
 Selection does not move the camera, change focus mode, or start a stationary ring.
+Each mission's inspector includes **Rotation speed**, from **0% to 300%** of that
+ring's normal speed. **100%** is the default; **0%** stops that ring alone.
+Changing speed keeps its current position rather than jumping around its orbit, and
+other rings keep their own settings. Background/planned rings stay stationary, so
+their slider is disabled until that mission is active. Global pause and reduced
+motion still take precedence. These are current-page visual settings, not saved work.
 An available, unblocked mission also offers **Record evidence**, using the same existing
 form and explicit completion criteria without leaving the graph.
 **Focus ring** brings its anchor into view. Ring tethers stretch as active rings
@@ -178,12 +208,12 @@ or **Reveal orbit and members** may explicitly turn Checkpoints on to show reque
 members, without turning Sparks on. These choices last only while the graph page is open
 and never change progress or backups.
 
-The **Spark amount** slider in View, beside Sparks, ranges from **0%** (none) to **100%**
-(the previous full amount). It starts at **10%**.
-Arrow keys adjust it; Home/End choose the minimum/maximum. Turning Sparks off
-disables the slider but keeps its amount for re-enabling. Resizing retains the
-percentage while adapting the particle budget. The focus backdrop also starts
-at the same 10% default. No rings, work nodes, progress or timer records change.
+View has separate **Spark dots** and **Spark lines** sliders, each **0-100%** and
+each starting at **10%**. Dots are glowing particles; lines are short decorative
+streaks, not connections between work nodes. Set either to 0% to remove just that type.
+Arrow keys adjust by 5%; Home/End select the limits. The **Sparks** checkbox hides both,
+disabling their sliders while retaining both amounts. Resizing retains percentages.
+The focus backdrop also starts with both at 10%. No work, ring speeds or timer records change.
 
 **Nodes / Choose visible nodes and rings** opens checkboxes for every mission/collection group, individual
 work node and ring, including the CareerOS core. Groups are batch choices over
@@ -462,7 +492,7 @@ With the handle focused, arrow keys move it, Shift moves farther, and Home reset
 Escape cancels an active drag. The compact full-roadmap bars remain docked to keep
 the map canvas clear. Position is not written to your workspace or backup.
 
-The tutorial has **102 steps across 23 chapters**, covering actual controls with temporary data. Its files are named
+The tutorial has **150 steps across 28 chapters**, covering actual controls with temporary data. Its files are named
 `careerhq-tutorial-example-*`, not real backups. It teaches the interface, not the
 mission subjects. A deliberately older **practice** Service Fabric tracker lets you
 preview, adopt and inspect an archived roadmap without changing your real version.
@@ -472,9 +502,14 @@ Use the **Chapter** menu to work on one area at a time:
 
 | Chapter | What you practice |
 | --- | --- |
-| 3D career graph | Distinct ring hues, daily-work dot borders, hiding/restoring Checkpoints, named-node search and read-only inspection |
+| 3D career graph | Focused default, isolated inactive hubs, today-only completion reveal, status colors and actual Checkpoints hide/restore |
+| Graph layers & Show everything | Labels, reversible all-data override, restored previous choices, visible node spread, work/reference layers and shared-skill links |
+| Graph sparks & motion | Independent Rings/Sparks, separate dot/line densities and 10% defaults, Auto-rotate versus Pause, ten-second heartbeat and Clear center |
+| Inspect rings & connections | Mission-only ring selection, individual ring speeds, saved-edition stages, full-circle glow, member search, Focus ring, current checkpoint and cited connection reasons |
+| Choose individual nodes | Mission groups, hidden-item search, an individual checkbox, mixed groups, and Select all items versus Show everything |
+| Graph camera & fullscreen | Named-node search, Focus node, real zoom/rotation/drag/frame actions, keyboard guidance, native fullscreen/exit and manual clipboard handoff |
 | Keep going | Your own past accomplishments, completed work versus practice, and private history that never awards checkpoint credit |
-| DSA practice library | Selecting a source section, filtering by printed difficulty, and distinguishing practice references from checkpoint progress |
+| DSA practice library | Source sections, printed difficulty, reference-versus-progress boundaries and the optional NotebookLM companion without a second tracker |
 | System Design concepts | The supplied concepts map, source grouping, pattern-overview guidance and contextual search |
 | System Design problems | Module practice sets, changing constraints, source gates, diagnostics and independently selectable case studies |
 | PDFs & roadmap updates | Bulk preview-and-cancel, then source selection, individual confirmed adoption, archives, stages, criteria and supporting references |
@@ -483,6 +518,7 @@ Use the **Chapter** menu to work on one area at a time:
 | Full mission roadmap | Opening all stages, zooming, read-only inspection, the glowing current step, panning, Fit all and closing |
 | Review & roadmap | Saved-work filtering, recall preparation, partial and independent self-checks, and the mission tree |
 | Recording evidence | Practice without completion, the recorded-work streak explanation, and separately confirmed checkpoint completion |
+| Mission control | Focus/primary/blocker choices, saving background practice, criteria-confirmed background completion and its temporary full graph reveal |
 | Opportunities | Optional application fields, saving a lead, moving its stage and finding the saved metadata |
 | Freelance research | A ten-lead fictional research set, filters, selecting five rows and copying a review brief |
 | Settings & backup / How data is stored | Example export/import, replacement warnings, and the real hosted-site device-transfer routine |
@@ -491,6 +527,24 @@ Practice-only example buttons make independent chapter visits usable. They add l
 fictional records only when you click them. They do not create real applications, verify
 mastery, or complete source milestones. Clipboard access is optional: if the browser blocks
 Copy brief, use the text preview and Skip step rather than treating a failed copy as success.
+
+Each graph chapter opens its real panel; **Show this step** returns from another page without
+writing work or automatically submitting a form. View-only lessons check actual checkbox,
+slider, selection or expanded-details state. Camera lessons require an input on the named
+control and an actual rendered camera change, not merely focusing a button. If WebGL or
+fullscreen is unavailable, the lesson stays unearned: use **Skip step**. Named work, rings,
+member details and source comparisons still work without graphics.
+
+The Show everything exercise first hides Labels, enables the override, then disables it so
+you can see the previous hidden-label choice restored. It covers all saved daily actions and
+current, reference and archived-complete graph content, but never creates collection rings,
+changes focus modes or forces spark density to 100%. The separate Nodes exercise demonstrates
+why **Select all items** still obeys broader focus and layer filters.
+
+The background-work exercise deliberately saves two fictional Fabric records: an unfinished
+note and a criteria-confirmed v1 checkpoint completion. Only the latter reveals its full graph
+for the current local day; both count toward recorded-work activity. Later confirmed adoption
+preserves that old completion in the archive while new v3 work starts unconfirmed.
 
 ### A normal working session
 

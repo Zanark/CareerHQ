@@ -70,6 +70,142 @@ function screen(point: Vector3, view: PerspectiveCamera): [number, number] {
   return [(point.x + 1) * 400, (1 - point.y) * 400];
 }
 
+describe('independent ring rotation speeds', () => {
+  it.each([false, true])('integrates actual 100/200/0-percent angles without jumps or changing other rings (calm=%s)', calm => {
+    const visuals = new CareerOrbitVisuals(calm), view = camera(), actual = nodes(), data = [orbit(0), orbit(1)];
+    const beforeData = JSON.stringify(data), beforeNodes = JSON.stringify([...actual]);
+    visuals.setData(data, actual, new Vector3(), 60);
+    visuals.setSelection({ orbitId: data[0].id, segmentId: 'stage:first' });
+    const signedAngle = (index: number) => {
+      const point = new Vector3();
+      visuals.getAnchor({ orbitId: data[index].id }, point);
+      const plane = CAREER_ORBIT_PLANES[index];
+      return Math.atan2(point.dot(plane.y), point.dot(plane.x));
+    };
+    const angleDelta = (before: number, after: number) => Math.atan2(Math.sin(after - before), Math.cos(after - before));
+    let angle = signedAngle(0);
+    visuals.update(view, 2);
+    const rate = CAREER_ORBIT_PLANES[0].speed * (calm ? 0.4 : 1);
+    expect(angleDelta(angle, signedAngle(0))).toBeCloseTo(2 * rate, 9);
+    const positionAttributes = [visuals.paths, visuals.anchors, visuals.detailTethers, visuals.selectedAnchor]
+      .map(object => object.geometry.getAttribute('position'));
+    const buffers = positionAttributes.map(attribute => attribute.array.slice());
+    const highlight = highlightPoint(visuals, 0), phase = visuals.getRotationPhase(data[0].id)!;
+    const speeds = { [data[0].id]: 200 };
+    visuals.setRotationSpeeds(speeds);
+    speeds[data[0].id] = 0;
+    expect(visuals.getRotationSpeed(data[0].id)).toBe(200);
+    expect(visuals.getRotationSpeed(data[1].id)).toBe(100);
+    expect(visuals.getRotationPhase(data[0].id)).toBe(phase);
+    visuals.update(view, 0);
+    positionAttributes.forEach((attribute, index) => expect(attribute.array).toEqual(buffers[index]));
+    expect(highlightPoint(visuals, 0)).toEqual(highlight);
+    angle = signedAngle(0);
+    const otherAngle = signedAngle(1);
+    visuals.update(view, 2);
+    expect(angleDelta(angle, signedAngle(0))).toBeCloseTo(4 * rate, 9);
+    expect(angleDelta(otherAngle, signedAngle(1))).toBeCloseTo(2 * CAREER_ORBIT_PLANES[1].speed * (calm ? .4 : 1), 9);
+    expect(visuals.getRotationPhase(data[0].id)).toBeCloseTo(6 * rate);
+    const frozen = position(visuals.anchors.geometry, 0);
+    const other = position(visuals.anchors.geometry, 1);
+    visuals.setRotationSpeeds({ [data[0].id]: 0 });
+    visuals.update(view, 2);
+    expect(position(visuals.anchors.geometry, 0)).toEqual(frozen);
+    expect(position(visuals.anchors.geometry, 1)).not.toEqual(other);
+    visuals.setRotationSpeeds({});
+    visuals.update(view, 1);
+    expect(visuals.getRotationPhase(data[0].id)).toBeCloseTo(7 * rate);
+    expect(visuals.animationTime).toBe(7);
+    expect(visuals.savedPulseCount).toBe(0);
+    expect(JSON.stringify(data)).toBe(beforeData);
+    expect(JSON.stringify([...actual])).toBe(beforeNodes);
+    visuals.dispose();
+  });
+
+  it('retains each phase through setData, hidden restoration, pause and invalid updates', () => {
+    const visuals = new CareerOrbitVisuals(), view = camera(), data = [orbit(0), orbit(1)], actual = nodes();
+    visuals.setData(data, actual, new Vector3(), 60);
+    visuals.setRotationSpeeds({ [data[0].id]: 200 });
+    visuals.update(view, 3);
+    const phase = visuals.getRotationPhase(data[0].id);
+    const anchor = position(visuals.anchors.geometry, 0);
+    visuals.setData(data, actual, new Vector3(), 60);
+    expect(position(visuals.anchors.geometry, 0)).toEqual(anchor);
+    visuals.setData([data[1]], actual, new Vector3(), 60);
+    visuals.update(view, 4);
+    visuals.setRotationSpeeds({ [data[0].id]: 300 });
+    visuals.setData(data, actual, new Vector3(), 60);
+    expect(visuals.getRotationPhase(data[0].id)).toBe(phase);
+    expect(position(visuals.anchors.geometry, 0)).toEqual(anchor);
+    for (const speed of [-1, 301, NaN, Infinity]) {
+      expect(() => visuals.setRotationSpeeds({ [data[1].id]: 0, [data[0].id]: speed })).toThrow(RangeError);
+      expect(visuals.getRotationSpeed(data[0].id)).toBe(300);
+      expect(visuals.getRotationSpeed(data[1].id)).toBe(100);
+    }
+    visuals.setMotionAllowed(false);
+    const other = visuals.getRotationPhase(data[1].id);
+    visuals.update(view, 100);
+    expect(visuals.animationTime).toBe(7);
+    expect(visuals.getRotationPhase(data[0].id)).toBe(phase);
+    expect(visuals.getRotationPhase(data[1].id)).toBe(other);
+    visuals.setMotionAllowed(true);
+    visuals.update(view, 1);
+    expect(visuals.getRotationPhase(data[0].id)).toBeCloseTo(phase! + CAREER_ORBIT_PLANES[0].speed * 3);
+    expect(visuals.savedPulseCount).toBe(0);
+    visuals.dispose();
+  });
+
+  it.each(['background', 'planned'] as const)('keeps %s mission rings stationary even at 300 percent', missionMode => {
+    const visuals = new CareerOrbitVisuals(), data = { ...orbit(2), missionMode };
+    visuals.setData([data], nodes(), new Vector3(), 60);
+    visuals.setSelection({ orbitId: data.id, segmentId: 'stage:first' });
+    const anchor = position(visuals.anchors.geometry, 0), highlight = highlightPoint(visuals, 0);
+    visuals.setRotationSpeeds({ [data.id]: 300 });
+    visuals.update(camera(), 15);
+    expect(visuals.getRotationSpeed(data.id)).toBe(300);
+    expect(visuals.getRotationPhase(data.id)).toBe(0);
+    expect(position(visuals.anchors.geometry, 0)).toEqual(anchor);
+    expect(highlightPoint(visuals, 0)).toEqual(highlight);
+    visuals.dispose();
+  });
+
+  it('keeps stage anchors, full-circle highlight, paths, picking and both tether endpoints on the integrated phase', () => {
+    const visuals = new CareerOrbitVisuals(), field = new CareerRippleField(), view = camera(), data = orbit(0), actual = nodes();
+    visuals.setRippleField(field);
+    visuals.setData([data], actual, new Vector3(), 60);
+    const selection = { orbitId: data.id, segmentId: 'stage:first' };
+    visuals.setSelection(selection);
+    visuals.update(view, 1);
+    visuals.setRotationSpeeds({ [data.id]: 200 });
+    visuals.update(view, 3);
+    field.source.set(3, 4, -2);
+    field.setWave(65, 200, 3);
+    field.updateCamera(view);
+    const base = new Vector3(), displayed = new Vector3();
+    visuals.getAnchor(selection, base);
+    visuals.getDisplayedAnchor(selection, displayed);
+    expect(base.distanceTo(orbitPoint(0, Math.PI * 2 / 3, 7, new Vector3(), 60, new Vector3(), .012))).toBeLessThan(.00001);
+    expect(displayed.distanceTo(field.deformWorld(base, new Vector3()))).toBeLessThan(.00001);
+    expect(position(visuals.selectedAnchor.geometry, 0).distanceTo(base)).toBeLessThan(.00001);
+    expect(displayedPosition(visuals.detailTethers.geometry, 0, field).distanceTo(displayed)).toBeLessThan(.00001);
+    const target = new Vector3().fromArray(actual.get('checkpoint:done')!.position);
+    expect(displayedPosition(visuals.detailTethers.geometry, 15, field).distanceTo(field.deformWorld(target, new Vector3()))).toBeLessThan(.00001);
+    expect(visuals.pickAnchor(...screen(displayed.clone(), view), view, 800, 800)?.selection).toEqual(selection);
+    expect(visuals.pickPath(...screen(displayed.clone(), view), view, 800, 800)).toEqual(selection);
+    for (const segment of [0, 64, 128, 192, 255]) {
+      const expected = orbitPoint(0, CAREER_ORBIT_PLANES[0].anchorAngle + segment / ORBIT_HIGHLIGHT_SEGMENTS * Math.PI * 2,
+        7, new Vector3(), 60, new Vector3());
+      expect(highlightPoint(visuals, segment).distanceTo(expected)).toBeLessThan(.00001);
+    }
+    const primary = new Vector3();
+    visuals.getAnchor({ orbitId: data.id }, primary);
+    expect(position(visuals.primaryTethers.geometry, 0).distanceTo(primary)).toBeLessThan(.00001);
+    expect(visuals.highlightVisible).toBe(true);
+    expect(visuals.savedPulseCount).toBe(0);
+    visuals.dispose();
+  });
+});
+
 describe('semantic career orbit geometry', () => {
   it.each([false, true])('uses flat glowing identity dots with a CSS-pixel activity border and separate small packets (calm=%s)', calm => {
     const visuals = new CareerOrbitVisuals(calm), data = orbit();

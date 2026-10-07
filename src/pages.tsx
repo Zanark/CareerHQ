@@ -7,6 +7,7 @@ import { opportunityStages, readinessKeys } from './domain/types';
 import { Empty, ExternalLink, MissionIcon, PageHeading, SectionTitle } from './components';
 import { MAX_WORKSPACE_BYTES } from './workspaceFile';
 import { ApplicationMetrics } from './OperationTools';
+import './help-guide.css';
 
 type Commit = (transform: (current: AppState) => AppState) => boolean;
 
@@ -85,7 +86,7 @@ export function DataPage({ state, commit, onExport, onReplace, notify, practice 
       <section className="panel data-lifecycle" data-tour="storage-info">
         <SectionTitle title="How saving works" />
         <dl>
-          <div><dt>Where is progress saved?</dt><dd>In localStorage for this browser and website address. It is not a server account or cloud backup. There are no profiles or streak counters.</dd></div>
+          <div><dt>Where is progress saved?</dt><dd>In localStorage for this browser and website address, not a server account or cloud backup. Mission streaks are calculated locally from saved evidence and recall records.</dd></div>
           <div><dt>What survives a refresh or update?</dt><dd>Refreshes keep saved records, including focus sessions and distraction reports. The running countdown itself is tab-local; an interrupted session is not marked complete. Adopting a documented roadmap is a separate confirmed action; old progress is archived, not reclassified. Unreadable data is preserved for recovery.</dd></div>
           <div><dt>What if I change machines?</dt><dd>Export a JSON backup here, transfer it privately, then import it on the other machine. The same applies to another browser or website address, including moving from this local preview to the hosted site. There is no automatic sync.</dd></div>
           <div><dt>What can delete it?</dt><dd>Clearing site data, deleting your browser profile, or ending a private-browsing session can remove progress. Export regularly. Imports replace the destination workspace after confirmation.</dd></div>
@@ -103,21 +104,49 @@ export function DataPage({ state, commit, onExport, onReplace, notify, practice 
 }
 
 export function GuidePage({ onStartTutorial }: { onStartTutorial: () => void }) {
-  return <div data-tour="help-guide"><PageHeading eyebrow="HOW TO USE CAREEROS" title="Help & glossary" description="Use the interactive tutorial to practice the actual controls without changing your progress."><button className="button primary" onClick={onStartTutorial}>Start tutorial<ArrowRight size={16} /></button></PageHeading>
-    <div className="guide-glossary">{[
-      ['Mission', 'One learning or career area, such as DSA (data structures and algorithms) or System Design. Names like Pattern Forge label those areas; they are not accounts.'],
-      ['Checkpoint', 'The milestone you are currently working on. Its saved state records the stage, exact checkpoint, status, and what unlocks next.'],
-      ['Daily action', 'A practice task for today. Time capacity selects up to three tasks from active, unblocked missions. Finishing one does not automatically mean a whole checkpoint is complete.'],
-      ['Focus room and distractions', 'A quiet fullscreen timer over a frosted 3D backdrop. Each distraction-button press is saved immediately with its session, timestamp and elapsed timer time, and is included in backups. It is self-reported, not measured attention. Resetting the clock retains the log; closing the room keeps the timer running.'],
-      ['Saved work / evidence', 'A note, code link, explanation, diagram, or other artifact recording what you did. Completing a checkpoint also needs your confirmation of every completion criterion.'],
-      ['Primary / background', 'The primary mission gets priority. Background missions retain progress but are not included in daily plans. Blocked missions are excluded until their blocker is cleared.'],
-      ['Readiness and opportunities', 'Readiness is your own rating of interview skills. Opportunities is a manual tracker for roles and stages; it does not send applications or assess you with AI.'],
-      ['Storage and backups', 'Progress stays in this browser and site, not in an account. Export and import JSON to move machines. Ordinary UI updates preserve compatible data; clearing site data can delete it.'],
-      ['Tutorial practice', 'A separate temporary workspace. You can log examples, advance checkpoints and try imports. Exiting restores your real progress, appearance and previous page; example files are labeled.'],
-      ['Roadmap versions', 'Operation documents provide new definitions. Older saved positions stay on their previous version until you confirm adoption. The old position is archived; saved work is not erased or credited to different topics.'],
-      ['Recall practice', 'Review what you can retrieve from memory after saving evidence. Retained recall is separate from checkpoint completion, needs appropriate self-checks and spacing, and can change without deleting completed work.'],
-      ['Freelance ledger', 'Collect links, platforms, skills, budgets and verdicts. The source sprint researches ten opportunities and reviews five. A saved lead is not an application, income, or completed checkpoint.'],
-    ].map(([title, text]) => <section className="panel" key={title}><h3>{title}</h3><p>{text}</p></section>)}</div>
-    <div className="quiet-note"><Info size={18} /><p>There is no streak counter, account system, or automatic cloud sync.</p><a href="#/settings" className="text-link">Saving and device changes<ArrowRight size={14} /></a></div>
+  const [query, setQuery] = useState('');
+  const topics = helpTopics.filter(topic => `${topic.title} ${topic.text}`.toLowerCase().includes(query.trim().toLowerCase()));
+  return <div data-tour="help-guide"><PageHeading eyebrow="ANSWERS & SHORTCUTS" title="Help & glossary" description="Search a question, expand a topic, or open the relevant tool. Use the tutorial for guided practice without changing real progress."><button className="button primary" onClick={onStartTutorial}>Start tutorial<ArrowRight size={16} /></button></PageHeading>
+    <nav className="help-shortcuts" aria-label="Help shortcuts">
+      <a className="button secondary" href="#/home">Open career graph<ArrowRight size={16} /></a>
+      <a className="button secondary" href="#/missions">Record mission work<ArrowRight size={16} /></a>
+      <a className="button secondary" href="#/sources">Review roadmap updates<ArrowRight size={16} /></a>
+      <a className="button secondary" href="#/settings">Export or restore a backup<ArrowRight size={16} /></a>
+    </nav>
+    <div className="help-search">
+      <label htmlFor="help-search">Find an answer<input id="help-search" type="search" value={query} placeholder="Try rings, streaks, references, spacing or backups"
+        onChange={event => setQuery(event.currentTarget.value)} /></label>
+      {query && <button className="button secondary" onClick={() => setQuery('')}>Clear search</button>}
+    </div>
+    <p className="muted small" role="status">{topics.length} {topics.length === 1 ? 'topic' : 'topics'} found. Select a heading to expand it.</p>
+    <div className="guide-glossary">{topics.map(topic => <details className="panel help-topic" key={topic.title}>
+      <summary><h3>{topic.title}</h3></summary><p>{topic.text}</p>
+      {topic.href ? <a className="text-link" href={topic.href}>{topic.action}<ArrowRight size={15} /></a>
+        : <button className="text-link" onClick={onStartTutorial}>Practice in the tutorial<ArrowRight size={15} /></button>}
+    </details>)}</div>
+    {!topics.length && <div className="quiet-note"><Info size={18} /><p>No matching topic. Try a shorter term or clear the search.</p></div>}
+    <div className="quiet-note"><Info size={18} /><p>Help is read-only. Opening a topic or tool does not record work. There is no account system, automatic cloud sync or connected AI agent.</p><a href="#/settings" className="text-link">Saving and device changes<ArrowRight size={14} /></a></div>
   </div>;
 }
+
+const helpTopics: { title: string; text: string; href?: string; action?: string }[] = [
+  { title: 'Mission and checkpoint', text: 'A mission is a learning or career area, such as DSA or System Design. Its checkpoint is the current source-defined milestone. Open Missions, select an area, and use Record evidence. Completing a checkpoint requires confirming every criterion; browsing or a timer never completes it.', href: '#/missions', action: 'Open missions' },
+  { title: 'In focus, primary and background', text: 'Bring into focus makes a mission eligible for daily planning. Make primary prioritizes one mission; it is not the same setting. Background missions retain work and can still record evidence or complete a checkpoint. Blocked and reference-only missions remain protected.', href: '#/missions', action: 'Manage mission focus' },
+  { title: 'Why are checkpoints or connections missing?', text: 'The normal career graph emphasizes in-focus missions. Other missions keep isolated hubs without checkpoint clouds or connections. Completing a background checkpoint reveals its full mission for today, then collapses it tomorrow unless it is in focus. View > Show everything bypasses that filtering without changing mission modes.', href: '#/home', action: 'Open graph, then View' },
+  { title: 'Show everything versus Select all items', text: 'View > Show everything displays all nine mission rings, checkpoints, applications, evidence, history and other graph records regardless of focus or completion. It temporarily overrides scope, layers and hidden choices; turning it off restores them. Nodes > Select all items only checks individual choices and still respects the focused view and layers.', href: '#/home', action: 'Open graph, then Show everything in View' },
+  { title: 'Mission rings, glowing dots and rotation speed', text: 'Rings represent missions only. Their colors match Missions, and selecting one highlights the entire orbit. Stage tethers mean membership, not new prerequisites. An active ring has its own Rotation speed slider: 0% stops it, 100% is normal, 300% is triple. Inactive rings stay still; the global pause and reduced-motion setting take precedence.', href: '#/home', action: 'Inspect a mission ring' },
+  { title: 'References and completed checkpoint colors', text: 'References are supporting notes, unadopted curriculum, closed applications or ignored leads—not extra tasks to complete. Green is reserved for checkpoints actually marked complete; other records keep identity colors. References and Checkpoints in View hide layers without deleting anything.', href: '#/home', action: 'Open graph layers' },
+  { title: 'Node spacing and Labels', text: 'View > Node spacing unfolds crowded nodes into separate mission/stage groups rather than simply zooming. Use Frame all for the clearest starting angle; 1.0x resets the spread. Labels beside the counts hides floating text only. Dots, picking and inspection remain available.', href: '#/home', action: 'Adjust graph spacing and labels' },
+  { title: 'Spark dots, spark lines and heartbeat', text: 'Dots and short spark lines are decoration, not work connections. Each has an independent 0-100% slider, default 10%, under View. Sparks hides both but retains their amounts. Core heartbeat is a ten-second outward-and-back mesh ripple; Pause animation stops ambience independently from a focus timer.', href: '#/home', action: 'Open visual controls' },
+  { title: 'Recorded-work streak and today’s dot border', text: 'Saved progress/evidence or any recall result counts as a local-calendar work day, even without completion. Multiple records in one day count once. If there is no record today, yesterday’s streak lasts through today. A bright mission-dot border means work was recorded today. Neither streak nor border proves mastery; only checkpoint completion triggers a background mission’s today-only graph reveal.', href: '#/missions', action: 'View mission streaks' },
+  { title: 'Daily action and capacity', text: 'Gentle, Steady and Deep focus set a bounded daily plan, with up to three actions from active unblocked missions. An action is practice, not automatic checkpoint mastery. Changing capacity or creating a plan does not count as recorded work. Refresh an untouched plan separately after roadmap adoption.', href: '#/plan', action: 'Open the daily plan' },
+  { title: 'Focus room and distractions', text: 'Open the focus room from Daily plan. Its timer sits over a captured 3D graph. Each distraction press saves a self-reported event immediately and travels in backups. Reset keeps the log; closing the room does not stop the timer. Ambient motion is independent of timer pause. This is not measured attention.', href: '#/plan', action: 'Open the focus timer' },
+  { title: 'Saved work and evidence', text: 'A note, code link, explanation, diagram or artifact records what you practiced. Use Save evidence for unfinished work, or explicitly confirm every completion criterion to unlock the next checkpoint. Records retain their original roadmap version. They remain browser-local and are included in private backups.', href: '#/evidence', action: 'Review saved work' },
+  { title: 'Roadmap versions and adopting all updates', text: 'Operation documents lets you inspect and adopt newer editions individually or together through one review dialog. Only the verified unchanged DSA v2-to-v3 prefix carries progress forward; other updates archive old progress and start the new tracker unconfirmed. Export a backup first. No adoption awards new checkpoint completion.', href: '#/sources', action: 'Review documented roadmaps' },
+  { title: 'Full roadmap and practice libraries', text: 'A mission’s Full roadmap shows the complete latest curriculum without adopting it. My saved tracker returns to your actual version and progress. Practice libraries contain detailed workbooks, DSA problem sets and System Design concepts/cases; optional references are not invented mandatory checkpoints.', href: '#/practice', action: 'Browse practice libraries' },
+  { title: 'Recall practice', text: 'Recall records what you can retrieve from memory after saving evidence. Independent recall has self-checks and spacing rules. Partial or Needs review still counts as recorded work, but cannot grant or undo checkpoint completion. Native recall recording currently covers DSA and System Design.', href: '#/recall', action: 'Open recall practice' },
+  { title: 'Applications, readiness and freelance leads', text: 'Opportunities tracks saved roles and pipeline stages; it never sends applications. Readiness is self-assessment, not an AI grade. Freelance research records links, skills, budgets and verdicts, not paid work or income. These records have their own pages, not graph rings.', href: '#/pipeline', action: 'Open opportunities' },
+  { title: 'Past accomplishments and history', text: 'Keep going shows personal accomplishments you explicitly supplied and actual saved work, not invented motivation. History records changes and completions. Importing reviewed personal history grants no new checkpoint credit; private source material is not published.', href: '#/perspective', action: 'Open Keep going' },
+  { title: 'Storage, backups and changing devices', text: 'Data is in this browser’s localStorage for this website origin, not a cloud account. Export JSON in Settings, transfer it privately, then import on the other device. Import replaces the destination only after confirmation. Backups are unencrypted; clearing site data can remove progress. Graph view settings are not saved progress.', href: '#/settings', action: 'Open backup and restore' },
+  { title: 'Tutorial practice', text: 'The guided tutorial uses a separate temporary workspace. You can try real controls, record examples, adopt roadmaps and practice backup import without changing real data. Exiting discards the examples and restores your normal workspace and appearance. Use Chapter to jump, Show this step to return, or drag the coach if it covers a control.' },
+];

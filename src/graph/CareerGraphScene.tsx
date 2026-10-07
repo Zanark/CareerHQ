@@ -32,7 +32,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { HolographicCore } from './HolographicCore';
-import { DEFAULT_SPARK_DENSITY } from './careerSparkDensity';
+import { DEFAULT_SPARK_DENSITY, DEFAULT_SPARK_LINE_DENSITY } from './careerSparkDensity';
+import type { CareerOrbitSpeeds } from './careerOrbitSpeeds';
 import { CoreHeartbeat } from './CoreHeartbeat';
 import { HEARTBEAT_PERIOD_MS } from './coreHeartbeatTiming';
 import { coreCenteredBounds } from './careerCoreFraming';
@@ -86,6 +87,8 @@ export interface CareerGraphSceneProps {
   showSparks?: boolean;
   /** Percentage of the original particle budget; independent of the visibility switch. */
   sparkDensity?: number;
+  sparkLineDensity?: number;
+  orbitSpeeds?: CareerOrbitSpeeds;
   /** Independent visual rhythm from the actual core; still respects ambient motion preferences. */
   heartbeat?: boolean;
   onInteraction?: () => void;
@@ -673,7 +676,8 @@ class CareerScene implements CareerGraphSceneHandle {
     const mode = orbit ? orbit.kind === 'mission' ? orbit.missionMode ?? '' : 'collection' : '';
     const radius = motion?.normalizedRadius.toFixed(6) ?? '';
     const revolving = String(Boolean(motion?.revolving));
-    const motionRunning = String(Boolean(motion?.revolving && this.orbitMotionAllowed));
+    const motionRunning = String(Boolean(motion?.revolving && this.orbitMotionAllowed
+      && orbit && this.orbits.getRotationSpeed(orbit.id) > 0));
     for (const element of [this.root, this.canvas]) {
       element.dataset.selectedOrbitMode = mode;
       element.dataset.selectedOrbitNormalizedRadius = radius;
@@ -697,7 +701,10 @@ class CareerScene implements CareerGraphSceneHandle {
       const activity = this.orbits.getActivity(entry.orbit.id);
       for (const marker of [entry.element, entry.diagnostic]) {
         marker.dataset.orbitRevolving = String(entry.motion.revolving);
-        marker.dataset.orbitMotionRunning = String(entry.motion.revolving && this.orbitMotionAllowed);
+        marker.dataset.orbitMotionRunning = String(entry.motion.revolving && this.orbitMotionAllowed
+          && this.orbits.getRotationSpeed(entry.orbit.id) > 0);
+        marker.dataset.rotationSpeed = String(this.orbits.getRotationSpeed(entry.orbit.id));
+        marker.dataset.rotationPhase = this.orbits.getRotationPhase(entry.orbit.id)?.toFixed(9) ?? '';
         writeActivityDiagnostics(marker, activity);
       }
     }
@@ -752,10 +759,24 @@ class CareerScene implements CareerGraphSceneHandle {
     this.requestFrame();
   }
 
+  setSparkLineDensity(density: number): void {
+    this.hologram.setSparkLineDensity(density);
+    this.updateSparkAttributes();
+    this.requestFrame();
+  }
+
+  setRotationSpeeds(speeds: CareerOrbitSpeeds): void {
+    this.orbits.setRotationSpeeds(speeds);
+    this.updateSelectedOrbitDiagnostics();
+    this.requestFrame();
+  }
+
   private updateSparkAttributes(): void {
     for (const element of [this.root, this.canvas]) {
       element.dataset.sparkDensity = String(this.hologram.sparkDensity);
       element.dataset.sparkCount = String(this.hologram.sparkCount);
+      element.dataset.sparkLineDensity = String(this.hologram.sparkLineDensity);
+      element.dataset.sparkLineCount = String(this.hologram.sparkLineCount);
     }
   }
 
@@ -1505,7 +1526,7 @@ class CareerScene implements CareerGraphSceneHandle {
 }
 
 const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProps>(function CareerGraphScene(
-  { graph, activityDate, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, sparkDensity = DEFAULT_SPARK_DENSITY, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
+  { graph, activityDate, framingNodes, selectedId, onSelect, selectedOrbit = null, onOrbitSelect, autoRotate, animate, allowReducedMotion = false, rimOnly, showRings = true, showSparks = true, sparkDensity = DEFAULT_SPARK_DENSITY, sparkLineDensity = DEFAULT_SPARK_LINE_DENSITY, orbitSpeeds, heartbeat = true, onInteraction, onStatusChange, visualProfile = 'career' }, ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -1598,6 +1619,8 @@ const CareerGraphScene = forwardRef<CareerGraphSceneHandle, CareerGraphSceneProp
   useEffect(() => { runtimeRef.current?.setRingsVisible(showRings); }, [showRings, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSparksVisible(showSparks); }, [showSparks, visualProfile]);
   useEffect(() => { runtimeRef.current?.setSparkDensity(sparkDensity); }, [sparkDensity, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setSparkLineDensity(sparkLineDensity); }, [sparkLineDensity, visualProfile]);
+  useEffect(() => { runtimeRef.current?.setRotationSpeeds(orbitSpeeds ?? {}); }, [orbitSpeeds, visualProfile]);
   useEffect(() => { runtimeRef.current?.setHeartbeat(heartbeat); }, [heartbeat, visualProfile]);
 
   return (

@@ -29,12 +29,50 @@ export function spaceCareerGraph(graph: CareerGraph, spacing: number): CareerGra
   if (graph.nodes.length === 0) return graph;
   const core = graph.nodes.find(node => node.kind === 'core');
   if (!core) throw new Error('Node spacing requires the unfiltered graph with its core.');
-  const missions = new Map(graph.nodes.filter(node => node.kind === 'mission').map(node => [node.missionId, node]));
   const spread = (spacing - DEFAULT_NODE_SPACING) / (MAX_NODE_SPACING - DEFAULT_NODE_SPACING);
+  const compact = compactPositions(graph, core);
+  if (spread === 0) return withPositions(graph, compact);
+  const neighborhoods = unfoldNeighborhoods(graph, core, spread);
+  const unfold = Math.min(1, spread * 2);
+  const positions = new Map<string, CareerGraphNode['position']>();
+  for (const node of graph.nodes) {
+    if (node.kind === 'core') continue;
+    const source = compact.get(node.id)!;
+    const target = neighborhoods.get(node.id);
+    if (!target) {
+      positions.set(node.id, source);
+      continue;
+    }
+    const from = source.map((value, axis) => value - core.position[axis]);
+    const to = target.map((value, axis) => value - core.position[axis]);
+    const fromDepth = dot(from, FORWARD), toDepth = dot(to, FORWARD);
+    const fromAngle = Math.atan2(dot(from, UP), dot(from, RIGHT));
+    const toAngle = Math.atan2(dot(to, UP), dot(to, RIGHT));
+    const turn = Math.atan2(Math.sin(toAngle - fromAngle), Math.cos(toAngle - fromAngle));
+    const fromRadius = Math.hypot(dot(from, RIGHT), dot(from, UP)) / (1 - fromDepth / DESIGN_DISTANCE);
+    const toRadius = Math.hypot(dot(to, RIGHT), dot(to, UP)) / (1 - toDepth / DESIGN_DISTANCE);
+    const depth = fromDepth + (toDepth - fromDepth) * unfold;
+    const radius = fromRadius + (toRadius - fromRadius) * unfold;
+    const angle = fromAngle + turn * unfold;
+    // Travel around the white core, never through it during intermediate steps.
+    positions.set(node.id, inBasis(core, Math.cos(angle) * radius, Math.sin(angle) * radius, depth));
+  }
+  return withPositions(graph, positions);
+}
+
+function withPositions(graph: CareerGraph, positions: ReadonlyMap<string, CareerGraphNode['position']>): CareerGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node): CareerGraphNode => node.kind === 'core' ? node : { ...node, position: positions.get(node.id)! }),
+  };
+}
+
+function compactPositions(graph: CareerGraph, core: CareerGraphNode) {
+  const missions = new Map(graph.nodes.filter(node => node.kind === 'mission').map(node => [node.missionId, node]));
   const area = Math.PI * (OUTER_RADIUS ** 2 - INNER_RADIUS ** 2);
   // Enlarge local exclusion cells, not the containing composition. Dense imports share the same finite room.
   const densityScale = Math.min(1, 0.98 * Math.sqrt(area / Math.max(600, graph.nodes.length - 1)) / 8);
-  const separation = (5.4 + spread * 2.6) * densityScale;
+  const separation = 5.4 * densityScale;
   const cells = new Map<string, [number, number]>();
   const limit = Math.ceil(OUTER_RADIUS / separation / ROW_HEIGHT);
   for (let r = -limit; r <= limit; r++) for (let q = -limit * 2; q <= limit * 2; q++) {
@@ -44,8 +82,6 @@ export function spaceCareerGraph(graph: CareerGraph, spacing: number): CareerGra
   const fallback = [...cells.keys()].sort((a, b) => unitHash(a) - unitHash(b));
   let fallbackIndex = 0;
   const positions = new Map<string, CareerGraphNode['position']>();
-  const priority = (node: CareerGraphNode) => node.kind === 'mission' ? 0
-    : node.kind === 'checkpoint' || node.kind === 'curriculum' ? 1 : 2;
   // Interleave stable IDs so one mission cannot claim every nearby cell before another mission is placed.
   const ordered = graph.nodes.filter(node => node.kind !== 'core')
     .sort((a, b) => priority(a) - priority(b) || unitHash(a.id) - unitHash(b.id)
@@ -83,10 +119,91 @@ export function spaceCareerGraph(graph: CareerGraph, spacing: number): CareerGra
     positions.set(node.id, core.position.map((value, axis) => value + RIGHT[axis] * x * perspective
       + UP[axis] * y * perspective + FORWARD[axis] * depth) as CareerGraphNode['position']);
   }
-  return {
-    ...graph,
-    nodes: graph.nodes.map((node): CareerGraphNode => node.kind === 'core' ? node : { ...node, position: positions.get(node.id)! }),
-  };
+  return positions;
+}
+
+/**
+ * Open the interleaved cloud into separate mission fans. Each fan keeps real
+ * source depth; stage order comes from existing membership, never new edges.
+ * The finite polar rows are built once per slider change, not per frame.
+ */
+function unfoldNeighborhoods(graph: CareerGraph, core: CareerGraphNode, spread: number) {
+  const byId = new Map(graph.nodes.map(node => [node.id, node]));
+  const groups = graph.orbits.filter(orbit => orbit.kind === 'mission').sort((a, b) => a.index - b.index).map(orbit => {
+    const ids = new Set<string>([orbit.hubNodeId]);
+    for (const segment of orbit.segments) for (const member of segment.members) ids.add(member.nodeId);
+    const extra = graph.nodes.filter(node => node.missionId === orbit.missionId && !ids.has(node.id))
+      .sort((a, b) => priority(a) - priority(b) || compareIds(a, b));
+    return [...ids].map(id => byId.get(id)).filter((node): node is CareerGraphNode => Boolean(node)).concat(extra);
+  });
+  const unaffiliated = graph.nodes.filter(node => node.kind !== 'core' && !node.missionId).sort(compareIds);
+  const definitionCount = groups.reduce((sum, group) => sum + group.filter(node => priority(node) < 2).length, 0);
+  const separation = 7 + spread * 3;
+  const outer = 156;
+  const inner = INNER_RADIUS + 8;
+  const angles = groups.map(group => Math.max(18, group.filter(node => priority(node) < 2).length));
+  const total = angles.reduce((sum, count) => sum + count, 0);
+  const positions = new Map<string, CareerGraphNode['position']>();
+  let start = -Math.PI / 2;
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
+    const width = Math.PI * 2 * angles[groupIndex] / total;
+    const margin = width * (0.04 + spread * 0.04);
+    let cells: [number, number][] = [];
+    const definitionNodes = group.filter(node => priority(node) < 2);
+    // Saved records do not consume catalogue slots or shuffle its checkpoints.
+    let step = separation * Math.min(1, Math.sqrt(520 / Math.max(520, definitionCount)));
+    for (let attempt = 0; attempt < 8; attempt++) {
+      cells = [];
+      for (let radius = inner; radius <= outer; radius += step * ROW_HEIGHT) {
+        const slots = Math.max(1, Math.floor((width - margin * 2) * radius / step));
+        for (let slot = 0; slot < slots; slot++) {
+          const angle = start + margin + (slot + 0.5) * (width - margin * 2) / slots;
+          cells.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
+        }
+      }
+      if (cells.length >= definitionNodes.length) break;
+      step *= 0.85;
+    }
+    if (cells.length < definitionNodes.length) throw new Error('Career graph mission fan exhausted.');
+    definitionNodes.forEach((node, index) => {
+      const cell = cells[index];
+      positions.set(node.id, toWorld(node, cell[0], cell[1], core));
+    });
+    const records = group.filter(node => priority(node) === 2);
+    records.forEach((node, index) => {
+      const angle = start + margin + (index + 0.5) / Math.max(1, records.length) * (width - margin * 2);
+      const radius = inner - 7 + 3 * Math.sqrt((index + 0.5) / Math.max(1, records.length));
+      positions.set(node.id, toWorld(node, Math.cos(angle) * radius, Math.sin(angle) * radius, core));
+    });
+    start += width;
+  }
+  unaffiliated.forEach((node, index) => {
+    const angle = index * Math.PI * (3 - Math.sqrt(5));
+    const radius = inner - 8 + 3 * Math.sqrt((index + 0.5) / Math.max(1, unaffiliated.length));
+    positions.set(node.id, toWorld(node, Math.cos(angle) * radius, Math.sin(angle) * radius, core));
+  });
+  return positions;
+}
+
+function priority(node: CareerGraphNode) {
+  return node.kind === 'mission' ? 0 : node.kind === 'checkpoint' || node.kind === 'curriculum' ? 1 : 2;
+}
+
+function compareIds(a: CareerGraphNode, b: CareerGraphNode) {
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+function toWorld(node: CareerGraphNode, x: number, y: number, core: CareerGraphNode): CareerGraphNode['position'] {
+  const relative = node.position.map((value, axis) => value - core.position[axis]);
+  const depth = Math.max(-48, Math.min(48, dot(relative, FORWARD) * 0.8));
+  return inBasis(core, x, y, depth);
+}
+
+function inBasis(core: CareerGraphNode, x: number, y: number, depth: number): CareerGraphNode['position'] {
+  const perspective = 1 - depth / DESIGN_DISTANCE;
+  return core.position.map((value, axis) => value + RIGHT[axis] * x * perspective
+    + UP[axis] * y * perspective + FORWARD[axis] * depth) as CareerGraphNode['position'];
 }
 
 function dot(a: number[], b: number[]): number {

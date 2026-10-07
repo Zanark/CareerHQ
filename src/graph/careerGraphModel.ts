@@ -116,7 +116,7 @@ function checkpointDetail(mission: Mission, checkpoint: Checkpoint): string {
   ].filter(Boolean).join('\n');
 }
 
-export function buildCareerGraph(state: AppState): CareerGraph {
+export function buildCareerGraph(state: AppState, options: { includeAllRecords?: boolean } = {}): CareerGraph {
   const nodes = new Map<string, CareerGraphNode>();
   const edges = new Map<string, CareerGraphEdge>();
   const versions = new Map<string, Mission>();
@@ -276,9 +276,9 @@ export function buildCareerGraph(state: AppState): CareerGraph {
 
   const today = localDate();
   for (const [date, actions] of Object.entries(state.plans)) {
-    if (date > today) continue;
+    if (!options.includeAllRecords && date > today) continue;
     for (const action of actions) {
-      if (date !== today && !action.completed) continue;
+      if (!options.includeAllRecords && date !== today && !action.completed) continue;
       const version = recordRoadmapVersion(action);
       const mission = getMissionVersion(action.missionId, version);
       const id = recordNodeId('action', action.id);
@@ -291,7 +291,7 @@ export function buildCareerGraph(state: AppState): CareerGraph {
           `Saved action definition: ${mission.name} · roadmap v${version}.`,
           'An action marked done is not checkpoint completion or an automatic mastery assessment.',
         ].filter(Boolean).join('\n'),
-        context: `${mission.name} · daily action · ${date} · ${date === today ? 'today' : 'past completed work'} · v${version}`,
+        context: `${mission.name} · daily action · ${date} · ${date === today ? 'today' : date > today ? 'future saved plan' : action.completed ? 'past completed work' : 'past unfinished plan'} · v${version}`,
         href: date === today ? '#/plan' : '#/history',
         missionId: mission.id, roadmapVersion: version, position: recordPosition(id, mission.id),
       });

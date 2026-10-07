@@ -90,6 +90,14 @@ layers; renderer geometry, marker diagnostics, picking and named inspection stay
 Spark density is a validated 0-100% view setting, default 10. It changes only the
 existing particle geometry's draw range; resizing preserves density and recomputes
 the appropriate profile/compact budget without reallocating or reseeding particles.
+The independently seeded spark-line batch has its own percentage and draw range, while
+sharing the same visibility master, outer-shell transform, ripple uniforms and disposal
+lifecycle. It does not enter graph edges, node counts or saved state.
+Per-ring speed percentages are validated and held by identity. `CareerOrbitVisuals`
+integrates independent rotation times rather than multiplying the current global phase;
+changing the slider cannot teleport an anchor. All ring paths, stage markers, highlights,
+tether endpoints and picking read the same integrated time. Global pause/reduced motion
+and quiet-mission rules still apply; hidden identities retain their prior phase.
 Orbit selection highlights the complete orbit, independent of the selected stage/group.
 The selection glow is presentation geometry, not another ring, work node or prerequisite;
 membership tethers remain scoped to the selected group, with unchanged data and camera.
@@ -110,6 +118,13 @@ for those detailed missions. It filters every incident edge of a quiet hub, not 
 checkpoint links. `disconnectedNodeIds` also excludes those hubs from renderer orbit
 tether targets. Unscoped history remains on its existing page, not a focus graph cloud.
 The full source graph still supplies framing and read-only detail inspection.
+An explicit Show everything mode bypasses focus eligibility, mission scope, layer flags
+and hidden item choices. It uses the full source graph with no disconnected-hub set,
+but still supplies only mission orbits to the renderer. Disabled conflicting controls
+show effective full visibility while their saved-in-component preferences remain intact
+for toggling off. No workspace fields, mission modes or completion records are written.
+The optional `buildCareerGraph(..., { includeAllRecords: true })` includes every saved
+daily action with truthful future/past-unfinished context; default graph inclusion is unchanged.
 Explicit visibility choices overlay current defaults, so new same-day completion can
 reveal a previously default-hidden mission without overriding deliberately hidden items.
 Completing outside focus does not change saved mode, primary focus or daily planning.
@@ -123,12 +138,15 @@ remaining orbit geometry or zoom. Heartbeat/core glow still require the actually
 visible core, not a framing-only node. One non-animated initial render may occur
 below the fold to finish initialization; subsequent offscreen frames stay suspended.
 `careerNodeSpacing.ts` deterministically redistributes nodes before scope/item filtering.
-A fixed home-view basis allocates bounded neighborhood cells with retained 3D depth and
-a clear central area. Higher relative spread increases local cell separation, not the
-overall scale; large record sets adapt cell size to finite available space. Stable
-priority/ID ordering, bounded neighbor searches and a linear free-cell fallback avoid
-an all-pairs force simulation. Every value derives from the source graph, never a
-previously expanded result. Rotating does not relayout nodes; other angles can overlap.
+A fixed home-view basis retains genuine 3D depth and a clear central area. The 100
+baseline preserves the compact packing. Higher values unfold it into separate mission
+fans ordered by existing stage/checkpoint membership, shortening tangled prerequisite
+paths rather than uniformly magnifying the scene. Saved records use separate inner lanes
+so new notes do not consume checkpoint slots or enlarge their framing. Polar interpolation
+travels around the core. Bounded cell allocation and stable ordering avoid an all-pairs
+force simulation; dense imports adapt to finite available space. Every value derives
+from the source graph, never a previously expanded result. Rotating does not relayout
+nodes; other angles can overlap, and all genuine edges remain visible.
 IDs, statuses, edges and activity remain unchanged. The renderer rebuilds attached
 geometry without replacing the canvas, automatically reframing or resetting orbit phase.
 Outer ring radii and Frame all clearance are derived together. The focus snapshot uses
@@ -319,7 +337,7 @@ Highlights follow actual controls, with state-derived Next gates and optional sk
 No artificial user achievement is recorded to make a step pass. Exported practice files
 are explicitly labeled examples. Practice state itself is not saved across reloads.
 
-The 102-step, 23-chapter walkthrough keeps Fabric deliberately on v1 initially. Its
+The 150-step, 28-chapter walkthrough keeps Fabric deliberately on v1 initially. Its
 bulk-update lesson opens the real review Modal and **cancels**, so the later individual
 adoption and archive exercise remains meaningful. Checkpoints lessons gate on the actual
 View checkbox in both directions; the work-streak lesson expands its actual explanation

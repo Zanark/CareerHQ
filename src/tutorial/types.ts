@@ -1,7 +1,8 @@
 import type { AppState } from '../domain/types';
 import type { Theme } from '../useTheme';
 
-export type TutorialCommand = 'open-evidence' | 'open-opportunity' | 'open-roadmap' | 'open-graph-search' | 'close-dialogs';
+export type TutorialCommand = 'open-evidence' | 'open-opportunity' | 'open-roadmap' |
+  'open-graph-search' | 'open-graph-view' | 'open-graph-rings' | 'open-graph-visibility' | 'close-dialogs';
 
 export interface TutorialSignals {
   evidenceOpen: boolean;
