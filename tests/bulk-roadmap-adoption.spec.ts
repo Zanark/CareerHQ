@@ -18,8 +18,8 @@ async function raw(page: Page) {
   return page.evaluate(key => localStorage.getItem(key), key);
 }
 
-async function prepare(page: Page, state: AppState) {
-  state.plans[localDate()] = generatePlan(state);
+async function prepare(page: Page, state: AppState, date = localDate()) {
+  state.plans[date] = generatePlan(state, date);
   const original = JSON.stringify(parseState(state));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(({ key, original }) => {
@@ -202,7 +202,7 @@ test('a same-tab timer update invalidates the exact preview even when every elig
   await page.clock.pauseAt(new Date('2026-10-06T10:01:00Z'));
   const state = createInitialState(false, '2.0.0');
   state.capacity = 'gentle';
-  await prepare(page, state);
+  await prepare(page, state, '2026-10-06');
   await page.getByRole('link', { name: 'Daily plan', exact: true }).click();
   await page.getByRole('button', { name: 'Start focus session', exact: true }).click();
   await page.getByRole('link', { name: 'Operation documents', exact: true }).click();
